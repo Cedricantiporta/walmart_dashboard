@@ -95,7 +95,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
     w.print();
   }
 
-  const snapCount = inv.case_snapshot?.length ?? inv.case_ids?.length ?? 0;
+  const snapCount = inv.case_snapshot?.length || inv.case_ids?.length || 0;
 
   return (
     <div style={{ borderBottom: '1px solid #f3f4f6' }}>
