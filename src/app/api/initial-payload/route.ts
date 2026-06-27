@@ -3,7 +3,7 @@ import { createServerClient, fetchRowsFrom } from '@/lib/supabase-server';
 import { getBillingSummary, getBillingInsights } from '@/lib/billing';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
 import { VALID_TIME_RANGES, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
-import { RmsCase, ClientInfo, BillingContact, Invoice } from '@/types';
+import { RmsCase, ClientInfo, BillingContact, Invoice, MonthlyHistory } from '@/types';
 
 export const revalidate = 0;
 
@@ -22,6 +22,7 @@ export async function GET() {
     { data: hardcodedBilledRaw },
     { data: excludedClientsRaw },
     { count: totalRmsCount },
+    { data: monthlySummaryRaw },
   ] = await Promise.all([
     fetchRowsFrom<RmsCase>(db, 'rms_cases', currentMonthStart),
     db.from('clients').select('*'),
@@ -31,6 +32,7 @@ export async function GET() {
     db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('excluded_clients').select('client_name'),
     db.from('rms_cases').select('id', { count: 'exact', head: true }),
+    db.rpc('get_monthly_summary'),
   ]);
 
   const onboardingInfo: Record<string, ClientInfo> = {};
@@ -92,6 +94,30 @@ export async function GET() {
 
   const billingInsights = getBillingInsights(billingSummary);
 
+  // Convert RPC monthly summary → MonthlyHistory[] (ascending for growth calc, then reversed)
+  type MonthlySummaryRow = { sort_key: string; recovered: number; fee: number; approved: number; declined: number };
+  const summaryRows = ((monthlySummaryRaw ?? []) as MonthlySummaryRow[])
+    .slice()
+    .sort((a, b) => a.sort_key.localeCompare(b.sort_key));
+
+  const precomputedMonthlyHistory: MonthlyHistory[] = summaryRows.map((row, i) => {
+    const date = new Date(row.sort_key + '-01T12:00:00');
+    const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const prev = summaryRows[i - 1];
+    const growth = prev && prev.recovered > 0
+      ? ((Number(row.recovered) - Number(prev.recovered)) / Number(prev.recovered)) * 100
+      : 0;
+    return {
+      label,
+      sort: row.sort_key,
+      recovered: Number(row.recovered),
+      fee: Number(row.fee),
+      approvedCount: Number(row.approved),
+      declinedCount: Number(row.declined),
+      growth,
+    };
+  }).reverse();
+
   const { data: lastSync } = await db.from('rms_cases').select('synced_at').order('synced_at', { ascending: false }).limit(1).single();
 
   return NextResponse.json({
@@ -112,8 +138,9 @@ export async function GET() {
     billingSummaryInfo,
     clientList:       activeClients,
     hiddenClientList,
-    lastSyncTime:     lastSync?.synced_at ?? new Date().toISOString(),
+    lastSyncTime:              lastSync?.synced_at ?? new Date().toISOString(),
     vantageCutoff,
-    rmsCasesCount:    totalRmsCount ?? allData.length,
+    rmsCasesCount:             totalRmsCount ?? allData.length,
+    precomputedMonthlyHistory,
   });
 }

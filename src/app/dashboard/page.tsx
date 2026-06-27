@@ -252,6 +252,7 @@ export default function DashboardPage() {
   const [history, setHistory] = useState<Invoice[]>([]);
   const [billingInsights, setBillingInsights] = useState<BillingInsights | null>(null);
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+  const [precomputedMonthlyHistory, setPrecomputedMonthlyHistory] = useState<MonthlyHistory[]>([]);
   const [lastSync, setLastSync] = useState('');
   const [rmsCasesCount, setRmsCasesCount] = useState<number | null>(null);
   const [loadingInit, setLoadingInit] = useState(true);
@@ -270,6 +271,7 @@ export default function DashboardPage() {
         setBillingInsights(d.billingInsights ?? null);
         setLastSync(d.lastSyncTime ?? '');
         setRmsCasesCount(d.rmsCasesCount ?? 0);
+        if (d.precomputedMonthlyHistory?.length) setPrecomputedMonthlyHistory(d.precomputedMonthlyHistory);
         if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
         setLoadingInit(false);
       })
@@ -303,7 +305,10 @@ export default function DashboardPage() {
   const { metrics, trends, monthlyHistory = [], categoryData = [] } = analytics ?? {};
   const totalFeesBilled = analytics ? computeTotalFeesBilled(history, analytics.dateRange) : 0;
 
-  const chartHistory = [...monthlyHistory]
+  // Full monthly history: prefer pre-computed (all months, fast) over analytics subset
+  const fullMonthlyHistory = precomputedMonthlyHistory.length ? precomputedMonthlyHistory : monthlyHistory;
+
+  const chartHistory = [...fullMonthlyHistory]
     .sort((a, b) => a.sort.localeCompare(b.sort))
     .slice(-8)
     .map(h => ({ label: h.label, recovered: h.recovered, fee: h.fee }));
@@ -460,7 +465,7 @@ export default function DashboardPage() {
               {[1,2,3,4,5].map(i => <Skeleton key={i} h={16} />)}
             </div>
           ) : (
-            <MonthlyHistoryTable history={monthlyHistory ?? []} />
+            <MonthlyHistoryTable history={fullMonthlyHistory} />
           )}
         </div>
 
