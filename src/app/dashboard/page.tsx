@@ -276,8 +276,6 @@ export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState('thisMonth');
   const [client, setClient] = useState('all');
   const [clientList, setClientList] = useState<string[]>([]);
-  const [hiddenClientList, setHiddenClientList] = useState<string[]>([]);
-  const [extraClients, setExtraClients] = useState<string[]>([]);
   const [billingSummary, setBillingSummary] = useState<ClientSummary[]>([]);
   const [history, setHistory] = useState<Invoice[]>([]);
   const [billingInsights, setBillingInsights] = useState<BillingInsights | null>(null);
@@ -295,12 +293,10 @@ export default function DashboardPage() {
       .then(r => r.json())
       .then(d => {
         setClientList(d.clientList ?? []);
-        setHiddenClientList(d.hiddenClientList ?? []);
         setBillingSummary(d.billingSummary ?? []);
         setHistory(d.history ?? []);
         setBillingInsights(d.billingInsights ?? null);
         setLastSync(d.lastSyncTime ?? '');
-        // Use the pre-computed analytics from initial-payload for first load
         if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
         setLoadingInit(false);
       })
@@ -318,7 +314,6 @@ export default function DashboardPage() {
     const params = new URLSearchParams({
       timeRange: isYYYYMM ? 'specificMonth' : timeRange,
       client,
-      extraClients: extraClients.join(','),
     });
     if (isYYYYMM) params.set('startDate', `${timeRange}-01`);
 
@@ -326,7 +321,7 @@ export default function DashboardPage() {
       .then(r => r.json())
       .then(d => { setAnalytics(d); setLoadingAnalytics(false); })
       .catch(() => setLoadingAnalytics(false));
-  }, [timeRange, client, extraClients, loadingInit]);
+  }, [timeRange, client, loadingInit]);
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
@@ -357,13 +352,6 @@ export default function DashboardPage() {
   const syncLabel = lastSync
     ? new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '';
-
-  const isHiddenIncluded = (name: string) => extraClients.includes(name);
-  const toggleHidden = (name: string) => {
-    setExtraClients(prev =>
-      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
-    );
-  };
 
   return (
     <>
@@ -483,38 +471,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        {/* Hidden clients toggle */}
-        {hiddenClientList.length > 0 && (
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '16px 22px', marginBottom: 24 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 10 }}>
-              Hidden Clients
-              <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500, marginLeft: 8 }}>
-                (toggle to include in analytics)
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {hiddenClientList.map(name => {
-                const included = isHiddenIncluded(name);
-                return (
-                  <button
-                    key={name}
-                    onClick={() => toggleHidden(name)}
-                    style={{
-                      fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 20,
-                      border: `1px solid ${included ? '#2563eb' : '#e5e7eb'}`,
-                      background: included ? '#eff6ff' : '#f9fafb',
-                      color: included ? '#2563eb' : '#6b7280',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {name} {included ? '✓' : '+'}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Monthly history table */}
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px' }}>
