@@ -77,6 +77,8 @@ export default function SummaryPage() {
       <style>{`
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         button:hover { opacity: .88; }
+        .sumtable table th { height: 46px !important; padding: 0 16px !important; vertical-align: middle; }
+        .sumtable table td { padding: 12px 16px !important; vertical-align: middle; }
       `}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -106,13 +108,14 @@ export default function SummaryPage() {
 
         {/* Table */}
         <div style={{ flex: 1, overflow: 'hidden', padding: '12px 20px 16px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflow: 'hidden', border: '1px solid #e4e4e7', borderRadius: 14, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', padding: '0 6px 6px', border: '1px solid #d4d4d8', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'hidden', background: '#fff', borderRadius: 10, display: 'flex', flexDirection: 'column' }}>
             {loading ? (
               <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} h={16} />)}
               </div>
             ) : (
-              <div style={{ flex: 1, overflow: 'auto' }}>
+              <div className="sumtable" style={{ flex: 1, overflow: 'auto' }}>
                 <Table variant="secondary" style={{ width: '100%' }}>
                   <Table.ScrollContainer>
                     <Table.Content aria-label="Monthly History">
@@ -165,7 +168,8 @@ export default function SummaryPage() {
                 </Table>
               </div>
             )}
-          </div>
+          </div>{/* white inner */}
+          </div>{/* grey outer */}
         </div>
       </div>
     </>

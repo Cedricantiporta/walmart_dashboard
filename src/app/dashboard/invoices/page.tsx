@@ -73,30 +73,20 @@ function triggerCSVDownload(inv: Invoice, cases: CaseRow[]) {
   a.click();
 }
 
-// ── avatar ────────────────────────────────────────────────────────────────────
-
-function avatarGradient(name: string): [string, string] {
-  const pairs: [string, string][] = [
-    ['#006FEE','#7828C8'],['#17c964','#006FEE'],['#f31260','#7828C8'],
-    ['#f5a524','#f31260'],['#7828C8','#17c964'],['#00b7eb','#006FEE'],
-    ['#f31260','#f5a524'],['#17c964','#7828C8'],
-  ];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0x7fffffff;
-  return pairs[h % pairs.length];
-}
-
-function Avatar({ name, size = 28 }: { name: string; size?: number }) {
-  const [from, to] = avatarGradient(name);
-  return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: `linear-gradient(135deg,${from} 0%,${to} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: Math.round(size * 0.38), fontWeight: 700, flexShrink: 0 }}>
-    </div>
-  );
-}
-
 // ── icons ─────────────────────────────────────────────────────────────────────
 
 const PanelIcon = () => <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="16" height="16" rx="3"/><line x1="7" y1="2" x2="7" y2="18"/></svg>;
+const IconFilter = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
+const IconSort = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/></svg>;
+const IconCols = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>;
+
+const toolbarPill: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+  fontSize: 13, fontWeight: 500, color: '#11181c',
+  background: '#f4f4f5', border: '1px solid #d4d4d8',
+  borderRadius: 999, padding: '6px 13px',
+  cursor: 'pointer', outline: 'none', flexShrink: 0,
+};
 
 function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
   label: string; col: string; sortCol: string; sortDir: 'asc'|'desc';
@@ -158,13 +148,10 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
 
   return (
     <>
-      <Table.Row key={inv.invoice_number} id={inv.invoice_number} onPress={handleToggle} style={{ cursor: 'pointer', background: open ? '#fafafa' : undefined }}>
+      <Table.Row key={inv.invoice_number} id={inv.invoice_number} onClick={handleToggle} style={{ cursor: 'pointer', background: open ? '#fafafa' : undefined }}>
         <Table.Cell><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#006FEE', fontSize: 12 }}>{inv.invoice_number}</span></Table.Cell>
         <Table.Cell>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Avatar name={inv.client_name} size={26} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c' }}>{inv.client_name}</span>
-          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c' }}>{inv.client_name}</span>
         </Table.Cell>
         <Table.Cell><span style={{ display: 'block', textAlign: 'right', fontSize: 12, color: '#71717a' }}>{snapCount}</span></Table.Cell>
         <Table.Cell><span style={{ fontSize: 12, color: '#71717a' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span></Table.Cell>
@@ -265,29 +252,45 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}} button:hover{opacity:.88} input:focus{outline:none;border-color:#006FEE!important;}`}</style>
+      <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}} button:hover{opacity:.88} input:focus{outline:none;border-color:#006FEE!important;} .invtable table th{height:46px!important;padding:0 16px!important;vertical-align:middle;} .invtable table td{padding:12px 16px!important;vertical-align:middle;}`}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
         {/* Top bar */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '0 20px', height: 60, background: '#f4f4f5' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
-              <PanelIcon />
-            </button>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#11181c', letterSpacing: '-0.01em' }}>Invoices</h1>
-          </div>
-          <input
-            placeholder="Search invoice or client…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 230, color: '#11181c', outline: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: '10px center' }}
-          />
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', height: 60, background: '#f4f4f5' }}>
+          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
+            <PanelIcon />
+          </button>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#11181c', letterSpacing: '-0.01em' }}>Invoices</h1>
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: 'hidden', padding: '16px 20px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflow: 'hidden', border: '1px solid #e4e4e7', borderRadius: 14, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'hidden', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+          {/* Toolbar: pills + search */}
+          {!loading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>
+                Invoices <span style={{ fontWeight: 400, color: '#a1a1aa' }}>{filtered.length}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button style={toolbarPill}><IconFilter /> Filter</button>
+                  <button style={toolbarPill}><IconSort /> Sort</button>
+                  <button style={toolbarPill}><IconCols /> Columns</button>
+                </div>
+                <input
+                  placeholder="Search invoice or client…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 230, color: '#11181c', outline: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: '10px center' }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div style={{ flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', padding: '0 6px 6px', border: '1px solid #d4d4d8', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'hidden', background: '#fff', borderRadius: 10, display: 'flex', flexDirection: 'column' }}>
             {loading ? (
               <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {[1,2,3,4,5].map(i => <Sk key={i} h={52} />)}
@@ -297,7 +300,7 @@ export default function InvoicesPage() {
                 {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
               </div>
             ) : (
-              <div style={{ flex: 1, overflow: 'auto' }}>
+              <div className="invtable" style={{ flex: 1, overflow: 'auto' }}>
                 <Table variant="secondary" style={{ width: '100%' }}>
                   <Table.ScrollContainer>
                     <Table.Content aria-label="Invoice History">
@@ -346,7 +349,8 @@ export default function InvoicesPage() {
                 </Table>
               </div>
             )}
-          </div>
+          </div>{/* white inner */}
+          </div>{/* grey outer */}
         </div>
       </div>
     </>
