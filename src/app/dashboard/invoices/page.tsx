@@ -90,7 +90,6 @@ function Avatar({ name, size = 28 }: { name: string; size?: number }) {
   const [from, to] = avatarGradient(name);
   return (
     <div style={{ width: size, height: size, borderRadius: '50%', background: `linear-gradient(135deg,${from} 0%,${to} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: Math.round(size * 0.38), fontWeight: 700, flexShrink: 0 }}>
-      {name.charAt(0).toUpperCase()}
     </div>
   );
 }
