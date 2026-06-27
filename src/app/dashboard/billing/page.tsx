@@ -124,7 +124,7 @@ function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
 }) {
   const active = sortCol === col;
   return (
-    <span onClick={() => onSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 3, cursor: 'pointer', userSelect: 'none', color: active ? '#11181c' : '#71717a', fontWeight: active ? 700 : 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+    <span onClick={() => onSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 3, cursor: 'pointer', userSelect: 'none', color: active ? '#11181c' : '#71717a', fontWeight: active ? 700 : 600, fontSize: 11, letterSpacing: 0 }}>
       {label}
       <span style={{ fontSize: 8 }}>{active ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
     </span>
@@ -166,20 +166,12 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>Build Invoice</div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{client.clientName} · {invoiceNumber}</div>
+            <div style={{ fontWeight: 800, fontSize: 20, color: '#111827' }}>{client.clientName}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#6b7280', marginTop: 4 }}>{invoiceNumber}</div>
           </div>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af', lineHeight: 1 }}>×</button>
-        </div>
-        <div style={{ padding: '20px 24px', display: 'flex', gap: 12 }}>
-          {[{ label: 'Total Recovered', value: fmtUSD(client.totalAmount) }, { label: 'Cases', value: String(client.cases.length) }, { label: 'Total Fee', value: fmtUSD(client.totalFee) }].map(card => (
-            <div key={card.label} style={{ flex: 1, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>{card.label}</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#111827' }}>{card.value}</div>
-            </div>
-          ))}
         </div>
         {err && <div style={{ padding: '8px 24px', background: '#fef2f2', color: '#dc2626', fontSize: 12 }}>{err}</div>}
         {confirming && (
@@ -198,8 +190,6 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
             </>
           ) : (
             <>
-              <button onClick={() => downloadClientCSV(client, invoiceNumber)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ CSV</button>
-              <button onClick={async () => { await downloadInvoicePDF({ invoice_number: invoiceNumber, client_name: client.clientName, client_address: billingContact?.address ?? null, billed_date: billedDate, billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(client.cases.map(c => c.caseId))] }, client.cases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount }))); }} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ PDF</button>
               <button onClick={() => setConfirming(true)} style={{ fontSize: 13, fontWeight: 700, padding: '8px 18px', border: 'none', borderRadius: 999, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Mark as Billed</button>
             </>
           )}
@@ -347,7 +337,6 @@ export default function BillingPage() {
             <PanelIcon />
           </button>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>Billing</h1>
-          {currentMonthLabel && <span style={{ fontSize: 13, color: '#a1a1aa', fontWeight: 400 }}>Ready to bill — {currentMonthLabel}</span>}
         </div>
 
         {error && <div style={{ padding: '10px 20px', background: '#fef2f2', borderBottom: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>{error}</div>}
@@ -378,24 +367,16 @@ export default function BillingPage() {
           )}
 
           {/* Two-panel: RTB table + case detail */}
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#eaebec' }}>
+          {(() => {
+            const showHdr = !loading && filtered.length > 0;
+            const G = 'minmax(0,1fr) 80px 130px 120px 70px 120px';
+            return (
+              <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#eaebec', flexDirection: 'column' }}>
 
-            {/* LEFT: RTB table — scroll container holds sticky header + rows */}
-            <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: selectedClient ? '12px 0 0 12px' : 12, margin: '6px 0 6px 6px' }}>
-              {loading ? (
-                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
-                </div>
-              ) : filtered.length === 0 ? (
-                <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
-                  {search ? 'No clients match.' : 'No clients ready to bill.'}
-                </div>
-              ) : (() => {
-                const G = 'minmax(0,1fr) 80px 130px 120px 70px 120px';
-                return (
-                  <>
-                    {/* Sticky column headers — grey bg matches outer frame */}
-                    <div style={{ position: 'sticky', top: 0, zIndex: 2, display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, background: '#eaebec', minWidth: 420 }}>
+                {/* Shared header row — grey, spans RTB cols + empty sidebar placeholder */}
+                {showHdr && (
+                  <div style={{ display: 'flex', flexShrink: 0 }}>
+                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 22px', gap: 8, minWidth: 420 }}>
                       <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                       <ColHdr label="Rate" col="rate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                       <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
@@ -403,62 +384,81 @@ export default function BillingPage() {
                       <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                       <span />
                     </div>
-                    <div style={{ minWidth: 420 }}>
-                      {sorted.map((c, idx) => (
-                        <div key={c.clientName}
-                          onClick={() => setSelectedClient(prev => prev?.clientName === c.clientName ? null : c)}
-                          style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}
-                        >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
-                            {c.prevMonthFee > 0 && <span style={{ fontSize: 10, fontWeight: 600, background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '1px 6px', alignSelf: 'flex-start' }}>+prev month</span>}
+                    {selectedClient && <div style={{ width: sidebarWidth + 18, flexShrink: 0 }} />}
+                  </div>
+                )}
+
+                {/* Content row: left card + divider + right card */}
+                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+                  {/* LEFT white card — no top margin when header sits above */}
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: showHdr ? (selectedClient ? '0 0 0 12px' : '0 0 12px 12px') : (selectedClient ? '12px 0 0 12px' : 12), margin: showHdr ? '0 0 6px 6px' : '6px 0 6px 6px' }}>
+                    {loading ? (
+                      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
+                      </div>
+                    ) : filtered.length === 0 ? (
+                      <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
+                        {search ? 'No clients match.' : 'No clients ready to bill.'}
+                      </div>
+                    ) : (
+                      <div style={{ minWidth: 420 }}>
+                        {sorted.map((c, idx) => (
+                          <div key={c.clientName}
+                            onClick={() => setSelectedClient(prev => prev?.clientName === c.clientName ? null : c)}
+                            style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
+                              {c.prevMonthFee > 0 && <span style={{ fontSize: 10, fontWeight: 600, background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '1px 6px', alignSelf: 'flex-start' }}>+prev month</span>}
+                            </div>
+                            <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>
+                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.totalAmount)}</span>
+                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>
+                            <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.cases.length}</span>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+                              <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                <IconInvoice /> Invoice
+                              </button>
+                            </div>
                           </div>
-                          <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>
-                          <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.totalAmount)}</span>
-                          <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>
-                          <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.cases.length}</span>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-                            <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              <IconInvoice /> Invoice
-                            </button>
-                          </div>
+                        ))}
+                        <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
+                          <span />
+                          <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
+                          <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
+                          <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
+                          <span />
                         </div>
-                      ))}
-                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
-                        <span />
-                        <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
-                        <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
-                        <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
-                        <span />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Draggable divider */}
+                  {selectedClient && (
+                    <div
+                      onMouseDown={handleDragStart}
+                      style={{ width: 12, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', zIndex: 3 }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {[0,1,2,3].map(i => <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: '#a1a1aa' }} />)}
                       </div>
                     </div>
-                  </>
-                );
-              })()}
-            </div>
+                  )}
 
-            {/* Draggable divider — visible only when sidebar open */}
-            {selectedClient && (
-              <div
-                onMouseDown={handleDragStart}
-                style={{ width: 12, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', zIndex: 3 }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {[0,1,2,3].map(i => <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: '#a1a1aa' }} />)}
+                  {/* RIGHT sidebar panel */}
+                  <div style={{ width: selectedClient ? sidebarWidth : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
+                    {selectedClient && (
+                      <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: showHdr ? '0 0 12px 0' : '0 12px 12px 0', margin: showHdr ? '0 6px 6px 0' : '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <CaseSidebar client={selectedClient} highlight={search || undefined} />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
-
-            {/* RIGHT: Case detail panel */}
-            <div style={{ width: selectedClient ? sidebarWidth : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
-              {selectedClient && (
-                <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: '0 12px 12px 0', margin: '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <CaseSidebar client={selectedClient} highlight={search || undefined} />
-                </div>
-              )}
-            </div>
-          </div>
+            );
+          })()}
         </div>
       </div>
     </>

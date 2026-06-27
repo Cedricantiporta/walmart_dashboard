@@ -22,7 +22,7 @@ function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
 }) {
   const active = sortCol === col;
   return (
-    <span onClick={() => onSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 3, cursor: 'pointer', userSelect: 'none', color: active ? '#11181c' : '#71717a', fontWeight: active ? 700 : 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+    <span onClick={() => onSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 3, cursor: 'pointer', userSelect: 'none', color: active ? '#11181c' : '#71717a', fontWeight: active ? 700 : 600, fontSize: 11, letterSpacing: 0 }}>
       {label}
       <span style={{ fontSize: 8 }}>{active ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
     </span>
@@ -96,7 +96,7 @@ export default function SummaryPage() {
           <div style={{ display: 'flex', gap: 12, padding: '16px 20px 0', flexWrap: 'wrap' }}>
             {[{ label: 'Total Recovered', value: fmtFull(totalRecovered) }, { label: 'Total Fees Earned', value: fmtFull(totalFee) }, { label: 'Months Active', value: String(history.length) }].map(card => (
               <div key={card.label} style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, padding: '14px 18px', flex: '1 1 150px', minWidth: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>{card.label}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', letterSpacing: 0, marginBottom: 8 }}>{card.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{card.value}</div>
               </div>
             ))}

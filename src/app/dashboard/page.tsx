@@ -534,10 +534,10 @@ export default function DashboardPage() {
             ))
           ) : metrics ? (
             <>
-              <MetricCard label="Total Reimbursed" value={metrics.totalReimbursed} trend={displayTrends?.totalReimbursed} />
-              <MetricCard label="Total Fees" value={metrics.totalFees} trend={displayTrends?.totalFees} />
-              <MetricCard label="Approved Cases" value={metrics.approvedCases} trend={displayTrends?.approvedCases} format="number" />
-              <MetricCard label="Total Fees Billed" value={totalFeesBilled} />
+              <MetricCard label="Reimbursed" value={metrics.totalReimbursed} trend={displayTrends?.totalReimbursed} />
+              <MetricCard label="Fees" value={metrics.totalFees} trend={displayTrends?.totalFees} />
+              <MetricCard label="Cases" value={metrics.approvedCases} trend={displayTrends?.approvedCases} format="number" />
+              <MetricCard label="Billed" value={totalFeesBilled} />
             </>
           ) : null}
         </div>
