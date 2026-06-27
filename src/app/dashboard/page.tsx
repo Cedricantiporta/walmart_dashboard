@@ -475,22 +475,18 @@ export default function DashboardPage() {
         button:hover { opacity: .88; }
       `}</style>
 
-      <div style={{ padding: '24px 28px', maxWidth: 1200 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
-        {/* Header row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                onClick={onToggle}
-                title="Toggle sidebar"
-                style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e4e4e7', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', flexShrink: 0, outline: 'none' }}
-              >
-                <PanelIcon />
-              </button>
-              <h1 style={{ fontSize: 24, fontWeight: 700, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
+        {/* Top bar — aligned with sidebar brand section */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '0 20px', height: 60, borderBottom: '1px solid #e4e4e7', background: '#fff', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
+              <PanelIcon />
+            </button>
+            <div>
+              <h1 style={{ fontSize: 18, fontWeight: 700, color: '#11181c', letterSpacing: '-0.01em' }}>{greeting}</h1>
+              {dateRangeLabel && <p style={{ fontSize: 11, color: '#a1a1aa', marginTop: 1 }}>{dateRangeLabel}</p>}
             </div>
-            {dateRangeLabel && <p style={{ fontSize: 12, color: '#a1a1aa', marginTop: 3, paddingLeft: 42 }}>{dateRangeLabel}</p>}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {syncLabel && <span style={{ fontSize: 11, color: '#a1a1aa' }}>Synced {syncLabel}</span>}
@@ -498,6 +494,8 @@ export default function DashboardPage() {
             <PillDropdown value={client} options={clientOptions} onChange={setClient} icon={<UserIcon />} />
           </div>
         </div>
+
+        <div style={{ padding: '20px', maxWidth: 1200 }}>
 
         {error && (
           <div style={{ background: '#fff0f3', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#f31260', fontSize: 13 }}>
@@ -563,6 +561,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        </div>{/* end inner padding div */}
       </div>
     </>
   );

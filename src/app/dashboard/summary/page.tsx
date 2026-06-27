@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Table } from '@heroui/react';
 import type { MonthlyHistory } from '@/types';
 import { clientGet, clientSet } from '@/lib/client-cache';
 import { useSidebar } from '@/components/DashboardShell';
@@ -14,18 +15,7 @@ function Skeleton({ h = 20, w = '100%', radius = 6 }: { h?: number; w?: string |
   );
 }
 
-const PanelIcon = () => <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="16" height="16" rx="3"/><line x1="7" y1="2" x2="7" y2="18"/></svg>;
-const IconFilter = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
-const IconSort = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/></svg>;
-const IconCols = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>;
-
-const pillBtn: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 5,
-  fontSize: 13, fontWeight: 500, color: '#71717a',
-  background: '#fff', border: '1px solid #e4e4e7',
-  borderRadius: 999, padding: '5px 12px',
-  cursor: 'pointer', outline: 'none', flexShrink: 0,
-};
+const PanelIcon = () => <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="16" height="16" rx="3"/><line x1="7" y1="2" x2="7" y2="18"/></svg>;
 
 function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
   label: string; col: string; sortCol: string; sortDir: 'asc'|'desc';
@@ -33,78 +23,10 @@ function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
 }) {
   const active = sortCol === col;
   return (
-    <span onClick={() => onSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 3, cursor: 'pointer', userSelect: 'none', color: active ? '#11181c' : '#a1a1aa', fontWeight: active ? 700 : 600 }}>
+    <span onClick={() => onSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 3, cursor: 'pointer', userSelect: 'none', color: active ? '#11181c' : '#71717a', fontWeight: active ? 700 : 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em' }}>
       {label}
       <span style={{ fontSize: 8 }}>{active ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
     </span>
-  );
-}
-
-function MonthlyHistoryTable({ history }: { history: MonthlyHistory[] }) {
-  const [sortCol, setSortCol] = useState('sort');
-  const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
-
-  function handleSort(col: string) {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortCol(col); setSortDir('desc'); }
-  }
-
-  const sorted = [...history].sort((a, b) => {
-    let av: number | string, bv: number | string;
-    if (sortCol === 'label') { av = a.label; bv = b.label; }
-    else if (sortCol === 'recovered') { av = a.recovered; bv = b.recovered; }
-    else if (sortCol === 'fee') { av = a.fee; bv = b.fee; }
-    else if (sortCol === 'cases') { av = a.approvedCount; bv = b.approvedCount; }
-    else if (sortCol === 'growth') { av = a.growth; bv = b.growth; }
-    else { av = a.sort; bv = b.sort; }
-    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av);
-    return sortDir === 'asc' ? av - (bv as number) : (bv as number) - av;
-  });
-
-  if (!history.length) return <div style={{ color: '#a1a1aa', fontSize: 13, padding: '48px 16px', textAlign: 'center' }}>No data</div>;
-
-  return (
-    <div style={{ overflow: 'auto', flex: 1 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#fff' }}>
-          <tr>
-            {[
-              { label: 'Month', col: 'label', align: 'left' as const },
-              { label: 'Recovered', col: 'recovered', align: 'right' as const },
-              { label: 'Fee', col: 'fee', align: 'right' as const },
-              { label: 'Cases', col: 'cases', align: 'right' as const },
-              { label: 'Growth', col: 'growth', align: 'right' as const },
-            ].map(h => (
-              <th key={h.col} style={{ textAlign: h.align, padding: '0 14px 10px', borderBottom: '1px solid #e4e4e7', whiteSpace: 'nowrap' }}>
-                <ColHdr label={h.label} col={h.col} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align={h.align} />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row, i) => (
-            <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-              <td style={{ padding: '11px 14px', fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap' }}>{row.label}</td>
-              <td style={{ padding: '11px 14px', fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtFull(row.recovered)}</td>
-              <td style={{ padding: '11px 14px', color: '#374151', textAlign: 'right' }}>{fmtFull(row.fee)}</td>
-              <td style={{ padding: '11px 14px', color: '#374151', textAlign: 'right' }}>{row.approvedCount}</td>
-              <td style={{ padding: '11px 14px', textAlign: 'right' }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 3,
-                  fontSize: 12, fontWeight: 600,
-                  color: row.growth >= 0 ? '#17c964' : '#f31260',
-                  background: row.growth >= 0 ? '#f0fdf4' : '#fff0f3',
-                  borderRadius: 999, padding: '3px 8px',
-                }}>
-                  <span style={{ fontSize: 9 }}>{row.growth >= 0 ? '▲' : '▼'}</span>
-                  {Math.abs(row.growth).toFixed(1)}%
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }
 
@@ -112,7 +34,14 @@ export default function SummaryPage() {
   const [history, setHistory] = useState<MonthlyHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sortCol, setSortCol] = useState('sort');
+  const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
   const { onToggle } = useSidebar();
+
+  function handleSort(col: string) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('desc'); }
+  }
 
   useEffect(() => {
     const cached = clientGet<MonthlyHistory[]>('summary');
@@ -128,75 +57,116 @@ export default function SummaryPage() {
       .catch(e => { setError(e.message); setLoading(false); });
   }, []);
 
+  const sorted = [...history].sort((a, b) => {
+    let av: number | string, bv: number | string;
+    if (sortCol === 'label') { av = a.label; bv = b.label; }
+    else if (sortCol === 'recovered') { av = a.recovered; bv = b.recovered; }
+    else if (sortCol === 'fee') { av = a.fee; bv = b.fee; }
+    else if (sortCol === 'cases') { av = a.approvedCount; bv = b.approvedCount; }
+    else if (sortCol === 'growth') { av = a.growth; bv = b.growth; }
+    else { av = a.sort; bv = b.sort; }
+    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av);
+    return sortDir === 'asc' ? av - (bv as number) : (bv as number) - av;
+  });
+
   const totalRecovered = history.reduce((s, r) => s + r.recovered, 0);
   const totalFee = history.reduce((s, r) => s + r.fee, 0);
 
   return (
     <>
       <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         button:hover { opacity: .88; }
       `}</style>
 
-      <div style={{ padding: '20px 28px', maxWidth: 1200 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
-        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e4e4e7', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', flexShrink: 0, outline: 'none' }}>
+        {/* Top bar */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', height: 60, borderBottom: '1px solid #e4e4e7', background: '#fff' }}>
+          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
             <PanelIcon />
           </button>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.01em' }}>Summary</h1>
-          <span style={{ fontSize: 13, color: '#a1a1aa', fontWeight: 500 }}>All-time monthly breakdown</span>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#11181c', letterSpacing: '-0.01em' }}>Summary</h1>
+          <span style={{ fontSize: 13, color: '#a1a1aa' }}>All-time monthly breakdown</span>
         </div>
 
-        {error && (
-          <div style={{ background: '#fff0f3', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#f31260', fontSize: 13 }}>
-            Failed to load: {error}
-          </div>
-        )}
+        {error && <div style={{ padding: '10px 20px', background: '#fff0f3', borderBottom: '1px solid #fca5a5', color: '#f31260', fontSize: 13 }}>{error}</div>}
 
-        {/* Summary stat cards */}
+        {/* Stat cards */}
         {!loading && history.length > 0 && (
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 }}>
-            {[
-              { label: 'Total Recovered', value: fmtFull(totalRecovered) },
-              { label: 'Total Fees Earned', value: fmtFull(totalFee) },
-              { label: 'Months Active', value: String(history.length) },
-            ].map(card => (
-              <div key={card.label} style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 22px', flex: '1 1 160px', minWidth: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{card.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em' }}>{card.value}</div>
+          <div style={{ display: 'flex', gap: 12, padding: '16px 20px 0', flexWrap: 'wrap' }}>
+            {[{ label: 'Total Recovered', value: fmtFull(totalRecovered) }, { label: 'Total Fees Earned', value: fmtFull(totalFee) }, { label: 'Months Active', value: String(history.length) }].map(card => (
+              <div key={card.label} style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, padding: '14px 18px', flex: '1 1 150px', minWidth: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>{card.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{card.value}</div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Monthly history table */}
-        <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 260px)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid #e4e4e7', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#11181c' }}>
-              Monthly History{' '}
-              {!loading && <span style={{ fontSize: 14, color: '#a1a1aa', fontWeight: 500 }}>{history.length}</span>}
-            </span>
-            {!loading && (
-              <>
-                <button style={pillBtn}><IconFilter /> Filter</button>
-                <button style={pillBtn}><IconSort /> Sort</button>
-                <button style={pillBtn}><IconCols /> Columns</button>
-              </>
+        {/* Table */}
+        <div style={{ flex: 1, overflow: 'hidden', padding: '12px 20px 16px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'hidden', border: '1px solid #e4e4e7', borderRadius: 14, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
+            {loading ? (
+              <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} h={16} />)}
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflow: 'auto' }}>
+                <Table variant="secondary" style={{ width: '100%' }}>
+                  <Table.ScrollContainer>
+                    <Table.Content aria-label="Monthly History">
+                      <Table.Header>
+                        <Table.Column isRowHeader>
+                          <ColHdr label="Month" col="label" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                        </Table.Column>
+                        <Table.Column>
+                          <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                        </Table.Column>
+                        <Table.Column>
+                          <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                        </Table.Column>
+                        <Table.Column>
+                          <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                        </Table.Column>
+                        <Table.Column>
+                          <ColHdr label="Growth" col="growth" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                        </Table.Column>
+                      </Table.Header>
+                      <Table.Body>
+                        {sorted.map((row, i) => (
+                          <Table.Row key={row.sort || String(i)} id={row.sort || String(i)}>
+                            <Table.Cell><span style={{ fontWeight: 600, color: '#11181c', fontSize: 13 }}>{row.label}</span></Table.Cell>
+                            <Table.Cell><span style={{ display: 'block', textAlign: 'right', fontWeight: 700, color: '#006FEE', fontSize: 13 }}>{fmtFull(row.recovered)}</span></Table.Cell>
+                            <Table.Cell><span style={{ display: 'block', textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmtFull(row.fee)}</span></Table.Cell>
+                            <Table.Cell><span style={{ display: 'block', textAlign: 'right', color: '#374151', fontSize: 13 }}>{row.approvedCount}</span></Table.Cell>
+                            <Table.Cell>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 600, color: row.growth >= 0 ? '#17c964' : '#f31260', background: row.growth >= 0 ? '#f0fdf4' : '#fff0f3', borderRadius: 999, padding: '3px 8px' }}>
+                                  <span style={{ fontSize: 9 }}>{row.growth >= 0 ? '▲' : '▼'}</span>
+                                  {Math.abs(row.growth).toFixed(1)}%
+                                </span>
+                              </div>
+                            </Table.Cell>
+                          </Table.Row>
+                        ))}
+                      </Table.Body>
+                    </Table.Content>
+                  </Table.ScrollContainer>
+                  <Table.Footer>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 140px 80px 100px', gap: 8, padding: '12px 16px', background: '#fafafa', borderRadius: 12, margin: '0 4px 4px', border: '1px solid #f0f0f0' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>All-time total</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtFull(totalRecovered)}</span>
+                      <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{fmtFull(totalFee)}</span>
+                      <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{history.reduce((s,r)=>s+r.approvedCount,0)}</span>
+                      <span />
+                    </div>
+                  </Table.Footer>
+                </Table>
+              </div>
             )}
           </div>
-          {loading ? (
-            <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} h={16} />)}
-            </div>
-          ) : (
-            <MonthlyHistoryTable history={history} />
-          )}
         </div>
-
       </div>
     </>
   );

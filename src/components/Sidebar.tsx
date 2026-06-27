@@ -37,14 +37,14 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
     <>
       <style>{`
         .sidebar-nav-link { transition: background 0.12s, color 0.12s; }
-        .sidebar-nav-link:hover:not(.active) { background: #f4f4f5 !important; }
+        .sidebar-nav-link:hover:not(.active) { background: #e4e4e7 !important; }
       `}</style>
 
       <aside style={{
-        width: collapsed ? 64 : 220,
+        width: collapsed ? 56 : 210,
         transition: 'width 0.2s cubic-bezier(0.4,0,0.2,1)',
         height: '100vh',
-        background: '#fff',
+        background: '#f4f4f5',
         borderRight: '1px solid #e4e4e7',
         display: 'flex',
         flexDirection: 'column',
@@ -56,33 +56,31 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
 
         {/* Brand / user section */}
         <div style={{
-          padding: collapsed ? '18px 0' : '18px 16px',
+          padding: collapsed ? '14px 0' : '14px 10px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: 64,
-          gap: 10,
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          minHeight: 60,
+          gap: 8,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #006FEE 0%, #7828C8 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontSize: 13, fontWeight: 800, flexShrink: 0,
-            }}>
-              W
-            </div>
-            {!collapsed && (
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
-                <div style={{ fontSize: 11, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Admin</div>
-              </div>
-            )}
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #006FEE 0%, #7828C8 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0,
+          }}>
+            W
           </div>
+          {!collapsed && (
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
+              <div style={{ fontSize: 11, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Admin</div>
+            </div>
+          )}
         </div>
 
         {/* Nav items */}
-        <nav style={{ flex: 1, padding: '4px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
+        <nav style={{ flex: 1, padding: '4px 6px', overflowY: 'auto', overflowX: 'hidden' }}>
           {NAV.map(({ href, label, icon }) => {
             const isActive = pathname === href;
             return (
@@ -95,14 +93,14 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 9,
-                  padding: collapsed ? '8px 0' : '8px 12px',
+                  padding: collapsed ? '8px 0' : '8px 10px',
                   justifyContent: collapsed ? 'center' : 'flex-start',
-                  borderRadius: 999,
+                  borderRadius: 10,
                   marginBottom: 2,
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? '#11181c' : '#71717a',
-                  background: isActive ? '#f4f4f5' : 'transparent',
+                  background: isActive ? '#e4e4e7' : 'transparent',
                   textDecoration: 'none',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
@@ -117,7 +115,7 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
 
         {/* Footer */}
         {!collapsed && (
-          <div style={{ padding: '12px 16px', flexShrink: 0 }}>
+          <div style={{ padding: '10px 12px', flexShrink: 0 }}>
             <div style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
           </div>
         )}
