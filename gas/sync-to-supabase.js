@@ -48,19 +48,37 @@ function _syncRmsCases(apiUrl, secret) {
   const allValues = sheet.getDataRange().getValues();
   if (allValues.length < 2) return;
 
-  const headers = allValues[0].map(h => String(h).trim());
+  const rawHeaders = allValues[0].map(h => String(h).trim());
+  const headers = rawHeaders.map(h => h.toLowerCase());
+
+  function findCol(candidates) {
+    for (const c of candidates) {
+      const i = headers.indexOf(c.toLowerCase());
+      if (i >= 0) return i;
+    }
+    for (const c of candidates) {
+      const i = headers.findIndex(h => h.includes(c.toLowerCase()));
+      if (i >= 0) return i;
+    }
+    return -1;
+  }
+
   const idx = {
-    caseId:    headers.indexOf('Case ID'),
-    client:    headers.indexOf('Client Name'),
-    dateFiled: headers.indexOf('Date Filed'),
-    claimType: headers.indexOf('Claim Type'),
-    status:    headers.indexOf('Reimbursement Status'),
-    amount:    headers.indexOf('Reimbursement Amount (total)'),
-    posting:   headers.indexOf('RMS Posting Date')
+    caseId:    findCol(['case id', 'case_id', 'caseid']),
+    client:    findCol(['client name', 'store name', 'account name', 'client']),
+    dateFiled: findCol(['date filed', 'filed date', 'date']),
+    claimType: findCol(['claim type', 'type']),
+    status:    findCol(['reimbursement status', 'status']),
+    amount:    findCol(['reimbursement amount (total)', 'reimbursement amount', 'amount']),
+    posting:   findCol(['rms posting date', 'posting date', 'post date'])
   };
 
+  Logger.log('RMS Cases columns: ' + JSON.stringify(
+    Object.fromEntries(Object.entries(idx).map(([k,v]) => [k, v >= 0 ? rawHeaders[v] + ' (col ' + (v+1) + ')' : 'NOT FOUND']))
+  ));
+
   if (idx.caseId === -1 || idx.client === -1) {
-    Logger.log('ERROR: Required columns not found in ' + SYNC_RMS_SHEET + '. Headers: ' + JSON.stringify(headers));
+    Logger.log('ERROR: Required columns not found in ' + SYNC_RMS_SHEET + '. Headers: ' + JSON.stringify(rawHeaders));
     return;
   }
 
