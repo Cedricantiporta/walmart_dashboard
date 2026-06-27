@@ -140,14 +140,16 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
           <td class="num" style="color:#6b7280;">—</td>
         </tr>`).join('');
     w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number}</title><style>
-      *{margin:0;padding:0;box-sizing:border-box;}
+      *{margin:0;padding:0;box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
       body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111827;padding:48px;}
       table{width:100%;border-collapse:collapse;}
       th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
-         color:#fff;background:#111827;padding:10px 8px;}
+         color:#fff !important;background:#111827 !important;padding:10px 8px;}
       td{padding:9px 8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
       .num{text-align:right;}
-      @media print{body{padding:32px;}}
+      .amount-due{background:#f3f4f6 !important;}
+      @page{margin:0;}
+      @media print{body{padding:32px 48px;}}
     </style></head><body>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;">
         <div>
@@ -185,14 +187,11 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
             <span style="font-size:12px;color:#374151;">Subtotal:</span>
             <span style="font-size:12px;font-weight:600;">${fmtUSD(inv.billed_fee)}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;padding:12px 10px;margin-top:4px;background:#f3f4f6;border-radius:4px;">
+          <div class="amount-due" style="display:flex;justify-content:space-between;padding:12px 10px;margin-top:4px;border-radius:4px;">
             <span style="font-size:13px;font-weight:700;">Amount Due (USD):</span>
             <span style="font-size:14px;font-weight:800;">${fmtUSD(inv.billed_fee)}</span>
           </div>
         </div>
-      </div>
-      <div style="margin-top:32px;padding-top:14px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;">
-        <span>Threecolts — WFS Analytics</span><span>Generated ${fmtDate(isoToday())}</span>
       </div>
     </body></html>`);
     w.document.close();

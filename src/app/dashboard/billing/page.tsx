@@ -177,17 +177,18 @@ function InvoiceModal({
     const w = window.open('', '_blank', 'width=820,height=1060');
     if (!w) return;
     w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${invNum}</title><style>
-      *{margin:0;padding:0;box-sizing:border-box;}
+      *{margin:0;padding:0;box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
       body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111827;padding:48px;}
       table{width:100%;border-collapse:collapse;}
       th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
-         color:#fff;background:#111827;padding:10px 8px;}
+         color:#fff !important;background:#111827 !important;padding:10px 8px;}
       td{padding:9px 8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
       .num{text-align:right;}
       .sum-label{font-size:11px;color:#374151;}
       .sum-val{font-size:11px;font-weight:600;text-align:right;}
-      .amt-due{background:#f3f4f6;font-weight:700;font-size:13px;}
-      @media print{body{padding:32px;}}
+      .amt-due{background:#f3f4f6 !important;font-weight:700;font-size:13px;}
+      @page{margin:0;}
+      @media print{body{padding:32px 48px;}}
     </style></head><body>`);
     w.document.write(el.innerHTML);
     w.document.write('</body></html>');
@@ -315,11 +316,6 @@ function InvoiceModal({
               </div>
             </div>
 
-            {/* Footer */}
-            <div style={{ marginTop: 32, paddingTop: 14, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#9ca3af' }}>
-              <span>Threecolts — WFS Analytics</span>
-              <span>Generated {fmtDate(isoToday())}</span>
-            </div>
           </div>
         </div>
       </div>
