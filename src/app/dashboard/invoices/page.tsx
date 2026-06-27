@@ -147,7 +147,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
     <div style={{ borderBottom: '1px solid #f3f4f6' }}>
       <div
         onClick={handleToggle}
-        style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '9px 16px', alignItems: 'center', cursor: 'pointer', background: open ? '#f9fafb' : 'transparent', minWidth: 700 }}
+        style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '9px 16px', alignItems: 'center', cursor: 'pointer', background: open ? '#f9fafb' : 'transparent' }}
       >
         <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700, color: '#2563eb' }}>{inv.invoice_number}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -249,7 +249,7 @@ export default function InvoicesPage() {
         </div>
 
         {/* Table */}
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflowX: 'auto' }}>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
               Invoice History {!loading && search && <span style={{ color: '#6b7280', fontWeight: 500 }}>({filtered.length})</span>}
@@ -262,13 +262,6 @@ export default function InvoicesPage() {
             />
           </div>
 
-          {!loading && filtered.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '8px 16px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', minWidth: 700 }}>
-              <span>Invoice #</span><span>Client</span><span>Date</span>
-              <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span><span />
-            </div>
-          )}
-
           {loading ? (
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[1, 2, 3, 4, 5].map(i => <Sk key={i} h={48} />)}
@@ -278,27 +271,32 @@ export default function InvoicesPage() {
               {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
             </div>
           ) : (
-            filtered.map(inv => (
-              <InvoiceRow
-                key={inv.invoice_number}
-                inv={inv}
-                onDelete={num => setInvoices(prev => {
-                  const next = prev.filter(i => i.invoice_number !== num);
-                  clientClear('invoices');
-                  return next;
-                })}
-              />
-            ))
-          )}
-
-          {!loading && filtered.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '12px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', minWidth: 700 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>
-                {search ? `Filtered total (${filtered.length})` : `Total (${invoices.length})`}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(totalRecovered)}</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(totalFee)}</span>
-              <span />
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ minWidth: 700 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '8px 16px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6' }}>
+                  <span>Invoice #</span><span>Client</span><span>Date</span>
+                  <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span><span />
+                </div>
+                {filtered.map(inv => (
+                  <InvoiceRow
+                    key={inv.invoice_number}
+                    inv={inv}
+                    onDelete={num => setInvoices(prev => {
+                      const next = prev.filter(i => i.invoice_number !== num);
+                      clientClear('invoices');
+                      return next;
+                    })}
+                  />
+                ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '12px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>
+                    {search ? `Filtered total (${filtered.length})` : `Total (${invoices.length})`}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(totalRecovered)}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(totalFee)}</span>
+                  <span />
+                </div>
+              </div>
             </div>
           )}
         </div>
