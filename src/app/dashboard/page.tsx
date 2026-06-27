@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { DashboardAnalytics, Invoice, BillingInsights, MonthlyHistory } from '@/types';
 import { clientGet, clientSet } from '@/lib/client-cache';
 
@@ -304,6 +304,25 @@ export default function DashboardPage() {
   const loading = loadingInit || loadingAnalytics;
 
   const { metrics, trends, categoryData = [] } = analytics ?? {};
+
+  // Real trend % from monthly history: compare last 2 months
+  const historyTrends = useMemo(() => {
+    if (fullMonthlyHistory.length < 2) return null;
+    const sorted = [...fullMonthlyHistory].sort((a, b) => a.sort.localeCompare(b.sort));
+    const cur = sorted[sorted.length - 1];
+    const prev = sorted[sorted.length - 2];
+    const t = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
+    return {
+      totalReimbursed: t(cur.recovered, prev.recovered),
+      totalFees: t(cur.fee, prev.fee),
+      approvedCases: t(cur.approvedCount, prev.approvedCount),
+      approvalRate: 0,
+    };
+  }, [fullMonthlyHistory]);
+
+  // Use history-based trends for current month (API only fetches current month data
+  // so prevM is always 0 → 100% trend). For other timeframes, analytics computes correctly.
+  const displayTrends = timeRange === 'thisMonth' ? (historyTrends ?? trends) : trends;
   const totalFeesBilled = analytics ? computeTotalFeesBilled(history, analytics.dateRange) : 0;
 
   const chartHistory = [...fullMonthlyHistory]
@@ -400,9 +419,9 @@ export default function DashboardPage() {
             ))
           ) : metrics ? (
             <>
-              <MetricCard label="Total Reimbursed" value={metrics.totalReimbursed} trend={trends?.totalReimbursed} />
-              <MetricCard label="Total Fees" value={metrics.totalFees} trend={trends?.totalFees} />
-              <MetricCard label="Approved Cases" value={metrics.approvedCases} trend={trends?.approvedCases} format="number" />
+              <MetricCard label="Total Reimbursed" value={metrics.totalReimbursed} trend={displayTrends?.totalReimbursed} />
+              <MetricCard label="Total Fees" value={metrics.totalFees} trend={displayTrends?.totalFees} />
+              <MetricCard label="Approved Cases" value={metrics.approvedCases} trend={displayTrends?.approvedCases} format="number" />
               <MetricCard label="Total Fees Billed" value={totalFeesBilled} />
             </>
           ) : null}

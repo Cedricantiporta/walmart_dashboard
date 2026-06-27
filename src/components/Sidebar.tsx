@@ -30,7 +30,7 @@ const NAV = [
   )},
 ];
 
-export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+export default function Sidebar({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -38,7 +38,6 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
       <style>{`
         .sidebar-nav-link { transition: background 0.12s, color 0.12s; }
         .sidebar-nav-link:hover:not(.active) { background: #f4f4f5 !important; }
-        .sidebar-toggle:hover { background: #f4f4f5 !important; }
       `}</style>
 
       <aside style={{
@@ -57,16 +56,14 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
 
         {/* Brand / user section */}
         <div style={{
-          padding: collapsed ? '14px 0' : '14px 16px',
-          borderBottom: '1px solid #f4f4f5',
+          padding: collapsed ? '18px 0' : '18px 16px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
+          justifyContent: 'center',
           minHeight: 64,
-          gap: 8,
+          gap: 10,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: collapsed ? 0 : 1 }}>
-            {/* Avatar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <div style={{
               width: 34, height: 34, borderRadius: '50%',
               background: 'linear-gradient(135deg, #006FEE 0%, #7828C8 100%)',
@@ -82,29 +79,10 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
               </div>
             )}
           </div>
-
-          {/* Collapse toggle */}
-          <button
-            onClick={onToggle}
-            className="sidebar-toggle"
-            title={collapsed ? 'Expand' : 'Collapse'}
-            style={{
-              border: 'none', background: 'transparent', cursor: 'pointer',
-              width: 28, height: 28, borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#71717a', flexShrink: 0,
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              {collapsed
-                ? <polyline points="9 18 15 12 9 6"/>
-                : <polyline points="15 18 9 12 15 6"/>}
-            </svg>
-          </button>
         </div>
 
         {/* Nav items */}
-        <nav style={{ flex: 1, padding: '10px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
+        <nav style={{ flex: 1, padding: '4px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
           {NAV.map(({ href, label, icon }) => {
             const isActive = pathname === href;
             return (
@@ -139,7 +117,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
 
         {/* Footer */}
         {!collapsed && (
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #f4f4f5', flexShrink: 0 }}>
+          <div style={{ padding: '12px 16px', flexShrink: 0 }}>
             <div style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
           </div>
         )}

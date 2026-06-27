@@ -124,6 +124,55 @@ function Sk({ h = 16, w = '100%' }: { h?: number; w?: string | number }) {
   );
 }
 
+// ── avatar + icons ────────────────────────────────────────────────────────────
+
+function avatarGradient(name: string): [string, string] {
+  const pairs: [string, string][] = [
+    ['#006FEE','#7828C8'],['#17c964','#006FEE'],['#f31260','#7828C8'],
+    ['#f5a524','#f31260'],['#7828C8','#17c964'],['#00b7eb','#006FEE'],
+    ['#f31260','#f5a524'],['#17c964','#7828C8'],
+  ];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0x7fffffff;
+  return pairs[h % pairs.length];
+}
+
+function Avatar({ name, size = 32 }: { name: string; size?: number }) {
+  const [from, to] = avatarGradient(name);
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: `linear-gradient(135deg,${from} 0%,${to} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: Math.round(size * 0.38), fontWeight: 700, flexShrink: 0 }}>
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+const IconFilter = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
+const IconSort = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/></svg>;
+const IconCols = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>;
+const IconEye = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+const IconInvoice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
+
+const pillBtn: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+  fontSize: 13, fontWeight: 500, color: '#71717a',
+  background: '#fff', border: '1px solid #e4e4e7',
+  borderRadius: 999, padding: '5px 12px',
+  cursor: 'pointer', outline: 'none', flexShrink: 0,
+};
+
+function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
+  label: string; col: string; sortCol: string; sortDir: 'asc'|'desc';
+  onSort: (c: string) => void; align?: 'left'|'right';
+}) {
+  const active = sortCol === col;
+  return (
+    <span onClick={() => onSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 3, cursor: 'pointer', userSelect: 'none', color: active ? '#11181c' : '#a1a1aa', fontWeight: active ? 700 : 600 }}>
+      {label}
+      <span style={{ fontSize: 8 }}>{active ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
+    </span>
+  );
+}
+
 // ── invoice modal ─────────────────────────────────────────────────────────────
 
 function InvoiceModal({
@@ -271,24 +320,37 @@ function InvoiceModal({
 
 // ── client RTB row ────────────────────────────────────────────────────────────
 
-function ClientRow({ client, selected, onRowClick, onGenerateInvoice }: { client: ClientBilling; selected: boolean; onRowClick: (c: ClientBilling) => void; onGenerateInvoice: (c: ClientBilling) => void }) {
+function ClientRow({ client, selected, onRowClick, onGenerateInvoice, sortCol, sortDir }: {
+  client: ClientBilling; selected: boolean;
+  onRowClick: (c: ClientBilling) => void;
+  onGenerateInvoice: (c: ClientBilling) => void;
+  sortCol: string; sortDir: 'asc'|'desc';
+}) {
   const hasPrev = client.prevMonthFee > 0;
   return (
     <div
       onClick={() => onRowClick(client)}
-      style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selected ? '#eff6ff' : 'transparent' }}
+      style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selected ? '#f0f7ff' : undefined, transition: 'background 0.08s' }}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 60px 110px', gap: 8, padding: '10px 16px', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.clientName}</span>
-          {hasPrev && <span style={{ fontSize: 9, fontWeight: 700, background: '#fef3c7', color: '#92400e', borderRadius: 3, padding: '2px 5px', flexShrink: 0 }}>+PREV</span>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 52px 72px', gap: 8, padding: '11px 16px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <Avatar name={client.clientName} size={32} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.clientName}</div>
+            {hasPrev && <span style={{ fontSize: 10, fontWeight: 600, background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '1px 6px' }}>+prev month</span>}
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{fmtPct(client.rate)}</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</div>
-        <div style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{client.cases.length}</div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-          <button onClick={() => onGenerateInvoice(client)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 10px', border: 'none', borderRadius: 7, background: '#2563eb', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Invoice</button>
+        <div style={{ fontSize: 12, color: '#71717a', textAlign: 'right' }}>{fmtPct(client.rate)}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#11181c', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</div>
+        <div style={{ fontSize: 12, color: '#71717a', textAlign: 'right' }}>{client.cases.length}</div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }} onClick={e => e.stopPropagation()}>
+          <button onClick={() => onRowClick(client)} title="View cases" style={{ width: 30, height: 30, borderRadius: 999, border: '1px solid #e4e4e7', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a' }}>
+            <IconEye />
+          </button>
+          <button onClick={() => onGenerateInvoice(client)} title="Generate invoice" style={{ width: 30, height: 30, borderRadius: 999, border: 'none', background: '#006FEE', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <IconInvoice />
+          </button>
         </div>
       </div>
     </div>
@@ -365,6 +427,13 @@ export default function BillingPage() {
   const [activeClient, setActiveClient] = useState<ClientBilling | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientBilling | null>(null);
   const [nextNum, setNextNum] = useState('NV-1001');
+  const [sortCol, setSortCol] = useState('fee');
+  const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
+
+  function handleSort(col: string) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('desc'); }
+  }
 
   useEffect(() => {
     const cached = clientGet<BillingData>('billing');
@@ -399,6 +468,17 @@ export default function BillingPage() {
     if (!search) return true;
     const q = search.toLowerCase();
     return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q));
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    let av: number | string, bv: number | string;
+    if (sortCol === 'name') { av = a.clientName; bv = b.clientName; }
+    else if (sortCol === 'rate') { av = a.rate; bv = b.rate; }
+    else if (sortCol === 'recovered') { av = a.totalAmount; bv = b.totalAmount; }
+    else if (sortCol === 'cases') { av = a.cases.length; bv = b.cases.length; }
+    else { av = a.totalFee; bv = b.totalFee; }
+    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av);
+    return sortDir === 'asc' ? av - (bv as number) : (bv as number) - av;
   });
 
   useEffect(() => {
@@ -444,54 +524,72 @@ export default function BillingPage() {
         {error && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>{error}</div>}
 
         {/* RTB Client table */}
-        <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
-          <div style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 130px)' }}>
-            <div style={{ flexShrink: 0, padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
-                Ready to Bill {!loading && <span style={{ color: '#6b7280', fontWeight: 500 }}>({filtered.length})</span>}
-              </h3>
-              <input placeholder="Search client or case ID…" value={search} onChange={e => setSearch(e.target.value)}
-                style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, width: 200, color: '#374151' }} />
-            </div>
+        <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 130px)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
 
-            {loading ? (
-              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-                {search ? 'No clients match.' : 'No clients ready to bill.'}
-              </div>
-            ) : (
-              <div style={{ flex: 1, overflow: 'auto' }}>
-                <div style={{ minWidth: 600 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 60px 110px', gap: 8, padding: '8px 16px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
-                    <span>Client</span><span style={{ textAlign: 'right' }}>Rate</span>
-                    <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
-                    <span style={{ textAlign: 'right' }}>Cases</span><span />
-                  </div>
-                  {filtered.map(c => (
-                    <ClientRow
-                      key={c.clientName}
-                      client={c}
-                      selected={selectedClient?.clientName === c.clientName}
-                      onRowClick={c => setSelectedClient(c)}
-                      onGenerateInvoice={c => setActiveClient(c)}
-                    />
-                  ))}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 60px 110px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Total</span>
-                    <span />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
-                    <span style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
-                    <span />
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* Toolbar */}
+          <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid #e4e4e7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#11181c' }}>
+                Ready to Bill{' '}
+                {!loading && <span style={{ fontSize: 14, color: '#a1a1aa', fontWeight: 500 }}>{filtered.length}</span>}
+              </span>
+              {!loading && (
+                <>
+                  <button style={pillBtn}><IconFilter /> Filter</button>
+                  <button style={pillBtn}><IconSort /> Sort</button>
+                  <button style={pillBtn}><IconCols /> Columns</button>
+                </>
+              )}
+            </div>
+            <input
+              placeholder="Search client or case ID…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 210, color: '#11181c', outline: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: '10px center' }}
+            />
           </div>
 
+          {loading ? (
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[1,2,3,4,5].map(i => <Sk key={i} h={52} />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
+              {search ? 'No clients match.' : 'No clients ready to bill.'}
+            </div>
+          ) : (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <div style={{ minWidth: 600 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 52px 72px', gap: 8, padding: '8px 16px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
+                  <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                  <ColHdr label="Rate" col="rate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <span />
+                </div>
+                {sorted.map(c => (
+                  <ClientRow
+                    key={c.clientName}
+                    client={c}
+                    selected={selectedClient?.clientName === c.clientName}
+                    onRowClick={c => setSelectedClient(c)}
+                    onGenerateInvoice={c => setActiveClient(c)}
+                    sortCol={sortCol}
+                    sortDir={sortDir}
+                  />
+                ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 52px 72px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e4e4e7', background: '#fafafa', position: 'sticky', bottom: 0, zIndex: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
+                  <span />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#11181c', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
+                  <span style={{ fontSize: 12, color: '#71717a', textAlign: 'right' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
+                  <span />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Case detail drawer — overlays RTB table */}
