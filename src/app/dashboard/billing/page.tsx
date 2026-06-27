@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF } from '@/lib/invoice-pdf';
 
@@ -124,7 +124,7 @@ function Sk({ h = 16, w = '100%' }: { h?: number; w?: string | number }) {
   );
 }
 
-// ── invoice print modal ───────────────────────────────────────────────────────
+// ── invoice modal ─────────────────────────────────────────────────────────────
 
 function InvoiceModal({
   client,
@@ -141,18 +141,31 @@ function InvoiceModal({
 }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const [invNum, setInvNum] = useState(invoiceNumber);
-  const [billedDate, setBilledDate] = useState(isoToday());
+  const [confirming, setConfirming] = useState(false);
 
-  const dueDate = (() => {
-    const d = new Date(billedDate + 'T12:00:00');
-    d.setDate(d.getDate() + 7);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  })();
+  const invNum = invoiceNumber;
+  const billedDate = isoToday();
 
-  async function saveInvoice() {
+  async function handleMarkAsBilled() {
     setSaving(true);
     setErr('');
+    await downloadInvoicePDF(
+      {
+        invoice_number: invNum,
+        client_name: client.clientName,
+        client_address: billingContact?.address ?? null,
+        billed_date: billedDate,
+        billed_fee: client.totalFee,
+        total_reimbursed: client.totalAmount,
+        case_ids: [...new Set(client.cases.map(c => c.caseId))],
+      },
+      client.cases.map(c => ({
+        case_id: c.caseId,
+        claim_type: c.claimType,
+        rms_posting_date: c.postingDate,
+        reimbursement_amount: c.amount,
+      }))
+    );
     const inv = {
       invoice_number: invNum,
       client_name: client.clientName,
@@ -182,146 +195,74 @@ function InvoiceModal({
     onSaved(data.invoice ?? inv);
   }
 
-  async function handleDownloadPDF() {
-    await downloadInvoicePDF(
-      {
-        invoice_number: invNum,
-        client_name: client.clientName,
-        client_address: billingContact?.address ?? null,
-        billed_date: billedDate,
-        billed_fee: client.totalFee,
-        total_reimbursed: client.totalAmount,
-        case_ids: [...new Set(client.cases.map(c => c.caseId))],
-      },
-      client.cases.map(c => ({
-        case_id: c.caseId,
-        claim_type: c.claimType,
-        rms_posting_date: c.postingDate,
-        reimbursement_amount: c.amount,
-      }))
-    );
-  }
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 800, maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
 
-        {/* Modal header */}
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>Generate Invoice — {client.clientName}</div>
+        {/* Header */}
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>Build Invoice</div>
+            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{client.clientName} · {invNum}</div>
+          </div>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af', lineHeight: 1 }}>×</button>
         </div>
 
-        {/* Invoice controls */}
-        <div style={{ padding: '12px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em' }}>Invoice #</span>
-            <input value={invNum} onChange={e => setInvNum(e.target.value)} style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 6, width: 130, fontWeight: 600 }} />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em' }}>Invoice Date</span>
-            <input type="date" value={billedDate} onChange={e => setBilledDate(e.target.value)} style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 6 }} />
-          </label>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <button onClick={() => downloadClientCSV(client, invNum)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
-              ↓ CSV
-            </button>
-            <button onClick={handleDownloadPDF} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
-              ↓ Download PDF
-            </button>
-            <button onClick={saveInvoice} disabled={saving} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: 'none', borderRadius: 8, background: saving ? '#93c5fd' : '#2563eb', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>
-              {saving ? 'Saving…' : '✓ Save Invoice'}
-            </button>
-          </div>
+        {/* Totals */}
+        <div style={{ padding: '20px 24px', display: 'flex', gap: 12 }}>
+          {[
+            { label: 'Total Recovered', value: fmtUSD(client.totalAmount) },
+            { label: 'Cases', value: String(client.cases.length) },
+            { label: 'Total Fee', value: fmtUSD(client.totalFee) },
+          ].map(card => (
+            <div key={card.label} style={{ flex: 1, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>{card.label}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#111827' }}>{card.value}</div>
+            </div>
+          ))}
         </div>
 
         {err && (
-          <div style={{ padding: '8px 24px', background: '#fef2f2', color: '#dc2626', fontSize: 12, flexShrink: 0 }}>{err}</div>
+          <div style={{ padding: '8px 24px', background: '#fef2f2', color: '#dc2626', fontSize: 12 }}>{err}</div>
         )}
 
-        {/* Invoice preview (scrollable) */}
-        <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-          <div style={{ background: '#fff', borderRadius: 8, border: '1px solid #e5e7eb', padding: 36 }}>
-
-            {/* Header: sender left, INVOICE right */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', marginBottom: 6 }}>Threecolts</div>
-                <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.7 }}>
-                  16192 Coastal Highway<br />
-                  Lewes, Delaware 19958<br />
-                  United States<br />
-                  support@threecolts.com
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#111827', letterSpacing: '-0.02em', marginBottom: 10 }}>INVOICE</div>
-                <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 2 }}>
-                  <div><strong style={{ color: '#374151' }}>Invoice #:</strong> {invNum}</div>
-                  <div><strong style={{ color: '#374151' }}>Date:</strong> {fmtDate(billedDate)}</div>
-                  <div><strong style={{ color: '#374151' }}>Due Date:</strong> {dueDate}</div>
-                  {billingContact?.payment_terms && (
-                    <div><strong style={{ color: '#374151' }}>Terms:</strong> {billingContact.payment_terms}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Bill To */}
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Bill To</div>
-              <div style={{ height: 1, background: '#e5e7eb', marginBottom: 12 }} />
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginBottom: 4 }}>{client.clientName}</div>
-              {billingContact?.address && (
-                <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{billingContact.address}</div>
-              )}
-            </div>
-
-            {/* Cases table — black header, GAS column names */}
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#111827' }}>
-                  {['Case ID', 'Description', 'Approval Date', 'Recovered', 'Fee Rate', 'Fee Amount'].map(h => (
-                    <th key={h} style={{ textAlign: ['Recovered', 'Fee Rate', 'Fee Amount'].includes(h) ? 'right' : 'left', padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '.05em' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {client.cases.map((c, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f3f4f6', background: !c.isCurrentMonth ? '#fffbeb' : '#fff' }}>
-                    <td style={{ padding: '9px 8px', fontFamily: 'monospace', fontSize: 12, color: '#374151' }}>{c.caseId}</td>
-                    <td style={{ padding: '9px 8px', fontSize: 12, color: '#374151' }}>{c.claimType || 'N/A'}</td>
-                    <td style={{ padding: '9px 8px', fontSize: 12, color: '#374151' }}>
-                      {fmtDate(c.postingDate)}
-                      {!c.isCurrentMonth && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, background: '#fef3c7', color: '#92400e', borderRadius: 3, padding: '1px 4px' }}>PREV</span>}
-                    </td>
-                    <td style={{ padding: '9px 8px', fontSize: 12, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</td>
-                    <td style={{ padding: '9px 8px', fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{fmtPct(client.rate)}</td>
-                    <td style={{ padding: '9px 8px', fontSize: 12, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Summary block — bottom right, GAS style */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
-              <div style={{ width: 260 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ fontSize: 12, color: '#374151' }}>Total Recovered:</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{fmtUSD(client.totalAmount)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ fontSize: 12, color: '#374151' }}>Subtotal:</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{fmtUSD(client.totalFee)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 10px', marginTop: 4, background: '#f3f4f6', borderRadius: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Amount Due (USD):</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#111827' }}>{fmtUSD(client.totalFee)}</span>
-                </div>
-              </div>
-            </div>
-
+        {/* Confirmation warning */}
+        {confirming && (
+          <div style={{ margin: '0 24px 16px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
+            <strong>Mark {client.clientName} as billed?</strong><br />
+            PDF will be downloaded, invoice {invNum} saved, and client removed from Ready to Bill. Cannot be undone.
           </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ padding: '0 24px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          {confirming ? (
+            <>
+              <button onClick={() => setConfirming(false)} style={{ fontSize: 13, fontWeight: 600, padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
+                Cancel
+              </button>
+              <button onClick={handleMarkAsBilled} disabled={saving} style={{ fontSize: 13, fontWeight: 700, padding: '8px 18px', border: 'none', borderRadius: 8, background: saving ? '#86efac' : '#16a34a', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>
+                {saving ? 'Saving…' : '✓ Confirm Billed'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => downloadClientCSV(client, invNum)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
+                ↓ CSV
+              </button>
+              <button onClick={async () => {
+                await downloadInvoicePDF(
+                  { invoice_number: invNum, client_name: client.clientName, client_address: billingContact?.address ?? null, billed_date: billedDate, billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(client.cases.map(c => c.caseId))] },
+                  client.cases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount }))
+                );
+              }} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
+                ↓ PDF
+              </button>
+              <button onClick={() => setConfirming(true)} style={{ fontSize: 13, fontWeight: 700, padding: '8px 18px', border: 'none', borderRadius: 8, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>
+                Mark as Billed
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -356,10 +297,23 @@ function ClientRow({ client, selected, onRowClick, onGenerateInvoice }: { client
 
 // ── case sidebar ──────────────────────────────────────────────────────────────
 
-function CaseSidebar({ client, onClose }: {
+function CaseSidebar({ client, onClose, highlight }: {
   client: ClientBilling;
   onClose: () => void;
+  highlight?: string;
 }) {
+  const q = highlight?.toLowerCase() ?? '';
+  const firstMatchIndex = q
+    ? client.cases.findIndex(c => c.caseId.toLowerCase().includes(q))
+    : -1;
+  const firstMatchRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (firstMatchRef.current) {
+      firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [highlight, client.clientName]);
+
   return (
     <>
       <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -374,15 +328,22 @@ function CaseSidebar({ client, onClose }: {
           <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px 6px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
             <span>Case ID</span><span>Type</span><span>Posting</span><span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
           </div>
-          {client.cases.map((c, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px', borderBottom: '1px solid #f3f4f6', background: !c.isCurrentMonth ? '#fffbeb' : '#fff', fontSize: 11 }}>
-              <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
-              <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
-              <span style={{ color: '#6b7280' }}>{fmtDate(c.postingDate)}</span>
-              <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
-              <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
-            </div>
-          ))}
+          {client.cases.map((c, i) => {
+            const isMatch = q ? c.caseId.toLowerCase().includes(q) : false;
+            return (
+              <div
+                key={i}
+                ref={i === firstMatchIndex ? firstMatchRef : undefined}
+                style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px', borderBottom: '1px solid #f3f4f6', background: isMatch ? '#fef9c3' : (!c.isCurrentMonth ? '#fffbeb' : '#fff'), fontSize: 11 }}
+              >
+                <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+                <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+                <span style={{ color: '#6b7280' }}>{fmtDate(c.postingDate)}</span>
+                <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
+                <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
+              </div>
+            );
+          })}
           <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
@@ -536,6 +497,7 @@ export default function BillingPage() {
               <CaseSidebar
                 client={selectedClient}
                 onClose={() => setSelectedClient(null)}
+                highlight={search || undefined}
               />
             </div>
           )}

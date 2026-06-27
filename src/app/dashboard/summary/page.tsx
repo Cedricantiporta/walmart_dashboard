@@ -21,10 +21,6 @@ function Skeleton({ h = 20, w = '100%', radius = 6 }: { h?: number; w?: string |
 function MonthlyHistoryTable({ history }: { history: MonthlyHistory[] }) {
   if (!history.length) return <div style={{ color: '#9ca3af', fontSize: 13 }}>No data</div>;
 
-  const totalRecovered = history.reduce((s, r) => s + r.recovered, 0);
-  const totalFee = history.reduce((s, r) => s + r.fee, 0);
-  const totalCases = history.reduce((s, r) => s + r.approvedCount, 0);
-
   return (
     <div style={{ overflow: 'auto', flex: 1 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -56,15 +52,6 @@ function MonthlyHistoryTable({ history }: { history: MonthlyHistory[] }) {
             </tr>
           ))}
         </tbody>
-        <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 2 }}>
-          <tr style={{ borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
-            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#111827', background: '#f9fafb' }}>All Time</td>
-            <td style={{ padding: '10px 12px', fontWeight: 800, color: '#2563eb', background: '#f9fafb' }}>{fmtFull(totalRecovered)}</td>
-            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#374151', background: '#f9fafb' }}>{fmtFull(totalFee)}</td>
-            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#374151', background: '#f9fafb' }}>{totalCases}</td>
-            <td style={{ padding: '10px 12px', background: '#f9fafb' }} />
-          </tr>
-        </tfoot>
       </table>
     </div>
   );

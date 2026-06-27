@@ -129,6 +129,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
   }
 
   async function downloadPDF() {
+    if (inv.pdf_url) { window.open(inv.pdf_url, '_blank'); return; }
     const cases = activeCases.length > 0 ? activeCases : await fetchCasesByIds(inv.case_ids ?? []);
     await downloadInvoicePDF({
       invoice_number: inv.invoice_number,
@@ -221,11 +222,16 @@ export default function InvoicesPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const filtered = invoices.filter(inv =>
-    !search ||
-    inv.client_name?.toLowerCase().includes(search.toLowerCase()) ||
-    inv.invoice_number?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = invoices.filter(inv => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      inv.client_name?.toLowerCase().includes(q) ||
+      inv.invoice_number?.toLowerCase().includes(q) ||
+      (inv.case_ids ?? []).some(id => id.toLowerCase().includes(q)) ||
+      (inv.case_snapshot ?? []).some(cs => cs.case_id.toLowerCase().includes(q))
+    );
+  });
 
   const totalFee = filtered.reduce((s, i) => s + (i.billed_fee ?? 0), 0);
   const totalRecovered = filtered.reduce((s, i) => s + (i.total_reimbursed ?? 0), 0);

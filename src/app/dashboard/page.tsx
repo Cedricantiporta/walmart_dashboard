@@ -382,7 +382,7 @@ export default function DashboardPage() {
 
         {/* Metric cards */}
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 24 }}>
-          {loading && !analytics ? (
+          {loadingAnalytics ? (
             [1,2,3,4].map(i => (
               <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px', flex: '1 1 180px' }}>
                 <Skeleton h={10} w={80} /><div style={{ height: 10 }} />
@@ -439,7 +439,7 @@ export default function DashboardPage() {
           {/* Category breakdown */}
           <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px' }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 18 }}>By Category</h3>
-            {loading && !analytics ? (
+            {loadingAnalytics ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[1,2,3,4,5].map(i => <Skeleton key={i} h={10} />)}
               </div>
