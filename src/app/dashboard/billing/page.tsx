@@ -211,7 +211,7 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
 
 // ── case sidebar ──────────────────────────────────────────────────────────────
 
-function CaseSidebar({ client, onClose, highlight }: { client: ClientBilling; onClose: () => void; highlight?: string }) {
+function CaseSidebar({ client, highlight }: { client: ClientBilling; highlight?: string }) {
   const q = highlight?.toLowerCase() ?? '';
   const firstMatchIndex = q ? client.cases.findIndex(c => c.caseId.toLowerCase().includes(q)) : -1;
   const firstMatchRef = useRef<HTMLDivElement | null>(null);
@@ -220,40 +220,28 @@ function CaseSidebar({ client, onClose, highlight }: { client: ClientBilling; on
     if (firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [highlight, client.clientName]);
 
+  const CG = '100px 1fr 90px 70px 60px';
   return (
-    <>
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.clientName}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{client.cases.length} cases · {fmtUSD(client.totalFee)} fee</div>
-        </div>
-        <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af', lineHeight: 1, flexShrink: 0 }}>×</button>
-      </div>
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        <div style={{ minWidth: 380 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 90px 75px 70px', gap: 4, padding: '8px 12px 6px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
-            <span>Case ID</span><span>Type</span><span>Posting</span><span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      {client.cases.map((c, i) => {
+        const isMatch = q ? c.caseId.toLowerCase().includes(q) : false;
+        return (
+          <div key={i} ref={i === firstMatchIndex ? firstMatchRef : undefined}
+            style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: isMatch ? '#fef9c3' : (!c.isCurrentMonth ? '#fffbeb' : undefined), fontSize: 11, alignItems: 'center' }}>
+            <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+            <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+            <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
+            <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
+            <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
           </div>
-          {client.cases.map((c, i) => {
-            const isMatch = q ? c.caseId.toLowerCase().includes(q) : false;
-            return (
-              <div key={i} ref={i === firstMatchIndex ? firstMatchRef : undefined} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 90px 75px 70px', gap: 4, padding: '8px 12px', borderBottom: '1px solid #f3f4f6', background: isMatch ? '#fef9c3' : (!c.isCurrentMonth ? '#fffbeb' : '#fff'), fontSize: 11 }}>
-                <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
-                <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
-                <span style={{ color: '#6b7280' }}>{fmtDate(c.postingDate)}</span>
-                <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
-                <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
-              </div>
-            );
-          })}
-          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 90px 75px 70px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</span>
-          </div>
-        </div>
+        );
+      })}
+      <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</span>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -269,8 +257,19 @@ export default function BillingPage() {
   const [nextNum, setNextNum] = useState('NV-1001');
   const [sortCol, setSortCol] = useState('fee');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
+  const [sidebarWidth, setSidebarWidth] = useState(360);
 
   const { onToggle } = useSidebar();
+
+  function handleDragStart(e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = sidebarWidth;
+    const onMove = (ev: MouseEvent) => setSidebarWidth(Math.max(220, Math.min(640, startW + startX - ev.clientX)));
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
 
   function handleSort(col: string) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -378,44 +377,36 @@ export default function BillingPage() {
             </div>
           )}
 
-          {/* Table + sliding sidebar */}
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', border: '1px solid #d4d4d8', flexDirection: 'column' }}>
+          {/* Two-panel: RTB table + case detail */}
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', border: '1px solid #d4d4d8' }}>
 
-            {/* Column headers — sit on grey layer */}
-            {!loading && filtered.length > 0 && (() => {
-              const G = 'minmax(0,1fr) 80px 130px 120px 70px 120px';
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 580 }}>
-                  <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                  <ColHdr label="Rate" col="rate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <span />
+            {/* LEFT: RTB table — scroll container holds sticky header + rows */}
+            <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: selectedClient ? '12px 0 0 12px' : 12, margin: '6px 0 6px 6px' }}>
+              {loading ? (
+                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
                 </div>
-              );
-            })()}
-
-            {/* Table + sidebar in white card */}
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#fff', borderRadius: 12, margin: '0 6px 6px' }}>
-
-              {/* Rows */}
-              <div style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
-                {loading ? (
-                  <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
-                  </div>
-                ) : filtered.length === 0 ? (
-                  <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
-                    {search ? 'No clients match.' : 'No clients ready to bill.'}
-                  </div>
-                ) : (() => {
-                  const G = 'minmax(0,1fr) 80px 130px 120px 70px 120px';
-                  return (
-                    <div style={{ minWidth: 580 }}>
+              ) : filtered.length === 0 ? (
+                <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
+                  {search ? 'No clients match.' : 'No clients ready to bill.'}
+                </div>
+              ) : (() => {
+                const G = 'minmax(0,1fr) 80px 130px 120px 70px 120px';
+                return (
+                  <>
+                    {/* Sticky column headers — grey bg matches outer frame */}
+                    <div style={{ position: 'sticky', top: 0, zIndex: 2, display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, background: '#e4e4e7', minWidth: 420 }}>
+                      <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                      <ColHdr label="Rate" col="rate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                      <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                      <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                      <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                      <span />
+                    </div>
+                    <div style={{ minWidth: 420 }}>
                       {sorted.map((c, idx) => (
                         <div key={c.clientName}
-                          onClick={() => setSelectedClient(c)}
+                          onClick={() => setSelectedClient(prev => prev?.clientName === c.clientName ? null : c)}
                           style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}
                         >
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -433,8 +424,7 @@ export default function BillingPage() {
                           </div>
                         </div>
                       ))}
-                      {/* Footer */}
-                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
                         <span />
                         <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
@@ -443,18 +433,30 @@ export default function BillingPage() {
                         <span />
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
+                  </>
+                );
+              })()}
+            </div>
 
-              {/* Sliding case sidebar */}
-              <div style={{ width: selectedClient ? 400 : 0, transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1)', overflow: 'hidden', borderLeft: selectedClient ? '1px solid #e4e4e7' : 'none', background: '#fff', borderRadius: '0 12px 12px 0', flexShrink: 0, display: 'flex' }}>
-                {selectedClient && (
-                  <div style={{ width: 400, display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
-                    <CaseSidebar client={selectedClient} onClose={() => setSelectedClient(null)} highlight={search || undefined} />
-                  </div>
-                )}
+            {/* Draggable divider — visible only when sidebar open */}
+            {selectedClient && (
+              <div
+                onMouseDown={handleDragStart}
+                style={{ width: 12, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', zIndex: 3 }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {[0,1,2,3].map(i => <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: '#a1a1aa' }} />)}
+                </div>
               </div>
+            )}
+
+            {/* RIGHT: Case detail panel */}
+            <div style={{ width: selectedClient ? sidebarWidth : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
+              {selectedClient && (
+                <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: '0 12px 12px 0', margin: '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <CaseSidebar client={selectedClient} highlight={search || undefined} />
+                </div>
+              )}
             </div>
           </div>
         </div>
