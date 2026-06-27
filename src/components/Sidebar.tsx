@@ -41,7 +41,7 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
     <>
       <style>{`
         .sidebar-nav-link { transition: background 0.12s, color 0.12s; }
-        .sidebar-nav-link:hover:not(.active) { background: #e4e4e7 !important; }
+        .sidebar-nav-link:hover:not(.active) { background: #eaebec !important; }
       `}</style>
 
       <aside style={{
@@ -101,7 +101,7 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? '#11181c' : '#71717a',
-                  background: isActive ? '#e4e4e7' : 'transparent',
+                  background: isActive ? '#eaebec' : 'transparent',
                   textDecoration: 'none',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
