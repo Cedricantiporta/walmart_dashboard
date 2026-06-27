@@ -84,8 +84,10 @@ export function calculateDashboardAnalytics(
       if (fileDate < contractStart) return [];
     }
 
-    const approvalStr = row.rms_posting_date;
-    if (!approvalStr || row.reimbursement_status?.trim().toLowerCase() !== 'approved') return [];
+    if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return [];
+    // Use rms_posting_date when available; fall back to date_filed for approved-but-not-yet-posted cases.
+    const approvalStr = row.rms_posting_date || row.date_filed;
+    if (!approvalStr) return [];
 
     const caseId = String(row.case_id);
     let effectiveDate = new Date(approvalStr);
@@ -247,7 +249,7 @@ export function calculateDashboardAnalytics(
     if ((ALWAYS_EXCLUDED_CLIENTS.has(clientName.toLowerCase()) || excludedClients.has(clientName.toLowerCase())) && !isExtraChart) return;
     if (!isExtraChart && info && info.status !== 'Client' && clientName !== 'Premium Convenience') return;
     if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
-    const approvalStr = row.rms_posting_date;
+    const approvalStr = row.rms_posting_date || row.date_filed;
     if (!approvalStr) return;
     const approvalDate = new Date(approvalStr);
     if (isNaN(approvalDate.getTime())) return;
