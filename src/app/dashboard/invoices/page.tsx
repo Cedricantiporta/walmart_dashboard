@@ -240,28 +240,6 @@ export default function InvoicesPage() {
           </div>
         </div>
 
-        {/* Summary cards */}
-        <div style={{ display: 'flex', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
-          {loading ? [1, 2, 3].map(i => (
-            <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '18px 22px', flex: '1 1 140px' }}>
-              <Sk h={10} w={70} /><div style={{ height: 10 }} /><Sk h={26} w={100} />
-            </div>
-          )) : (
-            <>
-              {[
-                { label: 'Total Invoices', val: String(invoices.length), color: '#111827' },
-                { label: 'Total Billed', val: fmtUSD(invoices.reduce((s, i) => s + (i.billed_fee ?? 0), 0)), color: '#111827' },
-                { label: 'Total Recovered', val: fmtUSD(invoices.reduce((s, i) => s + (i.total_reimbursed ?? 0), 0)), color: '#2563eb' },
-              ].map(({ label, val, color }) => (
-                <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '18px 22px', flex: '1 1 140px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>{label}</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color, letterSpacing: '-0.02em' }}>{val}</div>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-
         {/* Table */}
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

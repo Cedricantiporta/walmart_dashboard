@@ -330,51 +330,69 @@ function InvoiceModal({
 
 // ── client RTB row ────────────────────────────────────────────────────────────
 
-function ClientRow({ client, onGenerateInvoice }: { client: ClientBilling; onGenerateInvoice: (c: ClientBilling) => void }) {
-  const [open, setOpen] = useState(false);
+function ClientRow({ client, selected, onRowClick }: { client: ClientBilling; selected: boolean; onRowClick: (c: ClientBilling) => void }) {
   const hasPrev = client.prevMonthFee > 0;
-
   return (
-    <div style={{ borderBottom: '1px solid #f3f4f6' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 120px', gap: 8, padding: '11px 16px', alignItems: 'center', cursor: 'pointer', background: open ? '#f9fafb' : 'transparent' }}>
-        <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+    <div
+      onClick={() => onRowClick(client)}
+      style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selected ? '#eff6ff' : 'transparent' }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 70px', gap: 8, padding: '11px 16px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.clientName}</span>
           {hasPrev && <span style={{ fontSize: 9, fontWeight: 700, background: '#fef3c7', color: '#92400e', borderRadius: 3, padding: '2px 5px', flexShrink: 0 }}>+PREV</span>}
         </div>
-        <div onClick={() => setOpen(o => !o)} style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{fmtPct(client.rate)}</div>
-        <div onClick={() => setOpen(o => !o)} style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</div>
-        <div onClick={() => setOpen(o => !o)} style={{ fontSize: 13, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</div>
-        <div onClick={() => setOpen(o => !o)} style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{client.cases.length}</div>
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+        <div style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{fmtPct(client.rate)}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</div>
+        <div style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{client.cases.length}</div>
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
           <button onClick={() => downloadClientCSV(client)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', border: '1px solid #e5e7eb', borderRadius: 7, background: '#fff', cursor: 'pointer', color: '#374151' }}>CSV</button>
-          <button onClick={() => onGenerateInvoice(client)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', border: 'none', borderRadius: 7, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Invoice</button>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {open && (
-        <div style={{ background: '#f9fafb', borderTop: '1px solid #f3f4f6' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px 110px', gap: 8, padding: '8px 16px 6px 24px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-            <span>Case ID</span><span>Type</span><span>Posting Date</span><span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
-          </div>
-          {client.cases.map((c, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px 110px', gap: 8, padding: '8px 16px 8px 24px', borderTop: '1px solid #f3f4f6', alignItems: 'center', background: !c.isCurrentMonth ? '#fffbeb' : '#fff', fontSize: 12 }}>
-              <span style={{ fontFamily: 'monospace', color: '#374151' }}>{c.caseId}</span>
-              <span style={{ color: '#374151' }}>{c.claimType}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ color: '#374151' }}>{fmtDate(c.postingDate)}</span>
-                {!c.isCurrentMonth && <span style={{ fontSize: 9, fontWeight: 700, background: '#fef3c7', color: '#92400e', borderRadius: 3, padding: '1px 4px' }}>PREV</span>}
-              </div>
-              <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
-              <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
-            </div>
-          ))}
-          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px 110px', gap: 8, padding: '10px 16px 10px 24px', borderTop: '1px solid #e5e7eb', background: '#f3f4f6' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Subtotal</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
-            <span style={{ fontSize: 12, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</span>
-          </div>
+// ── case sidebar ──────────────────────────────────────────────────────────────
+
+function CaseSidebar({ client, onClose, onGenerateInvoice }: {
+  client: ClientBilling;
+  onClose: () => void;
+  onGenerateInvoice: (c: ClientBilling) => void;
+}) {
+  return (
+    <div style={{ width: 360, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 100px)', position: 'sticky', top: 24, overflow: 'hidden' }}>
+      <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.clientName}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{client.cases.length} cases · {fmtUSD(client.totalFee)} fee</div>
         </div>
-      )}
+        <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af', lineHeight: 1, flexShrink: 0 }}>×</button>
+      </div>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 8, flexShrink: 0 }}>
+        <button onClick={() => downloadClientCSV(client)} style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 7, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ CSV</button>
+        <button onClick={() => onGenerateInvoice(client)} style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: '6px 12px', border: 'none', borderRadius: 7, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Generate Invoice</button>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px 6px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+          <span>Case ID</span><span>Type</span><span>Posting</span><span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
+        </div>
+        {client.cases.map((c, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px', borderBottom: '1px solid #f3f4f6', background: !c.isCurrentMonth ? '#fffbeb' : '#fff', fontSize: 11 }}>
+            <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+            <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+            <span style={{ color: '#6b7280' }}>{fmtDate(c.postingDate)}</span>
+            <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
+            <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
+          </div>
+        ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -387,6 +405,7 @@ export default function BillingPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [activeClient, setActiveClient] = useState<ClientBilling | null>(null);
+  const [selectedClient, setSelectedClient] = useState<ClientBilling | null>(null);
   const [nextNum, setNextNum] = useState('NV-1001');
 
   useEffect(() => {
@@ -415,6 +434,7 @@ export default function BillingPage() {
       setData(next);
     }
     setActiveClient(null);
+    setSelectedClient(null);
   }
 
   const filtered = (data?.clients ?? []).filter(c =>
@@ -443,87 +463,89 @@ export default function BillingPage() {
         />
       )}
 
-      <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+      <div style={{ padding: '28px 32px' }}>
+        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>Billing</h1>
-            {currentMonthLabel && <p style={{ fontSize: 13, color: '#6b7280', marginTop: 3, fontWeight: 500 }}>Ready to bill — {currentMonthLabel}</p>}
-          </div>
-          {!loading && data && (
-            <button onClick={() => downloadCSV(data.clients)} style={{ fontSize: 13, fontWeight: 600, padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
-              ↓ Export All CSV
-            </button>
-          )}
-        </div>
+          {/* Main content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
 
-        {error && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>{error}</div>}
-
-        {/* Summary cards */}
-        <div style={{ display: 'flex', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
-          {loading ? [1,2,3,4].map(i => (
-            <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '18px 22px', flex: '1 1 140px' }}>
-              <Sk h={10} w={70} /><div style={{ height: 10 }} /><Sk h={26} w={100} />
-            </div>
-          )) : (<>
-            {[
-              { label: 'Total Fees RTB', val: fmtUSD(data?.totalFee ?? 0), color: '#111827' },
-              { label: 'Total Recovered', val: fmtUSD(data?.totalAmount ?? 0), color: '#2563eb' },
-              { label: 'Clients Ready', val: String(data?.clients.length ?? 0), color: '#111827' },
-              { label: 'Total Cases', val: String(data?.totalCases ?? 0), color: '#111827' },
-            ].map(({ label, val, color }) => (
-              <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '18px 22px', flex: '1 1 140px' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>{label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color, letterSpacing: '-0.02em' }}>{val}</div>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>Billing</h1>
+                {currentMonthLabel && <p style={{ fontSize: 13, color: '#6b7280', marginTop: 3, fontWeight: 500 }}>Ready to bill — {currentMonthLabel}</p>}
               </div>
-            ))}
-          </>)}
-        </div>
-
-        {/* RTB Client table */}
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 16px 0', borderBottom: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
-                Ready to Bill {!loading && <span style={{ color: '#6b7280', fontWeight: 500 }}>({filtered.length})</span>}
-              </h3>
-              <input placeholder="Search client…" value={search} onChange={e => setSearch(e.target.value)}
-                style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, width: 180, color: '#374151' }} />
+              {!loading && data && (
+                <button onClick={() => downloadCSV(data.clients)} style={{ fontSize: 13, fontWeight: 600, padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
+                  ↓ Export All CSV
+                </button>
+              )}
             </div>
-            {!loading && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 120px', gap: 8, padding: '0 0 10px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                <span>Client</span><span style={{ textAlign: 'right' }}>Rate</span>
-                <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
-                <span style={{ textAlign: 'right' }}>Cases</span><span />
+
+            {error && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>{error}</div>}
+
+            {/* RTB Client table */}
+            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ padding: '16px 16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
+                    Ready to Bill {!loading && <span style={{ color: '#6b7280', fontWeight: 500 }}>({filtered.length})</span>}
+                  </h3>
+                  <input placeholder="Search client…" value={search} onChange={e => setSearch(e.target.value)}
+                    style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, width: 180, color: '#374151' }} />
+                </div>
+                {!loading && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 70px', gap: 8, padding: '0 0 10px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                    <span>Client</span><span style={{ textAlign: 'right' }}>Rate</span>
+                    <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
+                    <span style={{ textAlign: 'right' }}>Cases</span><span />
+                  </div>
+                )}
               </div>
-            )}
+
+              {loading ? (
+                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div style={{ padding: '40px 16px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+                  {search ? 'No clients match.' : 'No clients ready to bill.'}
+                </div>
+              ) : (
+                filtered.map(c => (
+                  <ClientRow
+                    key={c.clientName}
+                    client={c}
+                    selected={selectedClient?.clientName === c.clientName}
+                    onRowClick={c => setSelectedClient(c)}
+                  />
+                ))
+              )}
+
+              {!loading && filtered.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 70px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Total</span>
+                  <span />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
+                  <span style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
+                  <span />
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {loading ? (
-            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div style={{ padding: '40px 16px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-              {search ? 'No clients match.' : 'No clients ready to bill.'}
-            </div>
-          ) : (
-            filtered.map(c => <ClientRow key={c.clientName} client={c} onGenerateInvoice={c => setActiveClient(c)} />)
+          {/* Case sidebar */}
+          {selectedClient && (
+            <CaseSidebar
+              client={selectedClient}
+              onClose={() => setSelectedClient(null)}
+              onGenerateInvoice={c => setActiveClient(c)}
+            />
           )}
 
-          {!loading && filtered.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 120px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Total</span>
-              <span />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
-              <span style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
-              <span />
-            </div>
-          )}
         </div>
-
       </div>
     </>
   );
