@@ -137,7 +137,7 @@ function PillDropdown({
         style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '7px 12px', borderRadius: 999,
-          border: '1px solid #d4d4d8', background: '#f4f4f5',
+          border: 'none', background: '#eaebec',
           color: '#11181c', fontSize: 13, fontWeight: 500,
           cursor: 'pointer', outline: 'none', whiteSpace: 'nowrap',
         }}
@@ -228,12 +228,13 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
   if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
 
   const maxVal = Math.max(...data.map(d => d.recovered), 1);
-  const H = 200, barW = 26, gap = 8, padTop = 24, padBot = 28;
+  const H = 200, barW = 32, gap = 10, padTop = 24, padBot = 28;
   const totalW = data.length * (barW + gap) - gap;
+  const svgH = H + padTop + padBot;
 
   return (
-    <div style={{ overflowX: 'auto', position: 'relative' }}>
-      <svg width={totalW + 2} height={H + padTop + padBot} style={{ display: 'block', overflow: 'visible' }}>
+    <div style={{ position: 'relative', width: '100%' }}>
+      <svg viewBox={`0 0 ${totalW + 2} ${svgH}`} width="100%" height={svgH} style={{ display: 'block', overflow: 'visible' }}>
         {data.map((d, i) => {
           const recoveredH = Math.max((d.recovered / maxVal) * H, 3);
           const feeH = d.fee > 0 ? Math.max((d.fee / maxVal) * H, 2) : 0;
@@ -300,27 +301,16 @@ function GaugeChart({ data }: { data: { category: string; amount: number }[] }) 
     return { ...d, frac, start, end: 270 + cum * 180, color: CHART_COLORS[i % CHART_COLORS.length] };
   });
 
-  const ticks = Array.from({ length: 19 }, (_, i) => {
-    const deg = 270 + i * 10;
-    return {
-      inner: polarToXY(cx, cy, outerR + 5, deg),
-      outer: polarToXY(cx, cy, outerR + 12, deg),
-      major: i % 3 === 0,
-    };
-  });
+  const GCX = 140, GCY = 128, GOR = 118, GIR = 74;
 
   return (
     <div>
-      <svg width={240} height={114} style={{ display: 'block', overflow: 'visible', margin: '0 auto' }}>
-        {ticks.map((t, i) => (
-          <line key={i} x1={t.inner.x} y1={t.inner.y} x2={t.outer.x} y2={t.outer.y}
-            stroke="#e4e4e7" strokeWidth={t.major ? 2 : 1.5} strokeLinecap="round" />
-        ))}
+      <svg viewBox="0 0 280 132" width="100%" style={{ display: 'block', overflow: 'visible' }}>
         {/* grey background arc */}
-        <path d={donutPath(cx, cy, outerR, innerR, 270, 450)} fill="#f4f4f5" />
+        <path d={donutPath(GCX, GCY, GOR, GIR, 270, 450)} fill="#f4f4f5" />
         {slices.map((s, i) => (
           <path key={i}
-            d={donutPath(cx, cy, outerR, innerR, s.start, s.end)}
+            d={donutPath(GCX, GCY, GOR, GIR, s.start, s.end)}
             fill={s.color}
             opacity={hov === null || hov === i ? 1 : 0.2}
             onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
@@ -329,21 +319,20 @@ function GaugeChart({ data }: { data: { category: string; amount: number }[] }) 
             style={{ cursor: 'pointer', transition: 'opacity 0.15s', outline: 'none' }}
           />
         ))}
-        <text x={cx} y={cy - 18} textAnchor="middle" fontSize={10} fill="#a1a1aa" fontWeight={500}>Total</text>
-        <text x={cx} y={cy - 2} textAnchor="middle" fontSize={15} fontWeight={800} fill="#11181c">{fmtCompact(total)}</text>
+        <text x={GCX} y={GCY - 6} textAnchor="middle" fontSize={20} fontWeight={800} fill="#11181c">{fmtCompact(total)}</text>
       </svg>
 
-      {/* Category legend */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 8px', marginTop: 14 }}>
+      {/* Category legend — 1 per row */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14 }}>
         {slices.map((s, i) => (
           <div key={i}
             onMouseEnter={() => setHov(i)}
             onMouseLeave={() => setHov(null)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, opacity: hov === null || hov === i ? 1 : 0.35, transition: 'opacity 0.15s', cursor: 'pointer', minWidth: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, opacity: hov === null || hov === i ? 1 : 0.35, transition: 'opacity 0.15s', cursor: 'pointer' }}
           >
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 10.5, color: '#71717a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.category || 'Other'}</span>
-            <span style={{ fontSize: 10.5, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{(s.frac * 100).toFixed(1)}%</span>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: '#71717a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.category || 'Other'}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{(s.frac * 100).toFixed(1)}%</span>
           </div>
         ))}
       </div>
@@ -384,7 +373,7 @@ export default function DashboardPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState('');
 
-  const { onToggle } = useSidebar();
+  const { onToggle, setSyncTime } = useSidebar();
   const timeOptions = getTimeOptions();
 
   useEffect(() => {
@@ -407,6 +396,7 @@ export default function DashboardPage() {
           setHistory(d.history ?? []);
           setBillingInsights(d.billingInsights ?? null);
           setLastSync(d.lastSyncTime ?? '');
+          if (d.lastSyncTime) setSyncTime(d.lastSyncTime);
           setRmsCasesCount(d.rmsCasesCount ?? 0);
           if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
           setLoadingInit(false);
@@ -499,22 +489,15 @@ export default function DashboardPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
-        {/* Top bar — aligned with sidebar brand section */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '0 20px', height: 60, background: '#f4f4f5', flexWrap: 'wrap' }}>
+        {/* Top bar */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 20px 0', height: 68, background: '#f4f4f5' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
               <PanelIcon />
             </button>
-            <div>
-              <h1 style={{ fontSize: 18, fontWeight: 700, color: '#11181c', letterSpacing: '-0.01em' }}>{greeting}</h1>
-              {dateRangeLabel && <p style={{ fontSize: 11, color: '#a1a1aa', marginTop: 1 }}>{dateRangeLabel}</p>}
-            </div>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#11181c', letterSpacing: '-0.01em' }}>{greeting}</h1>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {syncLabel && <span style={{ fontSize: 11, color: '#a1a1aa' }}>Synced {syncLabel}</span>}
-            <PillDropdown value={timeRange} options={timeOptions} onChange={setTimeRange} icon={<CalendarIcon />} />
-            <PillDropdown value={client} options={clientOptions} onChange={setClient} icon={<UserIcon />} />
-          </div>
+          {dateRangeLabel && <span style={{ fontSize: 12, color: '#a1a1aa', fontWeight: 400 }}>{dateRangeLabel}</span>}
         </div>
 
         <div style={{ padding: '20px', maxWidth: 1200 }}>
@@ -530,6 +513,12 @@ export default function DashboardPage() {
             <strong>⚠ No RMS cases.</strong> Run <code style={{ background: '#fef9c3', padding: '1px 5px', borderRadius: 3 }}>migrateAll()</code> + <code style={{ background: '#fef9c3', padding: '1px 5px', borderRadius: 3 }}>setupSyncTrigger()</code> in GAS.
           </div>
         )}
+
+        {/* Dropdowns row — right-aligned, above cards */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+          <PillDropdown value={timeRange} options={timeOptions} onChange={setTimeRange} icon={<CalendarIcon />} />
+          <PillDropdown value={client} options={clientOptions} onChange={setClient} icon={<UserIcon />} />
+        </div>
 
         {/* Metric cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>

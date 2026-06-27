@@ -114,7 +114,7 @@ const PanelIcon = () => <svg width="15" height="15" viewBox="0 0 20 20" fill="no
 const toolbarPill: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 5,
   fontSize: 13, fontWeight: 500, color: '#11181c',
-  background: '#f4f4f5', border: '1px solid #d4d4d8',
+  background: '#eaebec', border: 'none',
   borderRadius: 999, padding: '6px 13px',
   cursor: 'pointer', outline: 'none', flexShrink: 0,
 };
@@ -329,7 +329,7 @@ export default function BillingPage() {
       <style>{`
         @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
         button:hover{opacity:.88}
-        input:focus{outline:none;border-color:#2563eb!important;}
+        input:focus{outline:none;box-shadow:0 0 0 2px rgba(37,99,235,0.2);}
         .btable table th { height: 46px !important; padding: 0 16px !important; vertical-align: middle; }
         .btable table td { padding: 12px 16px !important; vertical-align: middle; }
       `}</style>
@@ -374,7 +374,7 @@ export default function BillingPage() {
                   placeholder="Search client or case ID…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: '10px center' }}
+                  style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: 'none', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', background: "#eaebec url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
                 />
               </div>
             </div>

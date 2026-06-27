@@ -30,8 +30,12 @@ const NAV = [
   )},
 ];
 
-export default function Sidebar({ collapsed }: { collapsed: boolean }) {
+export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; syncTime?: string }) {
   const pathname = usePathname();
+
+  const syncLabel = syncTime
+    ? new Date(syncTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '';
 
   return (
     <>
@@ -66,11 +70,8 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
           <div style={{
             width: 32, height: 32, borderRadius: '50%',
             background: 'linear-gradient(135deg, #006FEE 0%, #7828C8 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0,
-          }}>
-            W
-          </div>
+            flexShrink: 0,
+          }} />
           {!collapsed && (
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
@@ -95,7 +96,7 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
                   gap: 9,
                   padding: collapsed ? '8px 0' : '8px 10px',
                   justifyContent: collapsed ? 'center' : 'flex-start',
-                  borderRadius: 10,
+                  borderRadius: 999,
                   marginBottom: 2,
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 500,
@@ -115,8 +116,11 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
 
         {/* Footer */}
         {!collapsed && (
-          <div style={{ padding: '10px 12px', flexShrink: 0 }}>
+          <div style={{ padding: '10px 14px', flexShrink: 0, borderTop: '1px solid #e4e4e7' }}>
             <div style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
+            {syncLabel && (
+              <div style={{ fontSize: 10, color: '#a1a1aa', marginTop: 3 }}>Synced {syncLabel}</div>
+            )}
           </div>
         )}
       </aside>
