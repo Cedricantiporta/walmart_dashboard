@@ -219,7 +219,7 @@ function MetricCard({
   );
 }
 
-// ── bar chart (pill bars + hover tooltip) ─────────────────────────────────────
+// ── bar chart (two-tone pill bars + hover tooltip) ────────────────────────────
 
 function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: number }[] }) {
   const [hov, setHov] = useState<number | null>(null);
@@ -228,19 +228,20 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
   if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
 
   const maxVal = Math.max(...data.map(d => d.recovered), 1);
-  const H = 140, barW = 32, gap = 10, padTop = 24, padBot = 28;
+  const H = 200, barW = 26, gap = 8, padTop = 24, padBot = 28;
   const totalW = data.length * (barW + gap) - gap;
 
   return (
     <div style={{ overflowX: 'auto', position: 'relative' }}>
       <svg width={totalW + 2} height={H + padTop + padBot} style={{ display: 'block', overflow: 'visible' }}>
         {data.map((d, i) => {
-          const barH = Math.max((d.recovered / maxVal) * H, 3);
+          const recoveredH = Math.max((d.recovered / maxVal) * H, 3);
+          const feeH = d.fee > 0 ? Math.max((d.fee / maxVal) * H, 2) : 0;
           const x = i * (barW + gap);
-          const y = padTop + (H - barH);
+          const recoveredY = padTop + (H - recoveredH);
+          const feeY = padTop + (H - feeH);
           const month = d.label.split(' ')[0].slice(0, 3);
-          const isHov = hov === i;
-          const opacity = hov !== null && !isHov ? 0.25 : 0.45 + 0.55 * (d.recovered / maxVal);
+          const dimmed = hov !== null && hov !== i;
 
           return (
             <g key={i} style={{ cursor: 'pointer' }}
@@ -248,9 +249,11 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
               onMouseLeave={() => setHov(null)}
               onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
             >
-              <path d={pillBarPath(x, y, barW, barH)} fill="#006FEE" opacity={opacity} style={{ transition: 'opacity 0.15s' }} />
-              {isHov && d.recovered > 0 && (
-                <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={10} fill="#11181c" fontWeight={700}>{fmtCompact(d.recovered)}</text>
+              {/* recovered — light blue full-height pill */}
+              <path d={pillBarPath(x, recoveredY, barW, recoveredH)} fill="rgba(0,111,238,0.15)" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
+              {/* fee — solid dark blue pill from bottom */}
+              {feeH > 0 && (
+                <path d={pillBarPath(x, feeY, barW, feeH)} fill="#006FEE" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
               )}
               <text x={x + barW / 2} y={padTop + H + 18} textAnchor="middle" fontSize={11} fill="#71717a" fontWeight={500}>{month}</text>
             </g>
@@ -259,12 +262,17 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
       </svg>
 
       {hov !== null && (
-        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 48, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 8, padding: '7px 11px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
-          <div style={{ color: '#71717a', fontSize: 11, marginBottom: 4 }}>{data[hov].label}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#006FEE' }} />
-            <span style={{ color: '#71717a' }}>recovered</span>
+        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 76, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 10, padding: '10px 14px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 162 }}>
+          <div style={{ color: '#71717a', fontSize: 11, fontWeight: 600, marginBottom: 7 }}>{data[hov].label}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(0,111,238,0.3)', border: '1.5px solid #006FEE', flexShrink: 0 }} />
+            <span style={{ color: '#71717a', flex: 1 }}>Recovered</span>
             <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].recovered)}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#006FEE', flexShrink: 0 }} />
+            <span style={{ color: '#71717a', flex: 1 }}>Fee</span>
+            <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].fee)}</span>
           </div>
         </div>
       )}
@@ -272,63 +280,76 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
   );
 }
 
-// ── donut chart (category breakdown) ─────────────────────────────────────────
+// ── gauge chart (semicircle + legend below) ───────────────────────────────────
 
 const CHART_COLORS = ['#006FEE','#17c964','#f5a524','#7828C8','#f31260','#00b7eb','#a1a1aa','#e4e4e7'];
 
-function DonutChart({ data }: { data: { category: string; amount: number }[] }) {
+function GaugeChart({ data }: { data: { category: string; amount: number }[] }) {
   const [hov, setHov] = useState<number | null>(null);
   const [tip, setTip] = useState({ x: 0, y: 0 });
 
   if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
 
   const total = data.reduce((s, d) => s + d.amount, 0);
-  const cx = 75, cy = 75, outerR = 70, innerR = 44;
+  const cx = 120, cy = 108, outerR = 96, innerR = 60;
   let cum = 0;
   const slices = data.slice(0, 8).map((d, i) => {
     const frac = d.amount / total;
-    const start = cum * 360;
+    const start = 270 + cum * 180;
     cum += frac;
-    return { ...d, frac, start, end: cum * 360, color: CHART_COLORS[i % CHART_COLORS.length] };
+    return { ...d, frac, start, end: 270 + cum * 180, color: CHART_COLORS[i % CHART_COLORS.length] };
+  });
+
+  const ticks = Array.from({ length: 19 }, (_, i) => {
+    const deg = 270 + i * 10;
+    return {
+      inner: polarToXY(cx, cy, outerR + 5, deg),
+      outer: polarToXY(cx, cy, outerR + 12, deg),
+      major: i % 3 === 0,
+    };
   });
 
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-      <div style={{ flexShrink: 0 }}>
-        <svg width={150} height={150} style={{ overflow: 'visible' }}>
-          {slices.map((s, i) => (
-            <path
-              key={i}
-              d={donutPath(cx, cy, outerR, innerR, s.start, s.end)}
-              fill={s.color}
-              opacity={hov === null || hov === i ? 1 : 0.2}
-              onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
-              onMouseLeave={() => setHov(null)}
-              onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
-              style={{ cursor: 'pointer', transition: 'opacity 0.15s', outline: 'none' }}
-            />
-          ))}
-          <text x={cx} y={cy - 5} textAnchor="middle" fontSize={10} fill="#71717a">Total</text>
-          <text x={cx} y={cy + 11} textAnchor="middle" fontSize={13} fontWeight={700} fill="#11181c">{fmtCompact(total)}</text>
-        </svg>
-      </div>
+    <div>
+      <svg width={240} height={114} style={{ display: 'block', overflow: 'visible', margin: '0 auto' }}>
+        {ticks.map((t, i) => (
+          <line key={i} x1={t.inner.x} y1={t.inner.y} x2={t.outer.x} y2={t.outer.y}
+            stroke="#e4e4e7" strokeWidth={t.major ? 2 : 1.5} strokeLinecap="round" />
+        ))}
+        {/* grey background arc */}
+        <path d={donutPath(cx, cy, outerR, innerR, 270, 450)} fill="#f4f4f5" />
+        {slices.map((s, i) => (
+          <path key={i}
+            d={donutPath(cx, cy, outerR, innerR, s.start, s.end)}
+            fill={s.color}
+            opacity={hov === null || hov === i ? 1 : 0.2}
+            onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
+            onMouseLeave={() => setHov(null)}
+            onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
+            style={{ cursor: 'pointer', transition: 'opacity 0.15s', outline: 'none' }}
+          />
+        ))}
+        <text x={cx} y={cy - 18} textAnchor="middle" fontSize={10} fill="#a1a1aa" fontWeight={500}>Total</text>
+        <text x={cx} y={cy - 2} textAnchor="middle" fontSize={15} fontWeight={800} fill="#11181c">{fmtCompact(total)}</text>
+      </svg>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Category legend */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 8px', marginTop: 14 }}>
         {slices.map((s, i) => (
           <div key={i}
             onMouseEnter={() => setHov(i)}
             onMouseLeave={() => setHov(null)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7, opacity: hov === null || hov === i ? 1 : 0.35, transition: 'opacity 0.15s', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, opacity: hov === null || hov === i ? 1 : 0.35, transition: 'opacity 0.15s', cursor: 'pointer', minWidth: 0 }}
           >
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: '#71717a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.category || 'Other'}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{(s.frac * 100).toFixed(1)}%</span>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 10.5, color: '#71717a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.category || 'Other'}</span>
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{(s.frac * 100).toFixed(1)}%</span>
           </div>
         ))}
       </div>
 
       {hov !== null && (
-        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 48, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 8, padding: '7px 11px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 52, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 8, padding: '7px 11px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: slices[hov].color }} />
             <span style={{ fontWeight: 600, color: '#11181c' }}>{slices[hov].category || 'Other'}</span>
@@ -427,7 +448,7 @@ export default function DashboardPage() {
 
   const chartHistory = [...fullMonthlyHistory]
     .sort((a, b) => a.sort.localeCompare(b.sort))
-    .slice(-8)
+    .slice(-12)
     .map(h => ({ label: h.label, recovered: h.recovered, fee: h.fee }));
 
   const dateRangeLabel = analytics?.dateRange
@@ -538,11 +559,11 @@ export default function DashboardPage() {
           <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c' }}>Monthly Recovery</h3>
-              <span style={{ fontSize: 11, color: '#a1a1aa', background: '#f4f4f5', borderRadius: 999, padding: '3px 10px' }}>Last 8 months</span>
+              <span style={{ fontSize: 11, color: '#a1a1aa', background: '#f4f4f5', borderRadius: 999, padding: '3px 10px' }}>Last 12 months</span>
             </div>
             {loadingHistory ? (
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', height: 140 }}>
-                {[60,80,45,100,70,90,55,85].map((h, i) => <Skeleton key={i} h={h} w={32} radius={7} />)}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 200 }}>
+                {[60,80,45,100,70,90,55,85,65,95,75,110].map((h, i) => <Skeleton key={i} h={h} w={26} radius={7} />)}
               </div>
             ) : (
               <SvgBarChart data={chartHistory} />
@@ -553,11 +574,14 @@ export default function DashboardPage() {
           <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c', marginBottom: 16 }}>By Category</h3>
             {loadingAnalytics ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {[1,2,3,4,5].map(i => <Skeleton key={i} h={10} />)}
+              <div>
+                <Skeleton h={110} w="100%" radius={10} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 8px', marginTop: 14 }}>
+                  {[1,2,3,4,5,6].map(i => <Skeleton key={i} h={10} />)}
+                </div>
               </div>
             ) : (
-              <DonutChart data={categoryData ?? []} />
+              <GaugeChart data={categoryData ?? []} />
             )}
           </div>
         </div>
