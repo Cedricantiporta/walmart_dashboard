@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient, fetchRowsFrom } from '@/lib/supabase-server';
+import { getCached, setCached } from '@/lib/server-cache';
 import { getBillingSummary, getBillingInsights } from '@/lib/billing';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
 import { VALID_TIME_RANGES, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
@@ -12,6 +13,10 @@ export async function GET() {
 
   const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+
+  const cacheKey = `initial:${currentMonthStart}`;
+  const cached = getCached(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   const [
     allData,
@@ -94,7 +99,7 @@ export async function GET() {
 
   const { data: lastSync } = await db.from('rms_cases').select('synced_at').order('synced_at', { ascending: false }).limit(1).single();
 
-  return NextResponse.json({
+  const payload = {
     billingSummary,
     history,
     billedIds,
@@ -115,5 +120,8 @@ export async function GET() {
     lastSyncTime:  lastSync?.synced_at ?? new Date().toISOString(),
     vantageCutoff,
     rmsCasesCount: totalRmsCount ?? allData.length,
-  });
+  };
+
+  setCached(cacheKey, payload, 2 * 60 * 1000);
+  return NextResponse.json(payload);
 }

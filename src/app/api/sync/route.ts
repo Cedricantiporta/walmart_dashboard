@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { clearCache } from '@/lib/server-cache';
 
 export const maxDuration = 60;
 
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       const { error } = await db.from('rms_cases').insert(data.slice(i, i + CHUNK));
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    clearCache();
     return NextResponse.json({ synced: data.length, type });
   }
 
@@ -41,12 +43,14 @@ export async function POST(req: NextRequest) {
     if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
     const { error } = await db.from('clients').insert(data);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    clearCache();
     return NextResponse.json({ synced: data.length, type });
   }
 
   if (type === 'billing_contacts') {
     const { error } = await db.from('billing_contacts').upsert(data, { onConflict: 'client_name' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    clearCache();
     return NextResponse.json({ synced: data.length, type });
   }
 
@@ -64,6 +68,7 @@ export async function POST(req: NextRequest) {
     }));
     const { error } = await db.from('invoices').upsert(mapped, { onConflict: 'invoice_number' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    clearCache();
     return NextResponse.json({ synced: mapped.length, type });
   }
 
@@ -71,6 +76,7 @@ export async function POST(req: NextRequest) {
   if (type === 'invoices_raw') {
     const { error } = await db.from('invoices').upsert(data, { onConflict: 'invoice_number' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    clearCache();
     return NextResponse.json({ synced: data.length, type });
   }
 

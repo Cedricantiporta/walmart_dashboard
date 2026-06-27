@@ -194,44 +194,6 @@ function CategoryBreakdown({ data }: { data: { category: string; amount: number 
   );
 }
 
-function MonthlyHistoryTable({ history }: { history: MonthlyHistory[] }) {
-  if (!history.length) return <div style={{ color: '#9ca3af', fontSize: 13 }}>No data</div>;
-
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr>
-            {['Month', 'Recovered', 'Fee', 'Cases', 'Growth'].map(h => (
-              <th key={h} style={{
-                textAlign: 'left', padding: '0 12px 10px',
-                color: '#6b7280', fontWeight: 600, fontSize: 11,
-                textTransform: 'uppercase', letterSpacing: '0.05em',
-                borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap',
-              }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {history.map((row, i) => (
-            <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-              <td style={{ padding: '10px 12px', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{row.label}</td>
-              <td style={{ padding: '10px 12px', fontWeight: 700, color: '#2563eb' }}>{fmtFull(row.recovered)}</td>
-              <td style={{ padding: '10px 12px', color: '#374151' }}>{fmtFull(row.fee)}</td>
-              <td style={{ padding: '10px 12px', color: '#374151' }}>{row.approvedCount}</td>
-              <td style={{ padding: '10px 12px', fontWeight: 600, color: row.growth >= 0 ? '#16a34a' : '#dc2626' }}>
-                {row.growth >= 0 ? '+' : ''}{row.growth.toFixed(1)}%
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function Skeleton({ h = 20, w = '100%', radius = 6 }: { h?: number; w?: string | number; radius?: number }) {
   return (
     <div style={{
@@ -458,18 +420,6 @@ export default function DashboardPage() {
               <CategoryBreakdown data={categoryData ?? []} />
             )}
           </div>
-        </div>
-
-        {/* Monthly history table */}
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px' }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 18 }}>Monthly History</h3>
-          {loadingHistory ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1,2,3,4,5].map(i => <Skeleton key={i} h={16} />)}
-            </div>
-          ) : (
-            <MonthlyHistoryTable history={fullMonthlyHistory} />
-          )}
         </div>
 
       </div>

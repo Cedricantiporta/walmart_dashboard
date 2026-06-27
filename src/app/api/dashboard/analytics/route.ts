@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, fetchAllRows, fetchRowsFrom } from '@/lib/supabase-server';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
+import { getCached, setCached } from '@/lib/server-cache';
 import { DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
 import { RmsCase, ClientInfo } from '@/types';
 
@@ -13,6 +14,10 @@ export async function GET(req: NextRequest) {
   const endDateStr     = searchParams.get('endDate');
   const specificClient = searchParams.get('client') ?? 'all';
   const extraClients   = searchParams.get('extraClients')?.split(',').filter(Boolean) ?? [];
+
+  const cacheKey = `analytics:${timeRange}:${specificClient}:${startDateStr ?? ''}:${extraClients.join(',')}`;
+  const cached = getCached(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   const db = createServerClient();
 
@@ -59,6 +64,9 @@ export async function GET(req: NextRequest) {
     { timeRange, startDateStr, endDateStr, specificClient, extraClients },
     allData, onboardingInfo, billedIds, vantageCutoff, excludedClients
   );
+
+  // Cache thisMonth for 2 min (changes on sync), longer ranges for 5 min
+  setCached(cacheKey, result, useFilter ? 2 * 60 * 1000 : 5 * 60 * 1000);
 
   return NextResponse.json(result);
 }
