@@ -225,7 +225,7 @@ function _toDateStr(val) {
   if (!val) return null;
   if (val instanceof Date) {
     if (isNaN(val.getTime())) return null;
-    return Utilities.formatDate(val, 'UTC', 'yyyy-MM-dd');
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   }
   const s = String(val).trim();
   if (!s) return null;
