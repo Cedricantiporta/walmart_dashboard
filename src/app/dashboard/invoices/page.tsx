@@ -101,12 +101,31 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
       const d = new Date(billedDateStr + 'T12:00:00'); d.setDate(d.getDate() + 7);
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     })();
+    const tableRows = snap.length > 0
+      ? snap.map(c => `<tr>
+          <td style="font-family:monospace;">${c.case_id}</td>
+          <td>${c.claim_type || 'N/A'}</td>
+          <td>${c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : ''}</td>
+          <td class="num" style="font-weight:600;color:#2563eb;">${fmtUSD(c.reimbursement_amount)}</td>
+          <td class="num" style="color:#6b7280;">${fmtPctNum(rate)}</td>
+          <td class="num" style="font-weight:700;">${fmtUSD(c.reimbursement_amount * rate)}</td>
+        </tr>`).join('')
+      : (inv.case_ids ?? []).map(id => `<tr>
+          <td style="font-family:monospace;">${id}</td>
+          <td colspan="2" style="color:#6b7280;">—</td>
+          <td class="num" style="color:#6b7280;">—</td>
+          <td class="num" style="color:#6b7280;">${fmtPctNum(rate)}</td>
+          <td class="num" style="color:#6b7280;">—</td>
+        </tr>`).join('');
     w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number}</title><style>
-      *{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Helvetica Neue',sans-serif;font-size:13px;color:#111827;padding:40px;}
+      *{margin:0;padding:0;box-sizing:border-box;}
+      body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111827;padding:48px;}
       table{width:100%;border-collapse:collapse;}
-      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;padding:0 8px 10px;border-bottom:2px solid #e5e7eb;}
+      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+         color:#fff;background:#111827;padding:10px 8px;}
       td{padding:9px 8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
-      @media print{body{padding:24px;}}
+      .num{text-align:right;}
+      @media print{body{padding:32px;}}
     </style></head><body>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;">
         <div>
@@ -129,36 +148,29 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
       </div>
       <table>
         <thead><tr>
-          <th>Case ID</th><th>Claim Type</th><th>RMS Posting Date</th>
-          <th style="text-align:right;">Recovered</th><th style="text-align:right;">Rate</th><th style="text-align:right;">Fee</th>
+          <th>Case ID</th><th>Description</th><th>Approval Date</th>
+          <th class="num">Recovered</th><th class="num">Fee Rate</th><th class="num">Fee Amount</th>
         </tr></thead>
-        <tbody>
-          ${snap.length > 0 ? snap.map(c => `<tr>
-            <td style="font-family:monospace;">${c.case_id}</td>
-            <td>${c.claim_type ?? ''}</td>
-            <td>${c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : ''}</td>
-            <td style="text-align:right;font-weight:600;color:#2563eb;">${fmtUSD(c.reimbursement_amount)}</td>
-            <td style="text-align:right;color:#6b7280;">${fmtPctNum(rate)}</td>
-            <td style="text-align:right;font-weight:700;">${fmtUSD(c.reimbursement_amount * rate)}</td>
-          </tr>`).join('') : (inv.case_ids ?? []).map(id => `<tr>
-            <td style="font-family:monospace;">${id}</td>
-            <td colspan="3" style="color:#6b7280;">—</td>
-            <td style="text-align:right;color:#6b7280;">${fmtPctNum(rate)}</td>
-            <td style="text-align:right;font-weight:700;">—</td>
-          </tr>`).join('')}
-        </tbody>
-        <tfoot>
-          <tr style="background:#f9fafb;">
-            <td colspan="3" style="padding:12px 8px;font-weight:700;">Total</td>
-            <td style="padding:12px 8px;text-align:right;font-weight:700;color:#2563eb;">${fmtUSD(inv.total_reimbursed)}</td>
-            <td></td>
-            <td style="padding:12px 8px;text-align:right;font-weight:800;">${fmtUSD(inv.billed_fee)}</td>
-          </tr>
-        </tfoot>
+        <tbody>${tableRows}</tbody>
       </table>
-      <div style="margin-top:36px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;">
-        <div><div style="font-weight:600;color:#6b7280;margin-bottom:2px;">Payment</div><div>Amount due: ${fmtUSD(inv.billed_fee)}</div></div>
-        <div style="text-align:right;"><div>Threecolts — WFS Analytics</div><div>Generated ${fmtDate(isoToday())}</div></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:24px;">
+        <div style="width:260px;">
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f3f4f6;">
+            <span style="font-size:12px;color:#374151;">Total Recovered:</span>
+            <span style="font-size:12px;font-weight:600;">${fmtUSD(inv.total_reimbursed)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f3f4f6;">
+            <span style="font-size:12px;color:#374151;">Subtotal:</span>
+            <span style="font-size:12px;font-weight:600;">${fmtUSD(inv.billed_fee)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:12px 10px;margin-top:4px;background:#f3f4f6;border-radius:4px;">
+            <span style="font-size:13px;font-weight:700;">Amount Due (USD):</span>
+            <span style="font-size:14px;font-weight:800;">${fmtUSD(inv.billed_fee)}</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:32px;padding-top:14px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;">
+        <span>Threecolts — WFS Analytics</span><span>Generated ${fmtDate(isoToday())}</span>
       </div>
     </body></html>`);
     w.document.close();

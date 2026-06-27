@@ -178,12 +178,16 @@ function InvoiceModal({
     if (!w) return;
     w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${invNum}</title><style>
       *{margin:0;padding:0;box-sizing:border-box;}
-      body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111827;padding:40px;}
+      body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111827;padding:48px;}
       table{width:100%;border-collapse:collapse;}
-      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;padding:0 8px 10px;border-bottom:2px solid #e5e7eb;}
+      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+         color:#fff;background:#111827;padding:10px 8px;}
       td{padding:9px 8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
       .num{text-align:right;}
-      @media print{body{padding:24px;}}
+      .sum-label{font-size:11px;color:#374151;}
+      .sum-val{font-size:11px;font-weight:600;text-align:right;}
+      .amt-due{background:#f3f4f6;font-weight:700;font-size:13px;}
+      @media print{body{padding:32px;}}
     </style></head><body>`);
     w.document.write(el.innerHTML);
     w.document.write('</body></html>');
@@ -267,12 +271,12 @@ function InvoiceModal({
               )}
             </div>
 
-            {/* Cases table */}
+            {/* Cases table — black header, GAS column names */}
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>
-                  {['Case ID', 'Claim Type', 'RMS Posting Date', 'Recovered', 'Rate', 'Fee'].map(h => (
-                    <th key={h} style={{ textAlign: ['Recovered', 'Rate', 'Fee'].includes(h) ? 'right' : 'left', padding: '0 8px 10px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '2px solid #e5e7eb' }}>{h}</th>
+                <tr style={{ background: '#111827' }}>
+                  {['Case ID', 'Description', 'Approval Date', 'Recovered', 'Fee Rate', 'Fee Amount'].map(h => (
+                    <th key={h} style={{ textAlign: ['Recovered', 'Fee Rate', 'Fee Amount'].includes(h) ? 'right' : 'left', padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '.05em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -280,7 +284,7 @@ function InvoiceModal({
                 {client.cases.map((c, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f3f4f6', background: !c.isCurrentMonth ? '#fffbeb' : '#fff' }}>
                     <td style={{ padding: '9px 8px', fontFamily: 'monospace', fontSize: 12, color: '#374151' }}>{c.caseId}</td>
-                    <td style={{ padding: '9px 8px', fontSize: 12, color: '#374151' }}>{c.claimType}</td>
+                    <td style={{ padding: '9px 8px', fontSize: 12, color: '#374151' }}>{c.claimType || 'N/A'}</td>
                     <td style={{ padding: '9px 8px', fontSize: 12, color: '#374151' }}>
                       {fmtDate(c.postingDate)}
                       {!c.isCurrentMonth && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, background: '#fef3c7', color: '#92400e', borderRadius: 3, padding: '1px 4px' }}>PREV</span>}
@@ -291,28 +295,30 @@ function InvoiceModal({
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr style={{ background: '#f9fafb' }}>
-                  <td colSpan={3} style={{ padding: '12px 8px', fontSize: 13, fontWeight: 700, color: '#111827' }}>Total</td>
-                  <td style={{ padding: '12px 8px', fontSize: 13, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</td>
-                  <td />
-                  <td style={{ padding: '12px 8px', fontSize: 14, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</td>
-                </tr>
-              </tfoot>
             </table>
 
+            {/* Summary block — bottom right, GAS style */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+              <div style={{ width: 260 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
+                  <span style={{ fontSize: 12, color: '#374151' }}>Total Recovered:</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{fmtUSD(client.totalAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
+                  <span style={{ fontSize: 12, color: '#374151' }}>Subtotal:</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{fmtUSD(client.totalFee)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 10px', marginTop: 4, background: '#f3f4f6', borderRadius: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Amount Due (USD):</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#111827' }}>{fmtUSD(client.totalFee)}</span>
+                </div>
+              </div>
+            </div>
+
             {/* Footer */}
-            <div style={{ marginTop: 36, paddingTop: 16, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                <div style={{ fontWeight: 600, color: '#6b7280', marginBottom: 2 }}>Payment</div>
-                <div>Amount due: {fmtUSD(client.totalFee)}</div>
-                <div>Cases covered: {client.cases.length}</div>
-                <div>Total recovered: {fmtUSD(client.totalAmount)}</div>
-              </div>
-              <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'right' }}>
-                <div>Threecolts — WFS Analytics</div>
-                <div>Generated {fmtDate(isoToday())}</div>
-              </div>
+            <div style={{ marginTop: 32, paddingTop: 14, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#9ca3af' }}>
+              <span>Threecolts — WFS Analytics</span>
+              <span>Generated {fmtDate(isoToday())}</span>
             </div>
           </div>
         </div>
