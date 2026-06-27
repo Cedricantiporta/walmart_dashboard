@@ -74,13 +74,10 @@ export default function SummaryPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/dashboard/analytics?timeRange=lifetime')
+    fetch('/api/summary')
       .then(r => r.json())
-      .then(d => {
-        const sorted = [...(d.monthlyHistory ?? [])].sort((a: MonthlyHistory, b: MonthlyHistory) =>
-          b.sort.localeCompare(a.sort)
-        );
-        setHistory(sorted);
+      .then((d: MonthlyHistory[]) => {
+        setHistory(Array.isArray(d) ? d : []);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });

@@ -30,12 +30,19 @@ type ClientBilling = {
   prevMonthFee: number;
   cases: BillingCase[];
 };
+type BillingContactInfo = {
+  client_name: string;
+  invoice_date: string | null;
+  payment_terms: string | null;
+  address: string | null;
+};
 type BillingData = {
   clients: ClientBilling[];
   totalFee: number;
   totalAmount: number;
   totalCases: number;
   currentMonthStart: string;
+  billingSummaryInfo: Record<string, BillingContactInfo>;
 };
 type Invoice = {
   id?: number;
@@ -100,11 +107,13 @@ function Sk({ h = 16, w = '100%' }: { h?: number; w?: string | number }) {
 function InvoiceModal({
   client,
   invoiceNumber,
+  billingContact,
   onClose,
   onSaved,
 }: {
   client: ClientBilling;
   invoiceNumber: string;
+  billingContact: BillingContactInfo | null;
   onClose: () => void;
   onSaved: (inv: Invoice) => void;
 }) {
@@ -114,13 +123,19 @@ function InvoiceModal({
   const [billedDate, setBilledDate] = useState(isoToday());
   const printRef = useRef<HTMLDivElement>(null);
 
+  const dueDate = (() => {
+    const d = new Date(billedDate + 'T12:00:00');
+    d.setDate(d.getDate() + 7);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  })();
+
   async function saveInvoice() {
     setSaving(true);
     setErr('');
     const inv = {
       invoice_number: invNum,
       client_name: client.clientName,
-      billed_date: new Date(billedDate).toISOString(),
+      billed_date: new Date(billedDate + 'T12:00:00').toISOString(),
       billed_fee: client.totalFee,
       total_reimbursed: client.totalAmount,
       case_ids: [...new Set(client.cases.map(c => c.caseId))],
@@ -145,27 +160,19 @@ function InvoiceModal({
   function printInvoice() {
     const el = printRef.current;
     if (!el) return;
-    const w = window.open('', '_blank', 'width=800,height=1000');
+    const w = window.open('', '_blank', 'width=820,height=1060');
     if (!w) return;
     w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${invNum}</title><style>
       *{margin:0;padding:0;box-sizing:border-box;}
-      body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111;}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;}
-      .logo{font-size:20px;font-weight:800;color:#2563eb;}
-      .meta{text-align:right;font-size:12px;color:#555;line-height:1.8;}
-      .section{margin-bottom:24px;}
-      .label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:4px;}
-      .value{font-size:14px;font-weight:600;}
-      table{width:100%;border-collapse:collapse;margin-top:8px;}
-      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:0 8px 8px;border-bottom:2px solid #e5e7eb;}
-      td{padding:8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
+      body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111827;padding:40px;}
+      table{width:100%;border-collapse:collapse;}
+      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;padding:0 8px 10px;border-bottom:2px solid #e5e7eb;}
+      td{padding:9px 8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
       .num{text-align:right;}
-      .total-row{font-weight:700;font-size:13px;background:#f9fafb;}
-      .footer{margin-top:40px;font-size:11px;color:#888;text-align:center;}
       @media print{body{padding:24px;}}
-    </style></head><body><div style="max-width:720px;margin:40px auto;padding:0 24px;">`);
+    </style></head><body>`);
     w.document.write(el.innerHTML);
-    w.document.write('</div></body></html>');
+    w.document.write('</body></html>');
     w.document.close();
     w.focus();
     w.print();
@@ -173,7 +180,7 @@ function InvoiceModal({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 800, maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
 
         {/* Modal header */}
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -210,34 +217,48 @@ function InvoiceModal({
 
         {/* Invoice preview (scrollable) */}
         <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-          <div ref={printRef} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e5e7eb', padding: 32 }}>
+          <div ref={printRef} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e5e7eb', padding: 36 }}>
 
-            {/* Header */}
-            <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+            {/* Header: sender left, INVOICE right */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
               <div>
-                <div className="logo" style={{ fontSize: 22, fontWeight: 800, color: '#2563eb', marginBottom: 4 }}>WFS Analytics</div>
-                <div style={{ fontSize: 11, color: '#6b7280' }}>Walmart Fulfillment Services Billing</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', marginBottom: 6 }}>Threecolts</div>
+                <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.7 }}>
+                  16192 Coastal Highway<br />
+                  Lewes, Delaware 19958<br />
+                  United States<br />
+                  support@threecolts.com
+                </div>
               </div>
-              <div className="meta" style={{ textAlign: 'right', fontSize: 12, color: '#6b7280', lineHeight: 1.9 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>INVOICE</div>
-                <div><strong>Invoice #:</strong> {invNum}</div>
-                <div><strong>Date:</strong> {fmtDate(billedDate)}</div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#111827', letterSpacing: '-0.02em', marginBottom: 10 }}>INVOICE</div>
+                <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 2 }}>
+                  <div><strong style={{ color: '#374151' }}>Invoice #:</strong> {invNum}</div>
+                  <div><strong style={{ color: '#374151' }}>Date:</strong> {fmtDate(billedDate)}</div>
+                  <div><strong style={{ color: '#374151' }}>Due Date:</strong> {dueDate}</div>
+                  {billingContact?.payment_terms && (
+                    <div><strong style={{ color: '#374151' }}>Terms:</strong> {billingContact.payment_terms}</div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Bill to */}
+            {/* Bill To */}
             <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Bill To</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{client.clientName}</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Fee Rate: {fmtPct(client.rate)}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Bill To</div>
+              <div style={{ height: 1, background: '#e5e7eb', marginBottom: 12 }} />
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginBottom: 4 }}>{client.clientName}</div>
+              {billingContact?.address && (
+                <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{billingContact.address}</div>
+              )}
             </div>
 
             {/* Cases table */}
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Case ID', 'Claim Type', 'RMS Posting Date', 'Recovered', 'Fee'].map(h => (
-                    <th key={h} style={{ textAlign: h === 'Recovered' || h === 'Fee' ? 'right' : 'left', padding: '0 8px 10px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '2px solid #e5e7eb' }}>{h}</th>
+                  {['Case ID', 'Claim Type', 'RMS Posting Date', 'Recovered', 'Rate', 'Fee'].map(h => (
+                    <th key={h} style={{ textAlign: ['Recovered', 'Rate', 'Fee'].includes(h) ? 'right' : 'left', padding: '0 8px 10px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '2px solid #e5e7eb' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -251,6 +272,7 @@ function InvoiceModal({
                       {!c.isCurrentMonth && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, background: '#fef3c7', color: '#92400e', borderRadius: 3, padding: '1px 4px' }}>PREV</span>}
                     </td>
                     <td style={{ padding: '9px 8px', fontSize: 12, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</td>
+                    <td style={{ padding: '9px 8px', fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{fmtPct(client.rate)}</td>
                     <td style={{ padding: '9px 8px', fontSize: 12, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</td>
                   </tr>
                 ))}
@@ -259,6 +281,7 @@ function InvoiceModal({
                 <tr style={{ background: '#f9fafb' }}>
                   <td colSpan={3} style={{ padding: '12px 8px', fontSize: 13, fontWeight: 700, color: '#111827' }}>Total</td>
                   <td style={{ padding: '12px 8px', fontSize: 13, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</td>
+                  <td />
                   <td style={{ padding: '12px 8px', fontSize: 14, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</td>
                 </tr>
               </tfoot>
@@ -273,7 +296,7 @@ function InvoiceModal({
                 <div>Total recovered: {fmtUSD(client.totalAmount)}</div>
               </div>
               <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'right' }}>
-                <div>WFS Analytics Dashboard</div>
+                <div>Threecolts — WFS Analytics</div>
                 <div>Generated {fmtDate(isoToday())}</div>
               </div>
             </div>
@@ -386,6 +409,7 @@ export default function BillingPage() {
         <InvoiceModal
           client={activeClient}
           invoiceNumber={nextNum}
+          billingContact={data?.billingSummaryInfo?.[activeClient.clientName] ?? null}
           onClose={() => setActiveClient(null)}
           onSaved={handleInvoiceSaved}
         />

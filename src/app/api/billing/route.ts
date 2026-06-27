@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, fetchAllRows } from '@/lib/supabase-server';
+import { createServerClient, fetchRowsFrom } from '@/lib/supabase-server';
+import { getCached, setCached } from '@/lib/server-cache';
 import { DEFAULT_RATE, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
-import { RmsCase, ClientInfo } from '@/types';
+import { RmsCase, ClientInfo, BillingContact } from '@/types';
 
 export const revalidate = 0;
 
 export async function GET() {
   const db = createServerClient();
+
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+
+  const cacheKey = `billing:${currentMonthStart}`;
+  const cached = getCached(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   const [
     allData,
@@ -14,12 +23,14 @@ export async function GET() {
     { data: invoicesRaw },
     { data: hardcodedRaw },
     { data: config },
+    { data: billingContactsRaw },
   ] = await Promise.all([
-    fetchAllRows<RmsCase>(db, 'rms_cases'),
+    fetchRowsFrom<RmsCase>(db, 'rms_cases', prevMonthStart),
     db.from('clients').select('*'),
     db.from('invoices').select('case_ids'),
     db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('app_config').select('*'),
+    db.from('billing_contacts').select('*'),
   ]);
 
   const settings: Record<string, string> = {};
@@ -29,6 +40,9 @@ export async function GET() {
 
   const onboardingInfo: Record<string, ClientInfo> = {};
   (clientsRaw ?? []).forEach((c: ClientInfo) => { onboardingInfo[c.client_name] = c; });
+
+  const billingSummaryInfo: Record<string, BillingContact> = {};
+  (billingContactsRaw ?? []).forEach((c: BillingContact) => { billingSummaryInfo[c.client_name] = c; });
 
   // Build billed set (composite case_id:date or plain case_id)
   const hardcodedBilledIds = (hardcodedRaw ?? []).map(
@@ -43,8 +57,6 @@ export async function GET() {
     hardcodedBilledIds.filter(id => id.includes(':')).map(id => id.split(':')[0])
   );
 
-  const now = new Date();
-  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
   const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
 
   type BillingCase = {
@@ -138,5 +150,7 @@ export async function GET() {
   const totalAmount = clients.reduce((s, c) => s + c.totalAmount, 0);
   const totalCases = clients.reduce((s, c) => s + c.cases.length, 0);
 
-  return NextResponse.json({ clients, totalFee, totalAmount, totalCases, currentMonthStart });
+  const result = { clients, totalFee, totalAmount, totalCases, currentMonthStart, billingSummaryInfo };
+  setCached(cacheKey, result, 5 * 60 * 1000);
+  return NextResponse.json(result);
 }
