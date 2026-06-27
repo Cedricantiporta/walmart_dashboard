@@ -281,6 +281,7 @@ export default function DashboardPage() {
   const [billingInsights, setBillingInsights] = useState<BillingInsights | null>(null);
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [lastSync, setLastSync] = useState('');
+  const [rmsCasesCount, setRmsCasesCount] = useState<number | null>(null);
   const [loadingInit, setLoadingInit] = useState(true);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [error, setError] = useState('');
@@ -297,6 +298,7 @@ export default function DashboardPage() {
         setHistory(d.history ?? []);
         setBillingInsights(d.billingInsights ?? null);
         setLastSync(d.lastSyncTime ?? '');
+        setRmsCasesCount(d.rmsCasesCount ?? 0);
         if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
         setLoadingInit(false);
       })
@@ -398,8 +400,19 @@ export default function DashboardPage() {
         </div>
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#dc2626', fontSize: 13 }}>
+          <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>
             Failed to load data: {error}
+          </div>
+        )}
+
+        {rmsCasesCount === 0 && !loadingInit && (
+          <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '14px 16px', marginBottom: 20, fontSize: 13, color: '#78350f', lineHeight: 1.6 }}>
+            <strong>⚠ No RMS cases in database.</strong> Current month and live data will show $0 until you complete the migration:
+            <ol style={{ marginTop: 8, marginLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <li>Supabase SQL Editor → <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>ALTER TABLE rms_cases DROP CONSTRAINT IF EXISTS rms_cases_case_id_key;</code></li>
+              <li>GAS editor → run <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>migrateAll()</code></li>
+              <li>GAS editor → run <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>setupSyncTrigger()</code></li>
+            </ol>
           </div>
         )}
 

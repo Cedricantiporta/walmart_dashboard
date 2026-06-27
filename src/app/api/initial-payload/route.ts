@@ -68,16 +68,15 @@ export async function GET() {
   const billedIds = [...new Set([...billedIdsFromInvoices, ...hardcodedBilledIds])];
 
   const billingSummary = getBillingSummary(allData, onboardingInfo, billedIds, vantageCutoff, [], excludedClientsSet);
-  const activeClients = billingSummary.map(c => c.clientName).sort();
 
-  const allDataClientNames = [...new Set(allData.map(r => r.client_name?.trim()).filter(Boolean))] as string[];
-  const hiddenClientList = allDataClientNames.filter(name => {
-    const key = name.toLowerCase();
-    if (excludedClientsSet.has(key)) return true;
-    if (activeClients.map(c => c.toLowerCase()).includes(key)) return false;
-    const info = onboardingInfo[name] ?? onboardingInfo[Object.keys(onboardingInfo).find(k => k.toLowerCase() === key) ?? ''];
-    return !info || info.status !== 'Client';
-  }).sort();
+  // Client list comes from the clients table directly — not derived from rms_cases
+  // so the dropdown shows all active clients even when rms_cases is empty
+  const activeClients = (clientsRaw ?? [])
+    .filter((c: ClientInfo) => c.status === 'Client')
+    .map((c: ClientInfo) => c.client_name)
+    .sort() as string[];
+
+  const hiddenClientList: string[] = [];
 
   let timeRange = settings['DEFAULT_DASHBOARD_TIME'] ?? 'thisMonth';
   if (!VALID_TIME_RANGES.includes(timeRange as typeof VALID_TIME_RANGES[number])) timeRange = 'thisMonth';
@@ -111,5 +110,6 @@ export async function GET() {
     hiddenClientList,
     lastSyncTime:     lastSync?.synced_at ?? new Date().toISOString(),
     vantageCutoff,
+    rmsCasesCount:    allData.length,
   });
 }
