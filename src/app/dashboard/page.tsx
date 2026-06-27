@@ -5,11 +5,13 @@ import type { DashboardAnalytics, ClientSummary, Invoice, BillingInsights, Month
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const fmt = (v: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
-
 const fmtFull = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+
+const fmtCompact = (v: number) =>
+  v >= 1000
+    ? `$${(v / 1000).toFixed(1)}k`
+    : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
 const fmtTrend = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
@@ -99,8 +101,23 @@ function MetricCard({
   trend?: number;
   format?: 'currency' | 'number';
 }) {
-  const displayVal = format === 'currency' ? fmt(value) : String(Math.round(value));
   const trendUp = trend !== undefined && trend >= 0;
+
+  let mainDisplay: React.ReactNode;
+  if (format === 'currency') {
+    const full = fmtFull(value);
+    const dotIdx = full.lastIndexOf('.');
+    const main = dotIdx >= 0 ? full.slice(0, dotIdx) : full;
+    const cents = dotIdx >= 0 ? full.slice(dotIdx) : '';
+    mainDisplay = (
+      <>
+        {main}
+        <span style={{ fontSize: '0.6em', fontWeight: 600, color: '#9ca3af', letterSpacing: 0 }}>{cents}</span>
+      </>
+    );
+  } else {
+    mainDisplay = String(Math.round(value));
+  }
 
   return (
     <div style={{
@@ -115,7 +132,7 @@ function MetricCard({
         {label}
       </div>
       <div style={{ fontSize: 26, fontWeight: 800, color: '#111827', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
-        {displayVal}
+        {mainDisplay}
       </div>
       {sub && (
         <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>{sub}</div>
@@ -161,7 +178,7 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
               <rect x={x} y={y} width={barW} height={barH} rx={6} fill="#2563eb" opacity={opacity} />
               {d.recovered > 0 && (
                 <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={10} fill="#374151" fontWeight={700}>
-                  {d.recovered >= 1000 ? `$${(d.recovered / 1000).toFixed(0)}k` : fmt(d.recovered)}
+                  {fmtCompact(d.recovered)}
                 </text>
               )}
               <text x={x + barW / 2} y={labelY} textAnchor="middle" fontSize={11} fill="#6b7280" fontWeight={500}>
