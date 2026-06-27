@@ -60,9 +60,9 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
 
         {/* Brand / user section */}
         <div style={{
-          padding: collapsed ? '14px 0' : '14px 10px',
+          padding: collapsed ? '8px 0 10px' : '8px 10px 10px',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           justifyContent: collapsed ? 'center' : 'flex-start',
           minHeight: 68,
           gap: 8,

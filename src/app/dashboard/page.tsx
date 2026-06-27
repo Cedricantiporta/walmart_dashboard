@@ -235,7 +235,7 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
   if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
 
   const maxVal = Math.max(...data.map(d => d.recovered), 1);
-  const H = 200, barW = 32, gap = 10, padTop = 24, padBot = 28;
+  const H = 280, barW = 32, gap = 10, padTop = 24, padBot = 28;
   const totalW = data.length * (barW + gap) - gap;
   const svgH = H + padTop + padBot;
 
@@ -257,11 +257,11 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
               onMouseLeave={() => setHov(null)}
               onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
             >
-              {/* recovered — light blue full-height pill */}
-              <path d={pillBarPath(x, recoveredY, barW, recoveredH)} fill="rgba(0,111,238,0.15)" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
-              {/* fee — solid dark blue pill from bottom */}
+              {/* recovered — blue full-height pill */}
+              <path d={pillBarPath(x, recoveredY, barW, recoveredH)} fill="#006FEE" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
+              {/* fee — dark blue pill from bottom */}
               {feeH > 0 && (
-                <path d={pillBarPath(x, feeY, barW, feeH)} fill="#006FEE" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
+                <path d={pillBarPath(x, feeY, barW, feeH)} fill="#1d4ed8" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
               )}
               <text x={x + barW / 2} y={padTop + H + 18} textAnchor="middle" fontSize={11} fill="#71717a" fontWeight={500}>{month}</text>
             </g>
@@ -273,12 +273,12 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
         <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 76, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 10, padding: '10px 14px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 162 }}>
           <div style={{ color: '#71717a', fontSize: 11, fontWeight: 600, marginBottom: 7 }}>{data[hov].label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(0,111,238,0.3)', border: '1.5px solid #006FEE', flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#006FEE', flexShrink: 0 }} />
             <span style={{ color: '#71717a', flex: 1 }}>Recovered</span>
             <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].recovered)}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#006FEE', flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1d4ed8', flexShrink: 0 }} />
             <span style={{ color: '#71717a', flex: 1 }}>Fee</span>
             <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].fee)}</span>
           </div>
@@ -499,7 +499,7 @@ export default function DashboardPage() {
         {/* Top bar */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, padding: '8px 20px 10px', height: 68, background: '#f4f4f5' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
-            <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
+            <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
               <PanelIcon />
             </button>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
