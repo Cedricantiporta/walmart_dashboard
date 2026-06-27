@@ -26,9 +26,9 @@ function MonthlyHistoryTable({ history }: { history: MonthlyHistory[] }) {
   const totalCases = history.reduce((s, r) => s + r.approvedCount, 0);
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div style={{ overflow: 'auto', flex: 1 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
+        <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
           <tr>
             {['Month', 'Recovered', 'Fee', 'Cases', 'Growth'].map(h => (
               <th key={h} style={{
@@ -36,6 +36,7 @@ function MonthlyHistoryTable({ history }: { history: MonthlyHistory[] }) {
                 color: '#6b7280', fontWeight: 600, fontSize: 11,
                 textTransform: 'uppercase', letterSpacing: '0.05em',
                 borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap',
+                background: '#fff',
               }}>
                 {h}
               </th>
@@ -55,13 +56,13 @@ function MonthlyHistoryTable({ history }: { history: MonthlyHistory[] }) {
             </tr>
           ))}
         </tbody>
-        <tfoot>
+        <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 2 }}>
           <tr style={{ borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
-            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#111827' }}>All Time</td>
-            <td style={{ padding: '10px 12px', fontWeight: 800, color: '#2563eb' }}>{fmtFull(totalRecovered)}</td>
-            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#374151' }}>{fmtFull(totalFee)}</td>
-            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#374151' }}>{totalCases}</td>
-            <td style={{ padding: '10px 12px' }} />
+            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#111827', background: '#f9fafb' }}>All Time</td>
+            <td style={{ padding: '10px 12px', fontWeight: 800, color: '#2563eb', background: '#f9fafb' }}>{fmtFull(totalRecovered)}</td>
+            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#374151', background: '#f9fafb' }}>{fmtFull(totalFee)}</td>
+            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#374151', background: '#f9fafb' }}>{totalCases}</td>
+            <td style={{ padding: '10px 12px', background: '#f9fafb' }} />
           </tr>
         </tfoot>
       </table>
@@ -137,10 +138,12 @@ export default function SummaryPage() {
         )}
 
         {/* Monthly history table */}
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px' }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 18 }}>Monthly History</h3>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 260px)' }}>
+          <div style={{ flexShrink: 0, padding: '16px 22px 12px', borderBottom: '1px solid #e5e7eb' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Monthly History</h3>
+          </div>
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} h={16} />)}
             </div>
           ) : (

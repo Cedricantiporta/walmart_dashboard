@@ -383,7 +383,7 @@ function CaseSidebar({ client, onClose }: {
               <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
             </div>
           ))}
-          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
             <span style={{ fontSize: 11, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</span>
@@ -434,9 +434,21 @@ export default function BillingPage() {
     setSelectedClient(null);
   }
 
-  const filtered = (data?.clients ?? []).filter(c =>
-    !search || c.clientName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = (data?.clients ?? []).filter(c => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q));
+  });
+
+  useEffect(() => {
+    if (!search) return;
+    const q = search.toLowerCase();
+    const byCase = (data?.clients ?? []).find(c =>
+      c.cases.some(cs => cs.caseId.toLowerCase().includes(q)) &&
+      !c.clientName.toLowerCase().includes(q)
+    );
+    if (byCase) setSelectedClient(byCase);
+  }, [search, data]);
 
   const currentMonthLabel = data?.currentMonthStart
     ? new Date(data.currentMonthStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -472,13 +484,13 @@ export default function BillingPage() {
 
         {/* RTB Client table + sidebar */}
         <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
-          <div style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 160px)' }}>
+            <div style={{ flexShrink: 0, padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
                 Ready to Bill {!loading && <span style={{ color: '#6b7280', fontWeight: 500 }}>({filtered.length})</span>}
               </h3>
-              <input placeholder="Search client…" value={search} onChange={e => setSearch(e.target.value)}
-                style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, width: 180, color: '#374151' }} />
+              <input placeholder="Search client or case ID…" value={search} onChange={e => setSearch(e.target.value)}
+                style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, width: 200, color: '#374151' }} />
             </div>
 
             {loading ? (
@@ -490,9 +502,9 @@ export default function BillingPage() {
                 {search ? 'No clients match.' : 'No clients ready to bill.'}
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ flex: 1, overflow: 'auto' }}>
                 <div style={{ minWidth: 600 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 60px 110px', gap: 8, padding: '8px 16px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 60px 110px', gap: 8, padding: '8px 16px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
                     <span>Client</span><span style={{ textAlign: 'right' }}>Rate</span>
                     <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
                     <span style={{ textAlign: 'right' }}>Cases</span><span />
@@ -506,7 +518,7 @@ export default function BillingPage() {
                       onGenerateInvoice={c => setActiveClient(c)}
                     />
                   ))}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 60px 110px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 60px 110px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Total</span>
                     <span />
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
@@ -520,7 +532,7 @@ export default function BillingPage() {
           </div>
 
           {selectedClient && (
-            <div style={{ width: 440, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: 440, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 160px)' }}>
               <CaseSidebar
                 client={selectedClient}
                 onClose={() => setSelectedClient(null)}

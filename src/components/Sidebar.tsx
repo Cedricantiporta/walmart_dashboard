@@ -30,12 +30,28 @@ const NAV = [
   )},
 ];
 
-export default function Sidebar() {
+function ChevronLeft() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  );
+}
+function ChevronRight() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  );
+}
+
+export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const pathname = usePathname();
 
   return (
     <aside style={{
-      width: 220,
+      width: collapsed ? 64 : 220,
+      transition: 'width 0.18s ease',
       height: '100vh',
       background: '#fff',
       borderRight: '1px solid #e5e7eb',
@@ -46,39 +62,46 @@ export default function Sidebar() {
       flexShrink: 0,
       overflow: 'hidden',
     }}>
-      {/* Logo */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8, background: '#2563eb',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
+      {/* Logo + toggle */}
+      <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', gap: 8, minHeight: 64 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: collapsed ? 0 : 1 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2v5"/><path d="M12 17v5"/>
               <path d="M20.5 6.5l-4.5 2.5"/><path d="M8 15l-4.5 2.5"/>
               <path d="M20.5 17.5l-4.5-2.5"/><path d="M8 9L3.5 6.5"/>
             </svg>
           </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>WFS Analytics</div>
-            <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>Dashboard</div>
-          </div>
+          {!collapsed && (
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', lineHeight: 1.2, whiteSpace: 'nowrap' }}>WFS Analytics</div>
+              <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 500, whiteSpace: 'nowrap' }}>Dashboard</div>
+            </div>
+          )}
         </div>
+        <button
+          onClick={onToggle}
+          style={{ border: 'none', background: '#f3f4f6', cursor: 'pointer', padding: '5px 6px', borderRadius: 6, color: '#6b7280', display: 'flex', alignItems: 'center', flexShrink: 0, lineHeight: 1 }}
+        >
+          {collapsed ? <ChevronRight /> : <ChevronLeft />}
+        </button>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '12px 8px' }}>
+      <nav style={{ flex: 1, padding: '10px 8px' }}>
         {NAV.map(({ href, label, icon }) => {
           const isActive = pathname === href;
           return (
             <Link
               key={href}
               href={href}
+              title={collapsed ? label : undefined}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                padding: '9px 10px',
+                padding: collapsed ? '9px 0' : '9px 10px',
+                justifyContent: collapsed ? 'center' : 'flex-start',
                 borderRadius: 8,
                 marginBottom: 2,
                 fontSize: 13,
@@ -87,19 +110,23 @@ export default function Sidebar() {
                 background: isActive ? '#eff6ff' : 'transparent',
                 textDecoration: 'none',
                 transition: 'background 0.1s, color 0.1s',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
               }}
             >
               <span style={{ color: isActive ? '#2563eb' : '#9ca3af', flexShrink: 0 }}>{icon}</span>
-              {label}
+              {!collapsed && label}
             </Link>
           );
         })}
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb' }}>
-        <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>WFS Billing v1.0</div>
-      </div>
+      {!collapsed && (
+        <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500, whiteSpace: 'nowrap' }}>WFS Billing v1.0</div>
+        </div>
+      )}
     </aside>
   );
 }

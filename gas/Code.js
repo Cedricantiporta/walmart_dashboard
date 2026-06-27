@@ -2,12 +2,13 @@
 // Clients hardcoded excluded regardless of onboarding status — only bypass if explicitly in extraClients
 const ALWAYS_EXCLUDED_CLIENTS = new Set([]);
 // Source RMS data — the live "All Client RMS Report" sheet
-const SPREADSHEET_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
+const SPREADSHEET_ID = '1elkpl1-ONYSzTtAAGvhlBSJs8-JDxwpfL-_P4TPt-qA';
 const SHEET_NAME = 'All Client RMS Report';
+// InvoiceLog (billing history) physically lives in the original spreadsheet — keep it there so no history is lost
 const INVOICE_LOG_SPREADSHEET_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
 
-const ONBOARDING_SPREADSHEET_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
-const ONBOARDING_SHEET_NAME = 'Onboarding Tracker';
+const ONBOARDING_SPREADSHEET_ID = '1lGsy7twdGxSpM-DoWkOBqqzOtU3pMBkZHe016uGW4gE';
+const ONBOARDING_SHEET_NAME = 'WFS Onboarding';
 const INVOICE_LOG_SHEET_NAME = 'InvoiceLog';
 
 const BILLING_SUMMARY_SPREADSHEET_ID = '1J_weTVTbY2cFgHNbs3TbjQ6ToWXAEbXf7RUMg_RjGEo';
@@ -15,13 +16,32 @@ const BILLING_SUMMARY_SHEET_NAME = 'Billing Summary';
 
 const BILLED_STORAGE_KEY = 'billedCaseIDs_v2';
 const VANTAGE_CUTOFF_KEY = 'VANTAGE_CUTOFF_DATE';
-const CODE_VERSION = '20260627a'; // bump on each deploy to invalidate DA/FP caches
+const CODE_VERSION = '20260627b'; // bump on each deploy to invalidate DA/FP caches
 const DEFAULT_DASHBOARD_VIEW_KEY = 'defaultDashboardView_v1';
 const DEFAULT_DASHBOARD_TIME_KEY = 'defaultDashboardTime_v1';
 
 const MAIN_DATA_STORAGE_KEY = 'all_rms_report_data_v4'; // v4: switched source sheet to 1elkpl1
 
 const DEFAULT_RATES = { 'DEFAULT': 0.22 };
+
+// --- TRIGGER SETUP ---
+// Run this once to replace any time-based trigger with an onEdit trigger.
+// In GAS editor: select setupOnEditTrigger → Run.
+function setupOnEditTrigger() {
+  // Delete ALL existing syncToSupabase triggers (time-based or otherwise)
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'syncToSupabase') {
+      ScriptApp.deleteTrigger(t);
+      Logger.log('Deleted trigger: ' + t.getHandlerFunction() + ' (' + t.getTriggerSourceId() + ')');
+    }
+  });
+  // Create onEdit trigger on the RMS data spreadsheet
+  ScriptApp.newTrigger('syncToSupabase')
+    .forSpreadsheet(SPREADSHEET_ID)
+    .onEdit()
+    .create();
+  Logger.log('Trigger created: syncToSupabase onEdit on ' + SPREADSHEET_ID);
+}
 
 // --- WEB APP FUNCTIONS ---
 function doGet(e) {
@@ -127,7 +147,7 @@ function getInitialPayload() {
 function _runOneTimeCleanup() {
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty('CLEANUP_4CASES_V1')) return;
-  try { unbillCaseIds(['14758541', '14969195', '14821054', '14674867']); } catch(e) { Logger.log('cleanup err: ' + e.message); }
+  try { unbillCaseIds(['14758541', '14821054', '14674867']); } catch(e) { Logger.log('cleanup err: ' + e.message); }
   props.setProperty('CLEANUP_4CASES_V1', '1');
 }
 
@@ -244,7 +264,6 @@ function calculateDashboardAnalytics(timeRange = 'thisMonth', onboardingInfo, al
 
     const billedIds = new Set(getBilledIdsFromServer().map(String));
     billedIds.add('13011996'); // Hardcoded mark as billed
-    billedIds.add('14969195'); // Hardcoded mark as billed
     const extraSet = new Set((extraClients || []).map(c => c.trim().toLowerCase()));
     const vCutoff = new Date((PropertiesService.getScriptProperties().getProperty(VANTAGE_CUTOFF_KEY) || '2026-05-06') + 'T00:00:00');
 
@@ -623,12 +642,14 @@ function getBillingSummary(allData, clientOnboardingInfo, extraClients) {
   const vCutoff = new Date((PropertiesService.getScriptProperties().getProperty(VANTAGE_CUTOFF_KEY) || '2026-05-06') + 'T00:00:00');
   const clientSummary = {};
 
-  // Get current month and year to filter reimbursements
   const now = new Date();
+  // 7-day grace period: on days 1-7 of the month, billing period is still the previous month
+  const billingMonthStart = now.getDate() <= 7
+    ? new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    : new Date(now.getFullYear(), now.getMonth(), 1);
+  const billingMonthEnd = new Date(billingMonthStart.getFullYear(), billingMonthStart.getMonth() + 1, 1);
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  // Billable through the end of the current month — only future-month postings are held (Pending)
-  const startOfNextMonth = new Date(currentYear, currentMonth + 1, 1);
 
     allData.forEach(item => {
     const rawClient = item['Client Name'] ? item['Client Name'].trim() : null;
@@ -701,7 +722,9 @@ function getBillingSummary(allData, clientOnboardingInfo, extraClients) {
       // Vantage free period: cases posted before May 6 2026 are forever unbillable (free service).
       const isVantageFreePeriod = client.toLowerCase() === 'vantage inc' && postingDate && postingDate < vCutoff;
 
-      if (billedCaseIdSet.has(caseId) || caseId === '13011996' || caseId === '14969195') {
+      const isPastBilling = postingDate && postingDate < billingMonthStart;
+      const isPending = postingDate && postingDate >= billingMonthEnd;
+      if (billedCaseIdSet.has(caseId) || caseId === '13011996' || isPastBilling) {
           if (isBillableCase) clientSummary[client].previouslyBilledFee += fee;
       } else if (isVantageFreePeriod) {
           // Informational only: show reimbursed amount, $0 fee, not billable
@@ -712,19 +735,16 @@ function getBillingSummary(allData, clientOnboardingInfo, extraClients) {
       } else if (isBillableCase) {
           // Require an RMS Posting Date — a case with no posting date isn't reimbursed yet, so never bill it
           if (!postingDate || isNaN(postingDate)) return;
-          // Future-month postings are Pending — visible, but held for next month's run
-          if (postingDate >= startOfNextMonth) {
+          if (isPending) {
               clientSummary[client].pendingCases++;
               clientSummary[client].pendingFee += fee;
               clientSummary[client].pendingReimbursed += amount;
+              clientSummary[client].totalReimbursed += amount; // included in overview total
               return;
           }
           clientSummary[client].readyToBillCases++;
           clientSummary[client].readyToBillFee += fee;
           clientSummary[client].totalReimbursed += amount;
-          if (postingDate && (postingDate.getMonth() !== currentMonth || postingDate.getFullYear() !== currentYear)) {
-              clientSummary[client].hasPreviousMonthBill = true;
-          }
       }
     }
   });
@@ -1103,7 +1123,7 @@ function unbillCaseIds(caseIds) {
 
 // One-time cleanup runner for the 3 wrongly-billed cases. Run from the Apps Script editor.
 function unbillWronglyBilledCases() {
-  const result = unbillCaseIds(['14758541', '14969195', '14821054', '14674867']);
+  const result = unbillCaseIds(['14758541', '14821054', '14674867']);
   Logger.log(JSON.stringify(result, null, 2));
   return result;
 }
