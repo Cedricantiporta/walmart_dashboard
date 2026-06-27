@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { getCached, setCached, clearCache } from '@/lib/server-cache';
 
 export async function GET() {
+  const cached = getCached('invoices:all');
+  if (cached) return NextResponse.json(cached);
+
   const db = createServerClient();
   const { data, error } = await db.from('invoices').select('*').order('invoice_number', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  setCached('invoices:all', data, 2 * 60 * 1000);
   return NextResponse.json(data);
 }
 

@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Cedric\\\\Desktop\\\\Walmart dashboard\\\\gas\")"
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Cedric\\\\Desktop\\\\Walmart dashboard\\\\gas\")",
+      "Bash(where clasp *)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "PowerShell(clasp --version 2>&1)",
+      "PowerShell(clasp login --status 2>&1)",
+      "PowerShell(Get-ChildItem -Force -Recurse \"C:\\\\Users\\\\Cedric\\\\Desktop\\\\Walmart dashboard\" -Filter \".clasp.json\" 2>&1; Get-Content \"$env:USERPROFILE\\\\.clasprc.json\" 2>&1 | Select-Object -First 5)",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Cedric\\\\Desktop\\\\Walmart dashboard\\\\src\\\\app\\\\api\\\\summary\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Cedric\\\\Desktop\\\\Walmart dashboard\\\\src\\\\app\\\\api\\\\invoices\\\\import\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Cedric\\\\Desktop\\\\Walmart dashboard\\\\supabase\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}, indent=2\\)\\)\")",
+      "Bash(cat next.config.ts)",
+      "Bash(cat next.config.js)",
+      "Bash(claude mcp *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('main',''\\), d.get\\('module',''\\), list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:5]\\)\")"
     ]
   }
 }

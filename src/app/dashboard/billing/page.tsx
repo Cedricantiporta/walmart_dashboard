@@ -433,19 +433,19 @@ export default function BillingPage() {
         />
       )}
 
-      <div style={{ padding: '28px 32px' }}>
+      <div style={{ padding: '20px 28px' }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>Billing</h1>
-          {currentMonthLabel && <p style={{ fontSize: 13, color: '#6b7280', marginTop: 3, fontWeight: 500 }}>Ready to bill — {currentMonthLabel}</p>}
+          {currentMonthLabel && <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 500 }}>Ready to bill — {currentMonthLabel}</span>}
         </div>
 
         {error && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>{error}</div>}
 
-        {/* RTB Client table + sidebar */}
+        {/* RTB Client table */}
         <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
-          <div style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 160px)' }}>
+          <div style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 130px)' }}>
             <div style={{ flexShrink: 0, padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
                 Ready to Bill {!loading && <span style={{ color: '#6b7280', fontWeight: 500 }}>({filtered.length})</span>}
@@ -492,16 +492,29 @@ export default function BillingPage() {
             )}
           </div>
 
-          {selectedClient && (
-            <div style={{ width: 440, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 160px)' }}>
+        </div>
+
+        {/* Case detail drawer — overlays RTB table */}
+        {selectedClient && (
+          <>
+            <div
+              onClick={() => setSelectedClient(null)}
+              style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.08)' }}
+            />
+            <div style={{
+              position: 'fixed', top: 0, right: 0, bottom: 0, width: 440,
+              background: '#fff', borderLeft: '1px solid #e5e7eb',
+              boxShadow: '-8px 0 32px rgba(0,0,0,0.10)',
+              display: 'flex', flexDirection: 'column', zIndex: 50, overflow: 'hidden',
+            }}>
               <CaseSidebar
                 client={selectedClient}
                 onClose={() => setSelectedClient(null)}
                 highlight={search || undefined}
               />
             </div>
-          )}
-        </div>
+          </>
+        )}
 
       </div>
     </>

@@ -88,11 +88,11 @@ export default function SummaryPage() {
         }
       `}</style>
 
-      <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
+      <div style={{ padding: '20px 28px', maxWidth: 1200 }}>
 
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>Summary</h1>
-          <p style={{ fontSize: 13, color: '#6b7280', marginTop: 3, fontWeight: 500 }}>All-time monthly breakdown</p>
+          <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 500 }}>All-time monthly breakdown</span>
         </div>
 
         {error && (

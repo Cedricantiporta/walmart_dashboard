@@ -97,25 +97,33 @@ function MetricCard({
     <div style={{
       background: '#fff',
       border: '1px solid #e5e7eb',
-      borderRadius: 12,
-      padding: '20px 22px',
+      borderRadius: 14,
+      padding: '18px 22px',
       flex: '1 1 180px',
       minWidth: 0,
     }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 500, color: '#9ca3af', letterSpacing: '0.02em', marginBottom: 8 }}>
         {label}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 800, color: '#111827', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
-        {mainDisplay}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 26, fontWeight: 800, color: '#111827', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+          {mainDisplay}
+        </div>
+        {trend !== undefined && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 2,
+            fontSize: 11, fontWeight: 700,
+            color: trendUp ? '#16a34a' : '#dc2626',
+            background: trendUp ? '#dcfce7' : '#fee2e2',
+            borderRadius: 20, padding: '3px 8px', marginBottom: 2,
+          }}>
+            <span style={{ fontSize: 10 }}>{trendUp ? '▲' : '▼'}</span>
+            {Math.abs(trend).toFixed(1)}%
+          </div>
+        )}
       </div>
       {sub && (
-        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>{sub}</div>
-      )}
-      {trend !== undefined && (
-        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: trendUp ? '#16a34a' : '#dc2626', display: 'flex', alignItems: 'center', gap: 3 }}>
-          <span style={{ fontSize: 14 }}>{trendUp ? '↑' : '↓'}</span>
-          <span>{fmtTrend(trend)} vs prev period</span>
-        </div>
+        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>{sub}</div>
       )}
     </div>
   );
@@ -329,21 +337,20 @@ export default function DashboardPage() {
         select:hover { border-color: #9ca3af !important; }
       `}</style>
 
-      <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
+      <div style={{ padding: '20px 28px', maxWidth: 1200 }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>Overview</h1>
+        {/* Header — one row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>Overview</h1>
             {dateRangeLabel && (
-              <p style={{ fontSize: 13, color: '#6b7280', marginTop: 3, fontWeight: 500 }}>{dateRangeLabel}</p>
+              <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, whiteSpace: 'nowrap' }}>{dateRangeLabel}</span>
             )}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {syncLabel && (
               <span style={{ fontSize: 11, color: '#9ca3af', marginRight: 4 }}>Synced {syncLabel}</span>
             )}
-            {/* Time range */}
             <select
               value={timeRange}
               onChange={e => setTimeRange(e.target.value)}
@@ -351,7 +358,6 @@ export default function DashboardPage() {
             >
               {timeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            {/* Client filter */}
             <select
               value={client}
               onChange={e => setClient(e.target.value)}

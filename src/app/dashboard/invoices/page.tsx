@@ -240,15 +240,13 @@ export default function InvoicesPage() {
     <>
       <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}} button:hover{opacity:.88} input:focus{outline:none;border-color:#2563eb!important;}`}</style>
 
-      <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+      <div style={{ padding: '20px 28px', maxWidth: 1100 }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>Invoices</h1>
-            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 3, fontWeight: 500 }}>
-              {loading ? 'Loading…' : `${invoices.length} invoice${invoices.length !== 1 ? 's' : ''} total`}
-            </p>
+            {!loading && <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 500 }}>{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</span>}
           </div>
         </div>
 

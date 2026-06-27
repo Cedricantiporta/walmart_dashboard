@@ -11,6 +11,21 @@
     let billingSummaryInfo = {};
     let dataLoaded = false;
     let billedCaseIdSet = new Set();
+    // A case row is "previously billed" if it was invoiced OR its posting date is before the billing window
+    // 7-day grace period: on days 1-7 of the month, billing window is the previous month
+    function _getBillingMonthStart() {
+      const now = new Date();
+      return now.getDate() <= 7
+        ? new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+    function _isRowBilled(caseId, postingDateStr) {
+      if (billedCaseIdSet.has(String(caseId))) return true;
+      if (!postingDateStr) return false;
+      const d = new Date(postingDateStr);
+      if (isNaN(d.getTime())) return false;
+      return d < _getBillingMonthStart();
+    }
     let _pendingHighlightCaseId = null;
     const _detailsCache = new Map(); // clientName → {cases, billedIds}
     let vantageCutoff = '2026-05-06';
@@ -264,7 +279,7 @@
         historyData = payload.history;
         billedCaseIdSet = new Set(payload.billedIds.map(String));
         billedCaseIdSet.add('13011996'); // Hardcoded mark as billed
-        billedCaseIdSet.add('14969195'); // Hardcoded mark as billed
+        // 14969195 has row-level billed amounts — handled in _isCaseBilledRow()
         
         // Manual History Injection for Case 13011996
         if (historyData && !historyData.find(h => h.invoiceNumber === 'NV-1042a')) {
@@ -2069,8 +2084,7 @@
                 }
                 const billedIds = new Set((d.billedIds || []).map(String));
                 billedIds.add('13011996');
-                billedIds.add('14969195');
-                const unbilled = (d.cases || []).filter(c => isCaseBillable(c) && _isBillablePosting(c) && !billedIds.has(String(c['Case ID'])) && c['Reimbursement Status'] === 'Approved');
+                const unbilled = (d.cases || []).filter(c => isCaseBillable(c) && _isBillablePosting(c) && !_isRowBilled(c['Case ID'], c['RMS Posting Date']) && c['Reimbursement Status'] === 'Approved');
                 const blob = generatePDFBlob(clientName, unbilled, { invoiceNumber, billedDate: new Date() });
                 if (blob) zip.file(`Invoice_${invoiceNumber}_${clientName}.pdf`, blob);
             }
@@ -2107,8 +2121,7 @@
                 }
                 const billedIds = new Set((d.billedIds || []).map(String));
                 billedIds.add('13011996');
-                billedIds.add('14969195');
-                const unbilled = (d.cases || []).filter(c => isCaseBillable(c) && _isBillablePosting(c) && !billedIds.has(String(c['Case ID'])) && c['Reimbursement Status'] === 'Approved');
+                const unbilled = (d.cases || []).filter(c => isCaseBillable(c) && _isBillablePosting(c) && !_isRowBilled(c['Case ID'], c['RMS Posting Date']) && c['Reimbursement Status'] === 'Approved');
                 const csv = generateCSVContent(clientName, unbilled, { invoiceNumber });
                 zip.file(`Invoice_${invoiceNumber}_${clientName}.csv`, csv);
             }
@@ -2841,8 +2854,8 @@
         const billedIds = new Set(billedCaseIdSet);
         if (clientName === 'TheSavingsMart') billedIds.add('13011996');
 
-        const unbilled = cases.filter(c => isCaseBillable(c, clientInfo) && c['Reimbursement Status'] === 'Approved' && !billedIds.has(String(c['Case ID'])) && parseCurrency(c['Reimbursement Amount (total)']) > 0);
-        const billed = cases.filter(c => isCaseBillable(c, clientInfo) && c['Reimbursement Status'] === 'Approved' && billedIds.has(String(c['Case ID'])) && parseCurrency(c['Reimbursement Amount (total)']) > 0);
+        const unbilled = cases.filter(c => isCaseBillable(c, clientInfo) && c['Reimbursement Status'] === 'Approved' && !_isRowBilled(c['Case ID'], c['RMS Posting Date']) && parseCurrency(c['Reimbursement Amount (total)']) > 0);
+        const billed = cases.filter(c => isCaseBillable(c, clientInfo) && c['Reimbursement Status'] === 'Approved' && _isRowBilled(c['Case ID'], c['RMS Posting Date']) && parseCurrency(c['Reimbursement Amount (total)']) > 0);
         
         const makeTable = (list, title) => {
             if (list.length === 0) return `<h3 style="margin-bottom: 12px; font-size: 14px; font-weight: 700;">${title}</h3><p style="color: var(--color-text-secondary); font-size: 13px; margin-bottom: 24px;">No cases found.</p>`;
@@ -2943,7 +2956,6 @@
     function _renderDetailsData(clientName, d) {
         billedCaseIdSet = new Set(d.billedIds.map(String));
         billedCaseIdSet.add('13011996');
-        billedCaseIdSet.add('14969195');
         document.getElementById('details-modal-body').innerHTML = generateDetailsViewHTML(clientName, d.cases);
         _applyDetailsHighlight();
     }
@@ -3086,8 +3098,7 @@
     function _buildInvoiceModal(clientName, invNum, d) {
         const billedIds = new Set(d.billedIds.map(String));
         billedIds.add('13011996');
-        billedIds.add('14969195');
-        const unbilled = d.cases.filter(c => isCaseBillable(c) && _isBillablePosting(c) && !billedIds.has(String(c['Case ID'])) && c['Reimbursement Status'] === 'Approved');
+        const unbilled = d.cases.filter(c => isCaseBillable(c) && _isBillablePosting(c) && !_isRowBilled(c['Case ID'], c['RMS Posting Date']) && c['Reimbursement Status'] === 'Approved');
         if (unbilled.length === 0) return showToast('No billable cases', 'error');
         const total = unbilled.reduce((s, c) => s + parseCurrency(c['Reimbursement Amount (total)']), 0);
         const rate = getClientRate(clientName);
