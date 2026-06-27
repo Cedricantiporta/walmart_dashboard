@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     { data: hardcodedRaw },
     { data: excludedRaw },
   ] = await Promise.all([
-    db.from('rms_cases').select('*'),
+    db.from('rms_cases').select('*').range(0, 19999),
     db.from('clients').select('*'),
     db.from('app_config').select('*'),
     db.from('invoices').select('case_ids'),

@@ -19,7 +19,7 @@ export async function GET() {
     { data: hardcodedBilledRaw },
     { data: excludedClientsRaw },
   ] = await Promise.all([
-    db.from('rms_cases').select('*'),
+    db.from('rms_cases').select('*').range(0, 19999),
     db.from('clients').select('*'),
     db.from('billing_contacts').select('*'),
     db.from('invoices').select('*').order('invoice_number', { ascending: false }),

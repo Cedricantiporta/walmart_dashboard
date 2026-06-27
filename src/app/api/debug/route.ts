@@ -16,7 +16,7 @@ export async function GET() {
     { data: premiumCon },
     { count: totalCount },
   ] = await Promise.all([
-    db.from('rms_cases').select('*'),
+    db.from('rms_cases').select('*').range(0, 19999),
     db.from('clients').select('*'),
     db.from('invoices').select('case_ids, invoice_number, client_name').order('invoice_number', { ascending: false }),
     db.from('rms_cases').select('case_id,reimbursement_status,rms_posting_date,date_filed,reimbursement_amount').eq('client_name', 'Premium Convenience').limit(5),
