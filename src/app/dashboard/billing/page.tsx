@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 
 // ── formatters ────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,10 @@ type BillingCase = {
   amount: number;
   fee: number;
   isCurrentMonth: boolean;
+  gtin?: string;
+  sku_id?: string;
+  unit_amount?: number;
+  reimbursed_qty?: number;
 };
 type ClientBilling = {
   clientName: string;
@@ -66,23 +71,25 @@ function fmtMDY(iso: string) {
 }
 
 function gasRow(clientName: string, rate: number, cs: BillingCase) {
-  const amt = cs.amount.toFixed(2);
+  const unitAmt = (cs.unit_amount ?? cs.amount).toFixed(2);
+  const qty = cs.reimbursed_qty ?? 1;
+  const total = cs.amount.toFixed(2);
   return [
     `"${clientName}"`,
     'US',
     fmtMDY(cs.postingDate),
-    `"Reimbursement Recovery for Case ID ${cs.caseId} for $${amt}"`,
+    `"Reimbursement Recovery for Case ID ${cs.caseId} for $${total}"`,
     cs.claimType || 'N/A',
-    '', // GTIN — not stored
-    '', // SKU ID — not stored
+    cs.gtin || '',
+    cs.sku_id || '',
     cs.caseId,
-    `$${amt}`,
+    `$${unitAmt}`,
     fmtPct(rate),
-    '1',
-    `$${amt}`,
+    String(qty),
+    `$${total}`,
     '',
     'USD',
-    `$${amt}`,
+    `$${total}`,
     `$${cs.fee.toFixed(2)}`,
   ].join(',');
 }
@@ -158,6 +165,10 @@ function InvoiceModal({
         claim_type: c.claimType,
         rms_posting_date: c.postingDate,
         reimbursement_amount: c.amount,
+        gtin: c.gtin ?? '',
+        sku_id: c.sku_id ?? '',
+        unit_amount: c.unit_amount ?? c.amount,
+        reimbursed_qty: c.reimbursed_qty ?? 1,
       })),
       pdf_url: '',
     };
@@ -385,10 +396,14 @@ export default function BillingPage() {
   const [nextNum, setNextNum] = useState('NV-1001');
 
   useEffect(() => {
-    fetch('/api/billing')
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(e => { setError(e.message); setLoading(false); });
+    const cached = clientGet<BillingData>('billing');
+    if (cached) { setData(cached); setLoading(false); }
+    else {
+      fetch('/api/billing')
+        .then(r => r.json())
+        .then(d => { clientSet('billing', d); setData(d); setLoading(false); })
+        .catch(e => { setError(e.message); setLoading(false); });
+    }
 
     fetch('/api/invoices/next-number')
       .then(r => r.json())
@@ -399,8 +414,11 @@ export default function BillingPage() {
     const parts = nextNum.split('-');
     const n = parseInt(parts[1] ?? '1000');
     setNextNum(`${parts[0]}-${n + 1}`);
+    clientClear('billing');
+    clientClear('invoices');
     if (data) {
-      setData({ ...data, clients: data.clients.filter(c => c.clientName !== inv.client_name) });
+      const next = { ...data, clients: data.clients.filter(c => c.clientName !== inv.client_name) };
+      setData(next);
     }
     setActiveClient(null);
   }

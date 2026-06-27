@@ -7,6 +7,10 @@ export interface RmsCase {
   reimbursement_amount: number;
   rms_posting_date: string | null;
   synced_at?: string;
+  gtin?: string | null;
+  sku_id?: string | null;
+  unit_amount?: number | null;
+  reimbursed_qty?: number | null;
 }
 
 export interface ClientInfo {
@@ -29,6 +33,10 @@ export interface CaseSnapshot {
   claim_type: string;
   rms_posting_date: string;
   reimbursement_amount: number;
+  gtin?: string;
+  sku_id?: string;
+  unit_amount?: number;
+  reimbursed_qty?: number;
 }
 
 export interface Invoice {

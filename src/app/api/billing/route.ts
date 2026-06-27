@@ -66,6 +66,10 @@ export async function GET() {
     amount: number;
     fee: number;
     isCurrentMonth: boolean;
+    gtin: string;
+    sku_id: string;
+    unit_amount: number;
+    reimbursed_qty: number;
   };
 
   type ClientBilling = {
@@ -134,6 +138,10 @@ export async function GET() {
       amount,
       fee,
       isCurrentMonth,
+      gtin: row.gtin ?? '',
+      sku_id: row.sku_id ?? '',
+      unit_amount: row.unit_amount ?? amount,
+      reimbursed_qty: row.reimbursed_qty ?? 1,
     });
   });
 

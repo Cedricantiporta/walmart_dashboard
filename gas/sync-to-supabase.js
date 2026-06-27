@@ -64,13 +64,17 @@ function _syncRmsCases(apiUrl, secret) {
   }
 
   const idx = {
-    caseId:    findCol(['case id', 'case_id', 'caseid']),
-    client:    findCol(['client name', 'store name', 'account name', 'client']),
-    dateFiled: findCol(['date filed', 'filed date', 'date']),
-    claimType: findCol(['claim type', 'type']),
-    status:    findCol(['reimbursement status', 'status']),
-    amount:    findCol(['reimbursement amount (total)', 'reimbursement amount', 'amount']),
-    posting:   findCol(['rms posting date', 'posting date', 'post date'])
+    caseId:     findCol(['case id', 'case_id', 'caseid']),
+    client:     findCol(['client name', 'store name', 'account name', 'client']),
+    dateFiled:  findCol(['date filed', 'filed date', 'date']),
+    claimType:  findCol(['claim type', 'type']),
+    status:     findCol(['reimbursement status', 'status']),
+    amount:     findCol(['reimbursement amount (total)', 'reimbursement amount', 'amount']),
+    posting:    findCol(['rms posting date', 'posting date', 'post date']),
+    gtin:       findCol(['gtin']),
+    skuId:      findCol(['sku id', 'sku_id', 'skuid']),
+    unitAmount: findCol(['reimbursement amount/unit', 'amount/unit', 'unit amount']),
+    reimQty:    findCol(['reimbursed qty', 'reimbursed_qty', 'reimbursed quantity']),
   };
 
   Logger.log('RMS Cases columns: ' + JSON.stringify(
@@ -93,7 +97,11 @@ function _syncRmsCases(apiUrl, secret) {
       reimbursement_status: r[idx.status]     ? String(r[idx.status])     : null,
       reimbursement_amount: parseFloat(String(r[idx.amount]).replace(/[^0-9.-]+/g,'')) || 0,
       rms_posting_date:     _toDateStr(r[idx.posting]),
-      synced_at:            now
+      synced_at:            now,
+      gtin:                 idx.gtin >= 0 && r[idx.gtin]       ? String(r[idx.gtin])       : null,
+      sku_id:               idx.skuId >= 0 && r[idx.skuId]     ? String(r[idx.skuId])      : null,
+      unit_amount:          idx.unitAmount >= 0 ? (parseFloat(String(r[idx.unitAmount]).replace(/[^0-9.-]+/g,'')) || null) : null,
+      reimbursed_qty:       idx.reimQty >= 0 ? (parseInt(String(r[idx.reimQty]), 10) || null) : null,
     }));
 
   // Send all rows in ONE request so server does delete-then-insert-all atomically.

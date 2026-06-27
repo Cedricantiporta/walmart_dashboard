@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const db = createServerClient();
   const { data, error } = await db
     .from('rms_cases')
-    .select('case_id, claim_type, rms_posting_date, reimbursement_amount')
+    .select('case_id, claim_type, rms_posting_date, reimbursement_amount, gtin, sku_id, unit_amount, reimbursed_qty')
     .in('case_id', ids.map(String));
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

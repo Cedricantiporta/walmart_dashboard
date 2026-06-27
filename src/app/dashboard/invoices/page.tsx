@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 
 const fmtUSD = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
@@ -16,7 +17,7 @@ type Invoice = {
   billed_fee: number;
   total_reimbursed: number;
   case_ids: string[];
-  case_snapshot: { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number }[];
+  case_snapshot: { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number; gtin?: string; sku_id?: string; unit_amount?: number; reimbursed_qty?: number }[];
   pdf_url?: string;
 };
 
@@ -38,7 +39,7 @@ function fmtPctNum(r: number) {
   return `${p}%`;
 }
 
-type CaseRow = { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number };
+type CaseRow = { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number; gtin?: string; sku_id?: string; unit_amount?: number; reimbursed_qty?: number };
 
 async function fetchCasesByIds(ids: string[]): Promise<CaseRow[]> {
   if (!ids.length) return [];
@@ -50,17 +51,19 @@ function buildCSVRows(inv: Invoice, cases: CaseRow[]): string[] {
   const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
   if (cases.length > 0) {
     return cases.map(c => {
-      const amt = c.reimbursement_amount.toFixed(2);
+      const unitAmt = (c.unit_amount ?? c.reimbursement_amount).toFixed(2);
+      const qty = c.reimbursed_qty ?? 1;
+      const total = c.reimbursement_amount.toFixed(2);
       return [
         `"${inv.client_name}"`, 'US', fmtMDY(c.rms_posting_date),
-        `"Reimbursement Recovery for Case ID ${c.case_id} for $${amt}"`,
-        c.claim_type || 'N/A', '', '', c.case_id,
-        `$${amt}`, fmtPctNum(rate), '1', `$${amt}`, '', 'USD', `$${amt}`,
+        `"Reimbursement Recovery for Case ID ${c.case_id} for $${total}"`,
+        c.claim_type || 'N/A', c.gtin || '', c.sku_id || '', c.case_id,
+        `$${unitAmt}`, fmtPctNum(rate), String(qty), `$${total}`, '', 'USD', `$${total}`,
         `$${(c.reimbursement_amount * rate).toFixed(2)}`,
       ].join(',');
     });
   }
-  // Fallback: evenly divide (no rms_cases data)
+  // Fallback: evenly divide (no rms_cases data available)
   const ids = inv.case_ids ?? [];
   const perCase = ids.length > 0 ? inv.total_reimbursed / ids.length : 0;
   const perFee = ids.length > 0 ? inv.billed_fee / ids.length : 0;
@@ -225,17 +228,32 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
             <div style={{ padding: '12px 16px 12px 32px', fontSize: 12, color: '#9ca3af' }}>Loading case data…</div>
           ) : activeCases.length > 0 ? (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px', gap: 8, padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                <span>Case ID</span><span>Type</span><span>Posting Date</span><span style={{ textAlign: 'right' }}>Recovered</span>
-              </div>
-              {activeCases.map((c, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px', gap: 8, padding: '7px 16px 7px 32px', borderTop: '1px solid #f3f4f6', fontSize: 12 }}>
-                  <span style={{ fontFamily: 'monospace', color: '#374151' }}>{c.case_id}</span>
-                  <span style={{ color: '#374151' }}>{c.claim_type}</span>
-                  <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
-                  <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+              <div style={{ overflowX: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '110px 110px 110px 90px 110px 85px 55px 50px 95px 85px', gap: 6, padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.04em', minWidth: 900 }}>
+                  <span>Case ID</span><span>GTIN</span><span>SKU ID</span><span>Type</span><span>Posting Date</span>
+                  <span style={{ textAlign: 'right' }}>Unit Amt</span><span style={{ textAlign: 'right' }}>Rate</span><span style={{ textAlign: 'right' }}>Qty</span>
+                  <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
                 </div>
-              ))}
+                {activeCases.map((c, i) => {
+                  const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
+                  const unitAmt = c.unit_amount ?? c.reimbursement_amount;
+                  const qty = c.reimbursed_qty ?? 1;
+                  return (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 110px 110px 90px 110px 85px 55px 50px 95px 85px', gap: 6, padding: '7px 16px 7px 32px', borderTop: '1px solid #f3f4f6', fontSize: 11, minWidth: 900 }}>
+                      <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_id}</span>
+                      <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.gtin || '—'}</span>
+                      <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.sku_id || '—'}</span>
+                      <span style={{ color: '#374151' }}>{c.claim_type || '—'}</span>
+                      <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
+                      <span style={{ fontWeight: 600, color: '#374151', textAlign: 'right' }}>{fmtUSD(unitAmt)}</span>
+                      <span style={{ color: '#6b7280', textAlign: 'right' }}>{fmtPctNum(rate)}</span>
+                      <span style={{ color: '#374151', textAlign: 'right' }}>{qty}</span>
+                      <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+                      <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount * rate)}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </>
           ) : (
             <div style={{ padding: '8px 16px 12px 32px', fontSize: 12, color: '#9ca3af' }}>No case data found in database.</div>
@@ -252,9 +270,11 @@ export default function InvoicesPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
+    const cached = clientGet<Invoice[]>('invoices');
+    if (cached) { setInvoices(cached); setLoading(false); return; }
     fetch('/api/invoices')
       .then(r => r.json())
-      .then(d => { setInvoices(Array.isArray(d) ? d : []); setLoading(false); })
+      .then(d => { const arr = Array.isArray(d) ? d : []; clientSet('invoices', arr); setInvoices(arr); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
@@ -339,7 +359,11 @@ export default function InvoicesPage() {
               <InvoiceRow
                 key={inv.invoice_number}
                 inv={inv}
-                onDelete={num => setInvoices(prev => prev.filter(i => i.invoice_number !== num))}
+                onDelete={num => setInvoices(prev => {
+                  const next = prev.filter(i => i.invoice_number !== num);
+                  clientClear('invoices');
+                  return next;
+                })}
               />
             ))
           )}

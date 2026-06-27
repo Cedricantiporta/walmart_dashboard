@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { MonthlyHistory } from '@/types';
+import { clientGet, clientSet } from '@/lib/client-cache';
 
 const fmtFull = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
@@ -74,10 +75,14 @@ export default function SummaryPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const cached = clientGet<MonthlyHistory[]>('summary');
+    if (cached) { setHistory(cached); setLoading(false); return; }
     fetch('/api/summary')
       .then(r => r.json())
       .then((d: MonthlyHistory[]) => {
-        setHistory(Array.isArray(d) ? d : []);
+        const arr = Array.isArray(d) ? d : [];
+        clientSet('summary', arr);
+        setHistory(arr);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
