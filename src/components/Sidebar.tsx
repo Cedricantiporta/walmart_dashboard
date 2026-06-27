@@ -36,7 +36,7 @@ export default function Sidebar() {
   return (
     <aside style={{
       width: 220,
-      minHeight: '100vh',
+      height: '100vh',
       background: '#fff',
       borderRight: '1px solid #e5e7eb',
       display: 'flex',
@@ -44,6 +44,7 @@ export default function Sidebar() {
       position: 'sticky',
       top: 0,
       flexShrink: 0,
+      overflow: 'hidden',
     }}>
       {/* Logo */}
       <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid #e5e7eb' }}>

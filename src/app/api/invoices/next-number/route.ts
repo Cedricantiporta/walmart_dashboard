@@ -5,12 +5,14 @@ export async function GET() {
   const db = createServerClient();
   const { data } = await db.from('invoices').select('invoice_number');
   let maxNum = 1000;
+  let prefix = 'NV';
   (data ?? []).forEach(({ invoice_number }: { invoice_number: string }) => {
-    const parts = invoice_number?.split('-');
-    if (parts?.length > 1) {
-      const n = parseInt(parts[1]);
-      if (!isNaN(n) && n > maxNum) maxNum = n;
-    }
+    if (!invoice_number) return;
+    const dashIdx = invoice_number.search(/-\d/);
+    if (dashIdx < 0) return;
+    const p = invoice_number.slice(0, dashIdx);
+    const n = parseInt(invoice_number.slice(dashIdx + 1));
+    if (!isNaN(n) && n > maxNum) { maxNum = n; prefix = p; }
   });
-  return NextResponse.json({ nextNumber: `INV-${maxNum + 1}` });
+  return NextResponse.json({ nextNumber: `${prefix}-${maxNum + 1}` });
 }
