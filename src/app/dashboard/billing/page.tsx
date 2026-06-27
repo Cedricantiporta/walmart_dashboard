@@ -337,7 +337,7 @@ function ClientRow({ client, selected, onRowClick }: { client: ClientBilling; se
       onClick={() => onRowClick(client)}
       style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selected ? '#eff6ff' : 'transparent' }}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 70px', gap: 8, padding: '11px 16px', alignItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px', gap: 8, padding: '11px 16px', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.clientName}</span>
           {hasPrev && <span style={{ fontSize: 9, fontWeight: 700, background: '#fef3c7', color: '#92400e', borderRadius: 3, padding: '2px 5px', flexShrink: 0 }}>+PREV</span>}
@@ -346,9 +346,6 @@ function ClientRow({ client, selected, onRowClick }: { client: ClientBilling; se
         <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</div>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</div>
         <div style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{client.cases.length}</div>
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-          <button onClick={() => downloadClientCSV(client)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', border: '1px solid #e5e7eb', borderRadius: 7, background: '#fff', cursor: 'pointer', color: '#374151' }}>CSV</button>
-        </div>
       </div>
     </div>
   );
@@ -495,10 +492,10 @@ export default function BillingPage() {
                     style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, width: 180, color: '#374151' }} />
                 </div>
                 {!loading && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 70px', gap: 8, padding: '0 0 10px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px', gap: 8, padding: '0 0 10px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
                     <span>Client</span><span style={{ textAlign: 'right' }}>Rate</span>
                     <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
-                    <span style={{ textAlign: 'right' }}>Cases</span><span />
+                    <span style={{ textAlign: 'right' }}>Cases</span>
                   </div>
                 )}
               </div>
@@ -523,13 +520,12 @@ export default function BillingPage() {
               )}
 
               {!loading && filtered.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px 70px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 110px 110px 70px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Total</span>
                   <span />
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
                   <span style={{ fontSize: 14, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
                   <span style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
-                  <span />
                 </div>
               )}
             </div>
