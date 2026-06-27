@@ -30,7 +30,8 @@ function Sk({ h = 16, w = '100%' }: { h?: number; w?: string | number }) {
 
 const GAS_HEADERS = 'Invoice To,Country,Walmart Posting Date,Item Description,Claim Type,GTIN,SKU ID,Case ID,Unit Amount,Rate,Quantity,Total Reimbursement,Conversion Rate,Currency,Total Reimbursed USD,Fee Amount';
 
-function fmtMDY(iso: string) {
+function fmtMDY(iso: string | null | undefined) {
+  if (!iso) return '';
   const d = new Date(iso.length === 10 ? iso + 'T12:00:00' : iso);
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 }
@@ -98,7 +99,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
   const [fetchingCases, setFetchingCases] = useState(false);
 
   const hasSnapshot = (inv.case_snapshot?.length ?? 0) > 0;
-  const activeCases: CaseRow[] = hasSnapshot
+  const activeCases: CaseRow[] = (hasSnapshot
     ? inv.case_snapshot.map(c => ({
         case_id: c.case_id,
         claim_type: c.claim_type,
@@ -109,7 +110,8 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
         unit_amount: c.unit_amount,
         reimbursed_qty: c.reimbursed_qty,
       }))
-    : (fetchedCases ?? []);
+    : (fetchedCases ?? [])
+  ).filter(c => !!c.rms_posting_date);
 
   function handleToggle() {
     setOpen(o => !o);

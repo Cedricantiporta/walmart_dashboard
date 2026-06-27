@@ -31,7 +31,7 @@ function _fmtPct(r: number) {
 
 export async function downloadInvoicePDF(inv: PDFInvoiceData, cases: PDFCase[]) {
   const { default: jsPDF } = await import('jspdf');
-  await import('jspdf-autotable');
+  const { default: autoTable } = await import('jspdf-autotable');
 
   const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -95,7 +95,7 @@ export async function downloadInvoicePDF(inv: PDFInvoiceData, cases: PDFCase[]) 
     : (inv.case_ids ?? []).map(id => [id, '—', '—', '—', _fmtPct(rate), '—']);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (doc as any).autoTable({
+  (autoTable as any)(doc, {
     head: [['Case ID', 'Posting Date', 'Description', 'Recovered', 'Fee Rate', 'Fee Amount']],
     body: tableBody,
     startY: y,
