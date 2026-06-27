@@ -242,10 +242,23 @@ export default function DashboardPage() {
         setLoadingInit(false);
       });
 
-    // Background fetch: accurate full monthly history using all rows + correct business logic
-    fetch('/api/dashboard/analytics?timeRange=lifetime')
+    // Background fetch: monthly history from pre-computed table + current month live
+    fetch('/api/summary')
       .then(r => r.json())
-      .then(d => { if (d.monthlyHistory?.length) setFullMonthlyHistory(d.monthlyHistory); setLoadingHistory(false); })
+      .then((d: Array<{ month_key: string; label: string; recovered: number; fee: number; approved_count: number; declined_count: number; growth: number }>) => {
+        if (Array.isArray(d) && d.length) {
+          setFullMonthlyHistory(d.map(r => ({
+            label: r.label,
+            sort: r.month_key,
+            recovered: r.recovered,
+            fee: r.fee,
+            approvedCount: r.approved_count,
+            declinedCount: r.declined_count,
+            growth: r.growth,
+          })));
+        }
+        setLoadingHistory(false);
+      })
       .catch(() => setLoadingHistory(false));
   }, []);
 

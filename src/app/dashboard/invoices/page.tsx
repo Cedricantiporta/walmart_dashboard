@@ -38,14 +38,18 @@ function fmtPctNum(r: number) {
   return `${p}%`;
 }
 
-function downloadInvoiceCSV(inv: Invoice) {
-  const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
-  const snap = inv.case_snapshot ?? [];
-  const ids = inv.case_ids ?? [];
+type CaseRow = { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number };
 
-  let dataRows: string[];
-  if (snap.length > 0) {
-    dataRows = snap.map(c => {
+async function fetchCasesByIds(ids: string[]): Promise<CaseRow[]> {
+  if (!ids.length) return [];
+  const res = await fetch('/api/cases/by-ids', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+  return res.ok ? res.json() : [];
+}
+
+function buildCSVRows(inv: Invoice, cases: CaseRow[]): string[] {
+  const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
+  if (cases.length > 0) {
+    return cases.map(c => {
       const amt = c.reimbursement_amount.toFixed(2);
       return [
         `"${inv.client_name}"`, 'US', fmtMDY(c.rms_posting_date),
@@ -55,24 +59,27 @@ function downloadInvoiceCSV(inv: Invoice) {
         `$${(c.reimbursement_amount * rate).toFixed(2)}`,
       ].join(',');
     });
-  } else {
-    // No snapshot — generate one row per case_id with amounts evenly divided
-    const perCase = ids.length > 0 ? inv.total_reimbursed / ids.length : 0;
-    const perFee = ids.length > 0 ? inv.billed_fee / ids.length : 0;
-    const postingDate = fmtMDY(inv.billed_date?.slice(0, 10) ?? isoToday());
-    dataRows = ids.map(id => {
-      const amt = perCase.toFixed(2);
-      return [
-        `"${inv.client_name}"`, 'US', postingDate,
-        `"Reimbursement Recovery for Case ID ${id} for $${amt}"`,
-        'N/A', '', '', id,
-        `$${amt}`, fmtPctNum(rate), '1', `$${amt}`, '', 'USD', `$${amt}`,
-        `$${perFee.toFixed(2)}`,
-      ].join(',');
-    });
   }
+  // Fallback: evenly divide (no rms_cases data)
+  const ids = inv.case_ids ?? [];
+  const perCase = ids.length > 0 ? inv.total_reimbursed / ids.length : 0;
+  const perFee = ids.length > 0 ? inv.billed_fee / ids.length : 0;
+  const postingDate = fmtMDY(inv.billed_date?.slice(0, 10) ?? isoToday());
+  return ids.map(id => {
+    const amt = perCase.toFixed(2);
+    return [
+      `"${inv.client_name}"`, 'US', postingDate,
+      `"Reimbursement Recovery for Case ID ${id} for $${amt}"`,
+      'N/A', '', '', id,
+      `$${amt}`, fmtPctNum(rate), '1', `$${amt}`, '', 'USD', `$${amt}`,
+      `$${perFee.toFixed(2)}`,
+    ].join(',');
+  });
+}
 
-  const csv = [`${inv.invoice_number},,,,,,,,,,,,,,`, GAS_HEADERS, ...dataRows].join('\n');
+function triggerCSVDownload(inv: Invoice, cases: CaseRow[]) {
+  const rows = buildCSVRows(inv, cases);
+  const csv = [`${inv.invoice_number},,,,,,,,,,,,,,`, GAS_HEADERS, ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -83,6 +90,21 @@ function downloadInvoiceCSV(inv: Invoice) {
 function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) => void }) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
+  const [fetchingCases, setFetchingCases] = useState(false);
+
+  const hasSnapshot = (inv.case_snapshot?.length ?? 0) > 0;
+  const activeCases: CaseRow[] = hasSnapshot
+    ? inv.case_snapshot.map(c => ({ case_id: c.case_id, claim_type: c.claim_type, rms_posting_date: c.rms_posting_date, reimbursement_amount: c.reimbursement_amount }))
+    : (fetchedCases ?? []);
+
+  function handleToggle() {
+    setOpen(o => !o);
+    if (!hasSnapshot && fetchedCases === null && !fetchingCases && inv.case_ids?.length) {
+      setFetchingCases(true);
+      fetchCasesByIds(inv.case_ids).then(rows => { setFetchedCases(rows); setFetchingCases(false); });
+    }
+  }
 
   async function deleteInvoice() {
     if (!confirm(`Delete invoice ${inv.invoice_number}?`)) return;
@@ -91,18 +113,18 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
     onDelete(inv.invoice_number);
   }
 
-  function printInvoice() {
+  async function printInvoice() {
+    const cases = activeCases.length > 0 ? activeCases : await fetchCasesByIds(inv.case_ids ?? []);
     const w = window.open('', '_blank', 'width=820,height=1060');
     if (!w) return;
-    const snap = inv.case_snapshot ?? [];
     const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
     const billedDateStr = inv.billed_date?.slice(0, 10) ?? isoToday();
     const dueDate = (() => {
       const d = new Date(billedDateStr + 'T12:00:00'); d.setDate(d.getDate() + 7);
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     })();
-    const tableRows = snap.length > 0
-      ? snap.map(c => `<tr>
+    const tableRows = cases.length > 0
+      ? cases.map(c => `<tr>
           <td style="font-family:monospace;">${c.case_id}</td>
           <td>${c.claim_type || 'N/A'}</td>
           <td>${c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : ''}</td>
@@ -189,10 +211,10 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
         <span style={{ fontSize: 12, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(inv.total_reimbursed)}</span>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(inv.billed_fee)}</span>
         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
-          <button onClick={() => setOpen(o => !o)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #e5e7eb', borderRadius: 6, background: open ? '#f9fafb' : '#fff', cursor: 'pointer', color: '#374151' }}>
+          <button onClick={handleToggle} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #e5e7eb', borderRadius: 6, background: open ? '#f9fafb' : '#fff', cursor: 'pointer', color: '#374151' }}>
             {snapCount} case{snapCount !== 1 ? 's' : ''}
           </button>
-          <button onClick={() => downloadInvoiceCSV(inv)} title="Download CSV" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 12, fontWeight: 600, color: '#374151' }}>↓</button>
+          <button onClick={async () => { const cases = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, cases); }} title="Download CSV" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 12, fontWeight: 600, color: '#374151' }}>↓</button>
           <button onClick={printInvoice} title="Print PDF" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 13 }}>🖨</button>
           <button onClick={deleteInvoice} disabled={deleting} title="Delete" style={{ border: '1px solid #fca5a5', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 13, color: '#dc2626' }}>✕</button>
         </div>
@@ -200,12 +222,14 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
 
       {open && snapCount > 0 && (
         <div style={{ background: '#f9fafb', borderTop: '1px solid #f3f4f6' }}>
-          {inv.case_snapshot && inv.case_snapshot.length > 0 ? (
+          {fetchingCases ? (
+            <div style={{ padding: '12px 16px 12px 32px', fontSize: 12, color: '#9ca3af' }}>Loading case data…</div>
+          ) : activeCases.length > 0 ? (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px', gap: 8, padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
                 <span>Case ID</span><span>Type</span><span>Posting Date</span><span style={{ textAlign: 'right' }}>Recovered</span>
               </div>
-              {inv.case_snapshot.map((c, i) => (
+              {activeCases.map((c, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px', gap: 8, padding: '7px 16px 7px 32px', borderTop: '1px solid #f3f4f6', fontSize: 12 }}>
                   <span style={{ fontFamily: 'monospace', color: '#374151' }}>{c.case_id}</span>
                   <span style={{ color: '#374151' }}>{c.claim_type}</span>
@@ -215,14 +239,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
               ))}
             </>
           ) : (
-            <>
-              <div style={{ padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>Case IDs</div>
-              <div style={{ padding: '4px 16px 12px 32px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {(inv.case_ids ?? []).map((id, i) => (
-                  <span key={i} style={{ fontFamily: 'monospace', fontSize: 12, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 5, padding: '3px 8px', color: '#374151' }}>{id}</span>
-                ))}
-              </div>
-            </>
+            <div style={{ padding: '8px 16px 12px 32px', fontSize: 12, color: '#9ca3af' }}>No case data found in database.</div>
           )}
         </div>
       )}
