@@ -235,8 +235,11 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
   if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
 
   const maxVal = Math.max(...data.map(d => d.recovered), 1);
-  const H = 280, barW = 32, gap = 10, padTop = 24, padBot = 28;
-  const totalW = data.length * (barW + gap) - gap;
+  const H = 280, padTop = 24, padBot = 28;
+  const n = data.length;
+  const gap = 4;
+  const barW = n > 0 ? Math.floor((600 - (n - 1) * gap) / n) : 40;
+  const totalW = n * (barW + gap) - gap;
   const svgH = H + padTop + padBot;
 
   return (
@@ -339,7 +342,7 @@ function GaugeChart({ data }: { data: { category: string; amount: number }[] }) 
           >
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: '#71717a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.category || 'Other'}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{(s.frac * 100).toFixed(1)}%</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{fmtCompact(s.amount)}</span>
           </div>
         ))}
       </div>

@@ -75,7 +75,7 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
           {!collapsed && (
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
-              <div style={{ fontSize: 12, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Admin</div>
+              <div style={{ fontSize: 12, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Dashboard</div>
             </div>
           )}
         </div>
