@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (type === 'clients') {
-    const { error } = await db.from('clients').upsert(data, { onConflict: 'client_name' });
+    // Full-replace: clears stale rows (e.g. old Name-column values) on every sync
+    const { error: delError } = await db.from('clients').delete().gte('id', 0);
+    if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
+    const { error } = await db.from('clients').insert(data);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ synced: data.length, type });
   }
