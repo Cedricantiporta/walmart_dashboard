@@ -479,7 +479,7 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
         {/* Top bar — aligned with sidebar brand section */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '0 20px', height: 60, borderBottom: '1px solid #e4e4e7', background: '#fff', flexWrap: 'wrap' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '0 20px', height: 60, background: '#f4f4f5', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
               <PanelIcon />
