@@ -41,13 +41,8 @@ export function calculateDashboardAnalytics(
   const { timeRange, startDateStr, endDateStr, specificClient = 'all', extraClients = [] } = params;
 
   // billedIds already includes hardcoded IDs (merged in the API route before calling this)
-  // billedIds may contain plain case_ids ("14969195") or composite keys ("14969195:2026-05-31").
-  // When a case_id has ANY composite entries, ONLY those specific rows are billed —
-  // other rows of the same case_id are NOT billed even if the plain case_id is also present.
+  // billedIds kept for future billing-tab use (not used in monthly analytics view)
   const billedCaseIdSet = new Set(billedIds.map(String));
-  const caseIdsWithDateEntries = new Set(
-    billedIds.filter(id => String(id).includes(':')).map(id => String(id).split(':')[0])
-  );
   const extraSet = new Set(extraClients.map(c => c.trim().toLowerCase()));
   const vCutoff = new Date(vantageCutoff + 'T00:00:00');
   const isHistoricalMonth = timeRange === 'specificMonth' && !!startDateStr;
@@ -96,23 +91,13 @@ export function calculateDashboardAnalytics(
     if (!approvalStr) return [];
 
     const caseId = String(row.case_id);
-    let effectiveDate = new Date(approvalStr);
+    // effectiveDate = rms_posting_date month. That IS the billing period this row belongs to.
+    // No shifting — a May posting date stays in May, a June posting date stays in June.
+    const effectiveDate = new Date(approvalStr);
 
     if (clientName.toLowerCase() === 'vantage inc' && !isExtra && effectiveDate < vCutoff) return [];
 
     const isVantageFreePeriod = clientName.toLowerCase() === 'vantage inc' && effectiveDate < vCutoff;
-
-    // Row-level billed check: if this case_id has date-specific entries, only exact date matches are billed.
-    const dateKey = row.rms_posting_date ? `${caseId}:${row.rms_posting_date}` : null;
-    const isBilledByDate = !!dateKey && billedCaseIdSet.has(dateKey);
-    const isBilledByCase = billedCaseIdSet.has(caseId) && !caseIdsWithDateEntries.has(caseId);
-    const isRowBilled = isBilledByDate || isBilledByCase;
-
-    if (!isHistoricalMonth && !isRowBilled && !isVantageFreePeriod) {
-      if (effectiveDate.getMonth() !== currentMonth || effectiveDate.getFullYear() !== currentYear) {
-        effectiveDate = new Date();
-      }
-    }
 
     const amount = row.reimbursement_amount ?? 0;
     const rate = info?.rate ?? DEFAULT_RATE;
@@ -273,10 +258,7 @@ export function calculateDashboardAnalytics(
     const rate = info?.rate ?? DEFAULT_RATE;
     const isVantageChartFree = clientName.toLowerCase() === 'vantage inc' && approvalDate < vCutoff;
     const fee = isVantageChartFree ? 0 : amount * rate;
-    const chartDateKey = row.rms_posting_date ? `${caseId}:${row.rms_posting_date}` : null;
-    const chartRowBilled = (!!chartDateKey && billedCaseIdSet.has(chartDateKey)) ||
-      (billedCaseIdSet.has(caseId) && !caseIdsWithDateEntries.has(caseId));
-    const includeInCurrent = isHistoricalMonth ? true : !chartRowBilled;
+    const includeInCurrent = true; // date already determines the month, no billed-filtering needed
     if (aMonth === curChartMonth && aYear === curChartYear && includeInCurrent && dayIdx < maxChartDays) chartCurrent[dayIdx] += fee;
     if (aMonth === prevChartMonth && aYear === prevChartYear && dayIdx < maxChartDays) chartPrevious[dayIdx] += fee;
     extraPrevMonthsRaw.forEach(ep => {
