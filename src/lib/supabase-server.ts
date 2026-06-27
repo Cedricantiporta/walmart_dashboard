@@ -20,7 +20,7 @@ export async function fetchAllRows<T>(
   const results: T[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await db.from(table).select(select).range(from, from + PAGE - 1);
+    const { data, error } = await db.from(table).select(select).order('id', { ascending: true }).range(from, from + PAGE - 1);
     if (error || !data || data.length === 0) break;
     results.push(...(data as T[]));
     if (data.length < PAGE) break;
