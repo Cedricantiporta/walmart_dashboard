@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
+import { downloadInvoicePDF } from '@/lib/invoice-pdf';
 
 const fmtUSD = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
@@ -98,7 +99,16 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
 
   const hasSnapshot = (inv.case_snapshot?.length ?? 0) > 0;
   const activeCases: CaseRow[] = hasSnapshot
-    ? inv.case_snapshot.map(c => ({ case_id: c.case_id, claim_type: c.claim_type, rms_posting_date: c.rms_posting_date, reimbursement_amount: c.reimbursement_amount }))
+    ? inv.case_snapshot.map(c => ({
+        case_id: c.case_id,
+        claim_type: c.claim_type,
+        rms_posting_date: c.rms_posting_date,
+        reimbursement_amount: c.reimbursement_amount,
+        gtin: c.gtin,
+        sku_id: c.sku_id,
+        unit_amount: c.unit_amount,
+        reimbursed_qty: c.reimbursed_qty,
+      }))
     : (fetchedCases ?? []);
 
   function handleToggle() {
@@ -116,91 +126,18 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
     onDelete(inv.invoice_number);
   }
 
-  async function printInvoice() {
+  async function downloadPDF() {
     const cases = activeCases.length > 0 ? activeCases : await fetchCasesByIds(inv.case_ids ?? []);
-    const w = window.open('', '_blank', 'width=820,height=1060');
-    if (!w) return;
-    const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
-    const billedDateStr = inv.billed_date?.slice(0, 10) ?? isoToday();
-    const dueDate = (() => {
-      const d = new Date(billedDateStr + 'T12:00:00'); d.setDate(d.getDate() + 7);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    })();
-    const tableRows = cases.length > 0
-      ? cases.map(c => `<tr>
-          <td style="font-family:monospace;">${c.case_id}</td>
-          <td>${c.claim_type || 'N/A'}</td>
-          <td>${c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : ''}</td>
-          <td class="num" style="font-weight:600;color:#2563eb;">${fmtUSD(c.reimbursement_amount)}</td>
-          <td class="num" style="color:#6b7280;">${fmtPctNum(rate)}</td>
-          <td class="num" style="font-weight:700;">${fmtUSD(c.reimbursement_amount * rate)}</td>
-        </tr>`).join('')
-      : (inv.case_ids ?? []).map(id => `<tr>
-          <td style="font-family:monospace;">${id}</td>
-          <td colspan="2" style="color:#6b7280;">—</td>
-          <td class="num" style="color:#6b7280;">—</td>
-          <td class="num" style="color:#6b7280;">${fmtPctNum(rate)}</td>
-          <td class="num" style="color:#6b7280;">—</td>
-        </tr>`).join('');
-    w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number}</title><style>
-      *{margin:0;padding:0;box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
-      body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111827;padding:48px;}
-      table{width:100%;border-collapse:collapse;}
-      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
-         color:#fff !important;background:#111827 !important;padding:10px 8px;}
-      td{padding:9px 8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
-      .num{text-align:right;}
-      .amount-due{background:#f3f4f6 !important;}
-      @page{margin:0;}
-      @media print{body{padding:32px 48px;}}
-    </style></head><body>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;">
-        <div>
-          <div style="font-size:15px;font-weight:800;color:#111827;margin-bottom:6px;">Threecolts</div>
-          <div style="font-size:11px;color:#6b7280;line-height:1.7;">16192 Coastal Highway<br/>Lewes, Delaware 19958<br/>United States<br/>support@threecolts.com</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:28px;font-weight:900;color:#111827;letter-spacing:-0.02em;margin-bottom:10px;">INVOICE</div>
-          <div style="font-size:12px;color:#6b7280;line-height:2;">
-            <div><strong style="color:#374151;">Invoice #:</strong> ${inv.invoice_number}</div>
-            <div><strong style="color:#374151;">Date:</strong> ${fmtDate(billedDateStr)}</div>
-            <div><strong style="color:#374151;">Due Date:</strong> ${dueDate}</div>
-          </div>
-        </div>
-      </div>
-      <div style="margin-bottom:28px;">
-        <div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Bill To</div>
-        <div style="height:1px;background:#e5e7eb;margin-bottom:12px;"></div>
-        <div style="font-size:13px;font-weight:700;color:#111827;">${inv.client_name}</div>
-      </div>
-      <table>
-        <thead><tr>
-          <th>Case ID</th><th>Description</th><th>Approval Date</th>
-          <th class="num">Recovered</th><th class="num">Fee Rate</th><th class="num">Fee Amount</th>
-        </tr></thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-      <div style="display:flex;justify-content:flex-end;margin-top:24px;">
-        <div style="width:260px;">
-          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f3f4f6;">
-            <span style="font-size:12px;color:#374151;">Total Recovered:</span>
-            <span style="font-size:12px;font-weight:600;">${fmtUSD(inv.total_reimbursed)}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f3f4f6;">
-            <span style="font-size:12px;color:#374151;">Subtotal:</span>
-            <span style="font-size:12px;font-weight:600;">${fmtUSD(inv.billed_fee)}</span>
-          </div>
-          <div class="amount-due" style="display:flex;justify-content:space-between;padding:12px 10px;margin-top:4px;border-radius:4px;">
-            <span style="font-size:13px;font-weight:700;">Amount Due (USD):</span>
-            <span style="font-size:14px;font-weight:800;">${fmtUSD(inv.billed_fee)}</span>
-          </div>
-        </div>
-      </div>
-    </body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
+    await downloadInvoicePDF({
+      invoice_number: inv.invoice_number,
+      client_name: inv.client_name,
+      billed_date: inv.billed_date?.slice(0, 10) ?? isoToday(),
+      billed_fee: inv.billed_fee,
+      total_reimbursed: inv.total_reimbursed,
+      case_ids: inv.case_ids,
+    }, cases);
   }
+
 
   const snapCount = inv.case_snapshot?.length || inv.case_ids?.length || 0;
 
@@ -216,8 +153,8 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
           <button onClick={handleToggle} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #e5e7eb', borderRadius: 6, background: open ? '#f9fafb' : '#fff', cursor: 'pointer', color: '#374151' }}>
             {snapCount} case{snapCount !== 1 ? 's' : ''}
           </button>
-          <button onClick={async () => { const cases = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, cases); }} title="Download CSV" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 12, fontWeight: 600, color: '#374151' }}>↓</button>
-          <button onClick={printInvoice} title="Print PDF" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 13 }}>🖨</button>
+          <button onClick={async () => { const cases = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, cases); }} title="Download CSV" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 12, fontWeight: 600, color: '#374151' }}>↓ CSV</button>
+          <button onClick={downloadPDF} title="Download PDF" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 11, fontWeight: 600, color: '#374151' }}>↓ PDF</button>
           <button onClick={deleteInvoice} disabled={deleting} title="Delete" style={{ border: '1px solid #fca5a5', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 13, color: '#dc2626' }}>✕</button>
         </div>
       </div>
@@ -229,8 +166,8 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
           ) : activeCases.length > 0 ? (
             <>
               <div style={{ overflowX: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '110px 110px 110px 90px 110px 85px 55px 50px 95px 85px', gap: 6, padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.04em', minWidth: 900 }}>
-                  <span>Case ID</span><span>GTIN</span><span>SKU ID</span><span>Type</span><span>Posting Date</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.04em', minWidth: 860 }}>
+                  <span>Case ID</span><span>Posting Date</span><span>Type</span><span>GTIN</span><span>SKU ID</span>
                   <span style={{ textAlign: 'right' }}>Unit Amt</span><span style={{ textAlign: 'right' }}>Rate</span><span style={{ textAlign: 'right' }}>Qty</span>
                   <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
                 </div>
@@ -239,12 +176,12 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
                   const unitAmt = c.unit_amount ?? c.reimbursement_amount;
                   const qty = c.reimbursed_qty ?? 1;
                   return (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 110px 110px 90px 110px 85px 55px 50px 95px 85px', gap: 6, padding: '7px 16px 7px 32px', borderTop: '1px solid #f3f4f6', fontSize: 11, minWidth: 900 }}>
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '7px 16px 7px 32px', borderTop: '1px solid #f3f4f6', fontSize: 11, minWidth: 860 }}>
                       <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_id}</span>
+                      <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
+                      <span style={{ color: '#374151' }}>{c.claim_type || '—'}</span>
                       <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.gtin || '—'}</span>
                       <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.sku_id || '—'}</span>
-                      <span style={{ color: '#374151' }}>{c.claim_type || '—'}</span>
-                      <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
                       <span style={{ fontWeight: 600, color: '#374151', textAlign: 'right' }}>{fmtUSD(unitAmt)}</span>
                       <span style={{ color: '#6b7280', textAlign: 'right' }}>{fmtPctNum(rate)}</span>
                       <span style={{ color: '#374151', textAlign: 'right' }}>{qty}</span>

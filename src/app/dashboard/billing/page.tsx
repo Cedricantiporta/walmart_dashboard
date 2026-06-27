@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
+import { downloadInvoicePDF } from '@/lib/invoice-pdf';
 
 // ── formatters ────────────────────────────────────────────────────────────────
 
@@ -142,7 +143,6 @@ function InvoiceModal({
   const [err, setErr] = useState('');
   const [invNum, setInvNum] = useState(invoiceNumber);
   const [billedDate, setBilledDate] = useState(isoToday());
-  const printRef = useRef<HTMLDivElement>(null);
 
   const dueDate = (() => {
     const d = new Date(billedDate + 'T12:00:00');
@@ -182,30 +182,24 @@ function InvoiceModal({
     onSaved(data.invoice ?? inv);
   }
 
-  function printInvoice() {
-    const el = printRef.current;
-    if (!el) return;
-    const w = window.open('', '_blank', 'width=820,height=1060');
-    if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${invNum}</title><style>
-      *{margin:0;padding:0;box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
-      body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#111827;padding:48px;}
-      table{width:100%;border-collapse:collapse;}
-      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
-         color:#fff !important;background:#111827 !important;padding:10px 8px;}
-      td{padding:9px 8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
-      .num{text-align:right;}
-      .sum-label{font-size:11px;color:#374151;}
-      .sum-val{font-size:11px;font-weight:600;text-align:right;}
-      .amt-due{background:#f3f4f6 !important;font-weight:700;font-size:13px;}
-      @page{margin:0;}
-      @media print{body{padding:32px 48px;}}
-    </style></head><body>`);
-    w.document.write(el.innerHTML);
-    w.document.write('</body></html>');
-    w.document.close();
-    w.focus();
-    w.print();
+  async function handleDownloadPDF() {
+    await downloadInvoicePDF(
+      {
+        invoice_number: invNum,
+        client_name: client.clientName,
+        client_address: billingContact?.address ?? null,
+        billed_date: billedDate,
+        billed_fee: client.totalFee,
+        total_reimbursed: client.totalAmount,
+        case_ids: [...new Set(client.cases.map(c => c.caseId))],
+      },
+      client.cases.map(c => ({
+        case_id: c.caseId,
+        claim_type: c.claimType,
+        rms_posting_date: c.postingDate,
+        reimbursement_amount: c.amount,
+      }))
+    );
   }
 
   return (
@@ -232,8 +226,8 @@ function InvoiceModal({
             <button onClick={() => downloadClientCSV(client, invNum)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
               ↓ CSV
             </button>
-            <button onClick={printInvoice} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
-              🖨 Print PDF
+            <button onClick={handleDownloadPDF} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
+              ↓ Download PDF
             </button>
             <button onClick={saveInvoice} disabled={saving} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: 'none', borderRadius: 8, background: saving ? '#93c5fd' : '#2563eb', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>
               {saving ? 'Saving…' : '✓ Save Invoice'}
@@ -247,7 +241,7 @@ function InvoiceModal({
 
         {/* Invoice preview (scrollable) */}
         <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-          <div ref={printRef} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e5e7eb', padding: 36 }}>
+          <div style={{ background: '#fff', borderRadius: 8, border: '1px solid #e5e7eb', padding: 36 }}>
 
             {/* Header: sender left, INVOICE right */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>

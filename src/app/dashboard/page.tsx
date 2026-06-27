@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { DashboardAnalytics, Invoice, BillingInsights, MonthlyHistory } from '@/types';
+import { clientGet, clientSet } from '@/lib/client-cache';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -224,23 +225,36 @@ export default function DashboardPage() {
 
   const timeOptions = getTimeOptions();
 
-  // Fetch initial payload once
+  // Fetch initial payload once (client-cached for instant tab re-visits)
   useEffect(() => {
-    fetch('/api/initial-payload')
-      .then(r => r.json())
-      .then(d => {
-        setClientList(d.clientList ?? []);
-        setHistory(d.history ?? []);
-        setBillingInsights(d.billingInsights ?? null);
-        setLastSync(d.lastSyncTime ?? '');
-        setRmsCasesCount(d.rmsCasesCount ?? 0);
-        if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
-        setLoadingInit(false);
-      })
-      .catch(e => {
-        setError(e.message);
-        setLoadingInit(false);
-      });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cached = clientGet<any>('initial-payload');
+    if (cached) {
+      setClientList(cached.clientList ?? []);
+      setHistory(cached.history ?? []);
+      setBillingInsights(cached.billingInsights ?? null);
+      setLastSync(cached.lastSyncTime ?? '');
+      setRmsCasesCount(cached.rmsCasesCount ?? 0);
+      if (cached.dashboardAnalytics) setAnalytics(cached.dashboardAnalytics);
+      setLoadingInit(false);
+    } else {
+      fetch('/api/initial-payload')
+        .then(r => r.json())
+        .then(d => {
+          clientSet('initial-payload', d);
+          setClientList(d.clientList ?? []);
+          setHistory(d.history ?? []);
+          setBillingInsights(d.billingInsights ?? null);
+          setLastSync(d.lastSyncTime ?? '');
+          setRmsCasesCount(d.rmsCasesCount ?? 0);
+          if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
+          setLoadingInit(false);
+        })
+        .catch(e => {
+          setError(e.message);
+          setLoadingInit(false);
+        });
+    }
 
     // Background fetch: monthly history from pre-computed table + current month live
     fetch('/api/summary')
