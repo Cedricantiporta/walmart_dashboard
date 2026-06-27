@@ -284,109 +284,6 @@ function InvoiceModal({
   );
 }
 
-// ── invoice history row ───────────────────────────────────────────────────────
-
-function InvoiceHistoryRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  async function deleteInvoice() {
-    if (!confirm(`Delete invoice ${inv.invoice_number}?`)) return;
-    setDeleting(true);
-    await fetch(`/api/invoices/${inv.invoice_number}`, { method: 'DELETE' });
-    onDelete(inv.invoice_number);
-  }
-
-  function printInvoice() {
-    const w = window.open('', '_blank', 'width=800,height=1000');
-    if (!w) return;
-    const snap = inv.case_snapshot ?? [];
-    const rate = snap.length > 0 ? (inv.billed_fee / inv.total_reimbursed) : 0;
-    w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number}</title><style>
-      *{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Helvetica Neue',sans-serif;font-size:13px;color:#111;}
-      table{width:100%;border-collapse:collapse;}th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:0 8px 8px;border-bottom:2px solid #e5e7eb;}
-      td{padding:8px;font-size:12px;border-bottom:1px solid #f3f4f6;}.num{text-align:right;}
-      @media print{body{padding:24px;}}
-    </style></head><body><div style="max-width:720px;margin:40px auto;padding:0 24px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:32px;">
-        <div><div style="font-size:22px;font-weight:800;color:#2563eb;">WFS Analytics</div><div style="font-size:11px;color:#888;">Walmart Fulfillment Services Billing</div></div>
-        <div style="text-align:right;font-size:12px;color:#666;line-height:1.9;">
-          <div style="font-size:18px;font-weight:800;color:#111;">INVOICE</div>
-          <div><strong>Invoice #:</strong> ${inv.invoice_number}</div>
-          <div><strong>Date:</strong> ${fmtDate(inv.billed_date.slice(0,10))}</div>
-        </div>
-      </div>
-      <div style="margin-bottom:28px;">
-        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Bill To</div>
-        <div style="font-size:16px;font-weight:700;">${inv.client_name}</div>
-        ${rate ? `<div style="font-size:12px;color:#888;margin-top:2px;">Fee Rate: ${fmtPct(rate)}</div>` : ''}
-      </div>
-      <table>
-        <thead><tr>
-          <th>Case ID</th><th>Claim Type</th><th>RMS Posting Date</th>
-          <th class="num" style="text-align:right;">Recovered</th><th class="num" style="text-align:right;">Fee</th>
-        </tr></thead>
-        <tbody>
-          ${snap.map(c => `<tr>
-            <td style="font-family:monospace;">${c.case_id}</td>
-            <td>${c.claim_type}</td>
-            <td>${fmtDate(c.rms_posting_date?.slice(0,10) ?? '')}</td>
-            <td style="text-align:right;font-weight:600;color:#2563eb;">${fmtUSD(c.reimbursement_amount)}</td>
-            <td style="text-align:right;font-weight:700;">${fmtUSD(c.reimbursement_amount * rate)}</td>
-          </tr>`).join('')}
-        </tbody>
-        <tfoot>
-          <tr style="background:#f9fafb;">
-            <td colspan="3" style="padding:12px 8px;font-weight:700;">Total</td>
-            <td style="padding:12px 8px;text-align:right;font-weight:700;color:#2563eb;">${fmtUSD(inv.total_reimbursed)}</td>
-            <td style="padding:12px 8px;text-align:right;font-weight:800;">${fmtUSD(inv.billed_fee)}</td>
-          </tr>
-        </tfoot>
-      </table>
-      <div style="margin-top:36px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#aaa;text-align:right;">
-        WFS Analytics Dashboard · Generated ${fmtDate(isoToday())}
-      </div>
-    </div></body></html>`);
-    w.document.close(); w.focus(); w.print();
-  }
-
-  const snapCount = inv.case_snapshot?.length ?? inv.case_ids?.length ?? 0;
-
-  return (
-    <div style={{ borderBottom: '1px solid #f3f4f6' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 120px 110px 110px 80px', gap: 8, padding: '11px 16px', alignItems: 'center' }}>
-        <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700, color: '#2563eb' }}>{inv.invoice_number}</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
-        <span style={{ fontSize: 12, color: '#6b7280' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(inv.total_reimbursed)}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(inv.billed_fee)}</span>
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
-          <button onClick={() => setOpen(o => !o)} style={{ fontSize: 11, padding: '3px 7px', border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', color: '#374151' }}>
-            {snapCount} case{snapCount !== 1 ? 's' : ''}
-          </button>
-          <button onClick={printInvoice} title="Print PDF" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '3px 7px', fontSize: 12 }}>🖨</button>
-          <button onClick={deleteInvoice} disabled={deleting} title="Delete" style={{ border: '1px solid #fca5a5', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '3px 7px', fontSize: 12, color: '#dc2626' }}>✕</button>
-        </div>
-      </div>
-      {open && inv.case_snapshot && inv.case_snapshot.length > 0 && (
-        <div style={{ background: '#f9fafb', borderTop: '1px solid #f3f4f6', padding: '4px 16px 8px 32px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 120px 110px', gap: 8, padding: '6px 0 4px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-            <span>Case ID</span><span>Type</span><span>Date</span><span style={{ textAlign: 'right' }}>Recovered</span>
-          </div>
-          {inv.case_snapshot.map((c, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 120px 110px', gap: 8, padding: '6px 0', borderTop: '1px solid #f3f4f6', fontSize: 12 }}>
-              <span style={{ fontFamily: 'monospace', color: '#374151' }}>{c.case_id}</span>
-              <span style={{ color: '#374151' }}>{c.claim_type}</span>
-              <span style={{ color: '#374151' }}>{fmtDate(c.rms_posting_date?.slice(0,10) ?? '')}</span>
-              <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── client RTB row ────────────────────────────────────────────────────────────
 
 function ClientRow({ client, onGenerateInvoice }: { client: ClientBilling; onGenerateInvoice: (c: ClientBilling) => void }) {
@@ -442,14 +339,11 @@ function ClientRow({ client, onGenerateInvoice }: { client: ClientBilling; onGen
 
 export default function BillingPage() {
   const [data, setData] = useState<BillingData | null>(null);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [invLoading, setInvLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [invSearch, setInvSearch] = useState('');
   const [activeClient, setActiveClient] = useState<ClientBilling | null>(null);
-  const [nextNum, setNextNum] = useState('INV-1001');
+  const [nextNum, setNextNum] = useState('NV-1001');
 
   useEffect(() => {
     fetch('/api/billing')
@@ -457,28 +351,15 @@ export default function BillingPage() {
       .then(d => { setData(d); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
 
-    fetch('/api/invoices')
-      .then(r => r.json())
-      .then(d => { setInvoices(Array.isArray(d) ? d : []); setInvLoading(false); })
-      .catch(() => setInvLoading(false));
-
     fetch('/api/invoices/next-number')
       .then(r => r.json())
-      .then(d => setNextNum(d.nextNumber ?? 'INV-1001'));
+      .then(d => setNextNum(d.nextNumber ?? 'NV-1001'));
   }, []);
 
-  function handleGenerateInvoice(client: ClientBilling) {
-    setActiveClient(client);
-  }
-
   function handleInvoiceSaved(inv: Invoice) {
-    // Bump next number
     const parts = nextNum.split('-');
     const n = parseInt(parts[1] ?? '1000');
     setNextNum(`${parts[0]}-${n + 1}`);
-    // Add to history
-    setInvoices(prev => [inv, ...prev]);
-    // Remove client from RTB list
     if (data) {
       setData({ ...data, clients: data.clients.filter(c => c.clientName !== inv.client_name) });
     }
@@ -487,10 +368,6 @@ export default function BillingPage() {
 
   const filtered = (data?.clients ?? []).filter(c =>
     !search || c.clientName.toLowerCase().includes(search.toLowerCase())
-  );
-  const filteredInv = invoices.filter(inv =>
-    !invSearch || inv.client_name?.toLowerCase().includes(invSearch.toLowerCase()) ||
-    inv.invoice_number?.toLowerCase().includes(invSearch.toLowerCase())
   );
 
   const currentMonthLabel = data?.currentMonthStart
@@ -553,7 +430,7 @@ export default function BillingPage() {
         </div>
 
         {/* RTB Client table */}
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', marginBottom: 32 }}>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '16px 16px 0', borderBottom: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
@@ -580,7 +457,7 @@ export default function BillingPage() {
               {search ? 'No clients match.' : 'No clients ready to bill.'}
             </div>
           ) : (
-            filtered.map(c => <ClientRow key={c.clientName} client={c} onGenerateInvoice={handleGenerateInvoice} />)
+            filtered.map(c => <ClientRow key={c.clientName} client={c} onGenerateInvoice={c => setActiveClient(c)} />)
           )}
 
           {!loading && filtered.length > 0 && (
@@ -592,43 +469,6 @@ export default function BillingPage() {
               <span style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
               <span />
             </div>
-          )}
-        </div>
-
-        {/* Invoice History */}
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 16px 0', borderBottom: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
-                Invoice History {!invLoading && <span style={{ color: '#6b7280', fontWeight: 500 }}>({invoices.length})</span>}
-              </h3>
-              <input placeholder="Search invoice or client…" value={invSearch} onChange={e => setInvSearch(e.target.value)}
-                style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, width: 220, color: '#374151' }} />
-            </div>
-            {!invLoading && filteredInv.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 120px 110px 110px 80px', gap: 8, padding: '0 0 10px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                <span>Invoice #</span><span>Client</span><span>Date</span>
-                <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span><span />
-              </div>
-            )}
-          </div>
-
-          {invLoading ? (
-            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1,2,3].map(i => <Sk key={i} h={44} />)}
-            </div>
-          ) : filteredInv.length === 0 ? (
-            <div style={{ padding: '40px 16px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-              {invSearch ? 'No invoices match.' : 'No invoices yet.'}
-            </div>
-          ) : (
-            filteredInv.map(inv => (
-              <InvoiceHistoryRow
-                key={inv.invoice_number}
-                inv={inv}
-                onDelete={num => setInvoices(prev => prev.filter(i => i.invoice_number !== num))}
-              />
-            ))
           )}
         </div>
 
