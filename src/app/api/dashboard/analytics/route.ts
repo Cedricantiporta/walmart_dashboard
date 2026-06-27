@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerClient, fetchAllRows } from '@/lib/supabase-server';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
 import { DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
 import { RmsCase, ClientInfo } from '@/types';
@@ -17,22 +17,20 @@ export async function GET(req: NextRequest) {
   const db = createServerClient();
 
   const [
-    { data: rmsCases },
+    allData,
     { data: clientsRaw },
     { data: config },
     { data: invoicesRaw },
     { data: hardcodedRaw },
     { data: excludedRaw },
   ] = await Promise.all([
-    db.from('rms_cases').select('*').range(0, 19999),
+    fetchAllRows<RmsCase>(db, 'rms_cases'),
     db.from('clients').select('*'),
     db.from('app_config').select('*'),
     db.from('invoices').select('case_ids'),
     db.from('hardcoded_billed_cases').select('case_id'),
     db.from('excluded_clients').select('client_name'),
   ]);
-
-  const allData: RmsCase[] = rmsCases ?? [];
 
   const onboardingInfo: Record<string, ClientInfo> = {};
   (clientsRaw ?? []).forEach((c: ClientInfo) => { onboardingInfo[c.client_name] = c; });

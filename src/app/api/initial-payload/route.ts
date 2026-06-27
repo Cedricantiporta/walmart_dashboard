@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerClient, fetchAllRows } from '@/lib/supabase-server';
 import { getBillingSummary, getBillingInsights } from '@/lib/billing';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
 import { VALID_TIME_RANGES, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
@@ -11,7 +11,7 @@ export async function GET() {
   const db = createServerClient();
 
   const [
-    { data: rmsCases },
+    allData,
     { data: clientsRaw },
     { data: billingContactsRaw },
     { data: invoicesRaw },
@@ -19,7 +19,7 @@ export async function GET() {
     { data: hardcodedBilledRaw },
     { data: excludedClientsRaw },
   ] = await Promise.all([
-    db.from('rms_cases').select('*').range(0, 19999),
+    fetchAllRows<RmsCase>(db, 'rms_cases'),
     db.from('clients').select('*'),
     db.from('billing_contacts').select('*'),
     db.from('invoices').select('*').order('invoice_number', { ascending: false }),
@@ -27,8 +27,6 @@ export async function GET() {
     db.from('hardcoded_billed_cases').select('case_id'),
     db.from('excluded_clients').select('client_name'),
   ]);
-
-  const allData: RmsCase[] = rmsCases ?? [];
 
   const onboardingInfo: Record<string, ClientInfo> = {};
   (clientsRaw ?? []).forEach((c: ClientInfo) => { onboardingInfo[c.client_name] = c; });
