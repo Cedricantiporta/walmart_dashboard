@@ -369,23 +369,25 @@ function CaseSidebar({ client, onClose }: {
         </div>
         <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af', lineHeight: 1, flexShrink: 0 }}>×</button>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px 6px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
-          <span>Case ID</span><span>Type</span><span>Posting</span><span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
-        </div>
-        {client.cases.map((c, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px', borderBottom: '1px solid #f3f4f6', background: !c.isCurrentMonth ? '#fffbeb' : '#fff', fontSize: 11 }}>
-            <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
-            <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
-            <span style={{ color: '#6b7280' }}>{fmtDate(c.postingDate)}</span>
-            <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
-            <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ minWidth: 420 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px 6px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+            <span>Case ID</span><span>Type</span><span>Posting</span><span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
           </div>
-        ))}
-        <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
-          <span style={{ fontSize: 11, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</span>
+          {client.cases.map((c, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '8px 12px', borderBottom: '1px solid #f3f4f6', background: !c.isCurrentMonth ? '#fffbeb' : '#fff', fontSize: 11 }}>
+              <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+              <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+              <span style={{ color: '#6b7280' }}>{fmtDate(c.postingDate)}</span>
+              <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
+              <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
+            </div>
+          ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 95px 80px 75px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</span>
+          </div>
         </div>
       </div>
     </>
@@ -518,7 +520,7 @@ export default function BillingPage() {
           </div>
 
           {selectedClient && (
-            <div style={{ width: 380, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: 440, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <CaseSidebar
                 client={selectedClient}
                 onClose={() => setSelectedClient(null)}

@@ -5,7 +5,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
       <Sidebar />
-      <main style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>{children}</main>
+      <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>{children}</main>
       <PreloadTabs />
     </div>
   );
