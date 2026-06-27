@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, fetchAllRows } from '@/lib/supabase-server';
+import { createServerClient, fetchAllRows, fetchRowsFrom } from '@/lib/supabase-server';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
 import { DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
 import { RmsCase, ClientInfo } from '@/types';
@@ -16,6 +16,10 @@ export async function GET(req: NextRequest) {
 
   const db = createServerClient();
 
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const useFilter = timeRange === 'thisMonth';
+
   const [
     allData,
     { data: clientsRaw },
@@ -24,7 +28,9 @@ export async function GET(req: NextRequest) {
     { data: hardcodedRaw },
     { data: excludedRaw },
   ] = await Promise.all([
-    fetchAllRows<RmsCase>(db, 'rms_cases'),
+    useFilter
+      ? fetchRowsFrom<RmsCase>(db, 'rms_cases', currentMonthStart)
+      : fetchAllRows<RmsCase>(db, 'rms_cases'),
     db.from('clients').select('*'),
     db.from('app_config').select('*'),
     db.from('invoices').select('case_ids'),

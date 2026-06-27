@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, fetchAllRows } from '@/lib/supabase-server';
+import { createServerClient, fetchRowsFrom } from '@/lib/supabase-server';
 import { getBillingSummary, getBillingInsights } from '@/lib/billing';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
 import { VALID_TIME_RANGES, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
@@ -10,6 +10,9 @@ export const revalidate = 0;
 export async function GET() {
   const db = createServerClient();
 
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+
   const [
     allData,
     { data: clientsRaw },
@@ -18,14 +21,16 @@ export async function GET() {
     { data: config },
     { data: hardcodedBilledRaw },
     { data: excludedClientsRaw },
+    { count: totalRmsCount },
   ] = await Promise.all([
-    fetchAllRows<RmsCase>(db, 'rms_cases'),
+    fetchRowsFrom<RmsCase>(db, 'rms_cases', currentMonthStart),
     db.from('clients').select('*'),
     db.from('billing_contacts').select('*'),
     db.from('invoices').select('*').order('invoice_number', { ascending: false }),
     db.from('app_config').select('*'),
     db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('excluded_clients').select('client_name'),
+    db.from('rms_cases').select('id', { count: 'exact', head: true }),
   ]);
 
   const onboardingInfo: Record<string, ClientInfo> = {};
@@ -109,6 +114,6 @@ export async function GET() {
     hiddenClientList,
     lastSyncTime:     lastSync?.synced_at ?? new Date().toISOString(),
     vantageCutoff,
-    rmsCasesCount:    allData.length,
+    rmsCasesCount:    totalRmsCount ?? allData.length,
   });
 }

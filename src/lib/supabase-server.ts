@@ -28,3 +28,19 @@ export async function fetchAllRows<T>(
   }
   return results;
 }
+
+// Fast single-query fetch for rows where rms_posting_date >= fromDate.
+// Current month rows are always < 1000 so no pagination needed.
+export async function fetchRowsFrom<T>(
+  db: SupabaseClient,
+  table: string,
+  fromDate: string,
+  select = '*',
+): Promise<T[]> {
+  const { data } = await db
+    .from(table)
+    .select(select)
+    .gte('rms_posting_date', fromDate)
+    .order('id', { ascending: true });
+  return (data ?? []) as T[];
+}
