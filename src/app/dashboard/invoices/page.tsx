@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table } from '@heroui/react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
@@ -146,62 +145,58 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
 
   const snapCount = inv.case_snapshot?.length || inv.case_ids?.length || 0;
 
+  const G = '110px minmax(0,1fr) 70px 130px 120px 120px 150px';
+
   return (
     <>
-      <Table.Row key={inv.invoice_number} id={inv.invoice_number} onClick={handleToggle} style={{ cursor: 'pointer', background: open ? '#fafafa' : undefined }}>
-        <Table.Cell><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#006FEE', fontSize: 12 }}>{inv.invoice_number}</span></Table.Cell>
-        <Table.Cell>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c' }}>{inv.client_name}</span>
-        </Table.Cell>
-        <Table.Cell><span style={{ display: 'block', textAlign: 'right', fontSize: 12, color: '#71717a' }}>{snapCount}</span></Table.Cell>
-        <Table.Cell><span style={{ fontSize: 12, color: '#71717a' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span></Table.Cell>
-        <Table.Cell><span style={{ display: 'block', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span></Table.Cell>
-        <Table.Cell><span style={{ display: 'block', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span></Table.Cell>
-        <Table.Cell>
-          <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-            <button onClick={async e => { e.stopPropagation(); const cases = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, cases); }} style={pillAction()}>CSV</button>
-            <button onClick={async e => { e.stopPropagation(); await downloadPDF(); }} style={pillAction()}>PDF</button>
-            <button onClick={async e => { e.stopPropagation(); await deleteInvoice(); }} disabled={deleting} style={pillAction(true)}>Delete</button>
-          </div>
-        </Table.Cell>
-      </Table.Row>
+      <div onClick={handleToggle} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: '1px solid #f3f4f6', background: open ? '#fafafa' : '#fff', alignItems: 'center', minWidth: 700 }}>
+        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#006FEE', fontSize: 12 }}>{inv.invoice_number}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
+        <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{snapCount}</span>
+        <span style={{ fontSize: 12, color: '#71717a' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
+        <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
+        <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
+        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+          <button onClick={async e => { e.stopPropagation(); const cases = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, cases); }} style={pillAction()}>CSV</button>
+          <button onClick={async e => { e.stopPropagation(); await downloadPDF(); }} style={pillAction()}>PDF</button>
+          <button onClick={async e => { e.stopPropagation(); await deleteInvoice(); }} disabled={deleting} style={pillAction(true)}>Delete</button>
+        </div>
+      </div>
       {open && snapCount > 0 && (
-        <Table.Row id={`${inv.invoice_number}-detail`} style={{ background: '#fafafa' }}>
-          <Table.Cell colSpan={7}>
-            {fetchingCases ? (
-              <div style={{ padding: '12px 16px', fontSize: 12, color: '#a1a1aa' }}>Loading case data…</div>
-            ) : activeCases.length > 0 ? (
-              <div style={{ overflowX: 'auto', paddingLeft: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '8px 0 6px', fontSize: 10, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '.04em', minWidth: 860 }}>
-                  <span>Case ID</span><span>Posting Date</span><span>Type</span><span>GTIN</span><span>SKU ID</span>
-                  <span style={{ textAlign: 'right' }}>Unit Amt</span><span style={{ textAlign: 'right' }}>Rate</span><span style={{ textAlign: 'right' }}>Qty</span>
-                  <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
-                </div>
-                {activeCases.map((c, i) => {
-                  const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
-                  const unitAmt = c.unit_amount ?? c.reimbursement_amount;
-                  const qty = c.reimbursed_qty ?? 1;
-                  return (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '7px 0', borderTop: '1px solid #f3f4f6', fontSize: 11, minWidth: 860 }}>
-                      <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_id}</span>
-                      <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
-                      <span style={{ color: '#374151' }}>{c.claim_type || '—'}</span>
-                      <span style={{ color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.gtin || '—'}</span>
-                      <span style={{ color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.sku_id || '—'}</span>
-                      <span style={{ fontWeight: 600, color: '#374151', textAlign: 'right' }}>{fmtUSD(unitAmt)}</span>
-                      <span style={{ color: '#71717a', textAlign: 'right' }}>{fmtPctNum(rate)}</span>
-                      <span style={{ color: '#374151', textAlign: 'right' }}>{qty}</span>
-                      <span style={{ fontWeight: 600, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
-                      <span style={{ fontWeight: 700, color: '#11181c', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount * rate)}</span>
-                    </div>
-                  );
-                })}
+        <div style={{ borderBottom: '1px solid #f3f4f6', background: '#fafafa', paddingLeft: 16 }}>
+          {fetchingCases ? (
+            <div style={{ padding: '12px 16px', fontSize: 12, color: '#a1a1aa' }}>Loading case data…</div>
+          ) : activeCases.length > 0 ? (
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '8px 0 6px', fontSize: 10, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '.04em', minWidth: 860 }}>
+                <span>Case ID</span><span>Posting Date</span><span>Type</span><span>GTIN</span><span>SKU ID</span>
+                <span style={{ textAlign: 'right' }}>Unit Amt</span><span style={{ textAlign: 'right' }}>Rate</span><span style={{ textAlign: 'right' }}>Qty</span>
+                <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
               </div>
-            ) : (
-              <div style={{ padding: '8px 0', fontSize: 12, color: '#a1a1aa' }}>No case data found.</div>
-            )}
-          </Table.Cell>
-        </Table.Row>
+              {activeCases.map((c, i) => {
+                const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
+                const unitAmt = c.unit_amount ?? c.reimbursement_amount;
+                const qty = c.reimbursed_qty ?? 1;
+                return (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '7px 0', borderTop: '1px solid #f3f4f6', fontSize: 11, minWidth: 860 }}>
+                    <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_id}</span>
+                    <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
+                    <span style={{ color: '#374151' }}>{c.claim_type || '—'}</span>
+                    <span style={{ color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.gtin || '—'}</span>
+                    <span style={{ color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.sku_id || '—'}</span>
+                    <span style={{ fontWeight: 600, color: '#374151', textAlign: 'right' }}>{fmtUSD(unitAmt)}</span>
+                    <span style={{ color: '#71717a', textAlign: 'right' }}>{fmtPctNum(rate)}</span>
+                    <span style={{ color: '#374151', textAlign: 'right' }}>{qty}</span>
+                    <span style={{ fontWeight: 600, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+                    <span style={{ fontWeight: 700, color: '#11181c', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount * rate)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '8px 0', fontSize: 12, color: '#a1a1aa' }}>No case data found.</div>
+          )}
+        </div>
       )}
     </>
   );
@@ -252,7 +247,7 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}} button:hover{opacity:.88} input:focus{outline:none;box-shadow:0 0 0 2px rgba(0,111,238,0.2);} .invtable table th{height:46px!important;padding:0 16px!important;vertical-align:middle;} .invtable table td{padding:12px 16px!important;vertical-align:middle;}`}</style>
+      <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}} button:hover{opacity:.88} input:focus{outline:none;box-shadow:0 0 0 2px rgba(0,111,238,0.2);}`}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
@@ -283,74 +278,62 @@ export default function InvoicesPage() {
                   placeholder="Search invoice or client…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: 'none', borderRadius: 999, width: 230, color: '#11181c', outline: 'none', background: "#eaebec url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
+                  style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 230, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
                 />
               </div>
             </div>
           )}
 
-          <div style={{ flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', padding: '0 6px 6px', border: '1px solid #d4d4d8', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflow: 'hidden', background: '#fff', borderRadius: 10, display: 'flex', flexDirection: 'column' }}>
-            {loading ? (
-              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[1,2,3,4,5].map(i => <Sk key={i} h={52} />)}
-              </div>
-            ) : sorted.length === 0 ? (
-              <div style={{ padding: '48px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
-                {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
-              </div>
-            ) : (
-              <div className="invtable" style={{ flex: 1, overflow: 'auto' }}>
-                <Table variant="secondary" style={{ width: '100%' }}>
-                  <Table.ScrollContainer>
-                    <Table.Content aria-label="Invoice History">
-                      <Table.Header>
-                        <Table.Column isRowHeader>
-                          <ColHdr label="Invoice #" col="invoice" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Client" col="client" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Date" col="date" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                        </Table.Column>
-                        <Table.Column> </Table.Column>
-                      </Table.Header>
-                      <Table.Body>
-                        {sorted.map(inv => (
-                          <InvoiceRow
-                            key={inv.invoice_number}
-                            inv={inv}
-                            onDelete={num => setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; })}
-                          />
-                        ))}
-                      </Table.Body>
-                    </Table.Content>
-                  </Table.ScrollContainer>
-                  <Table.Footer>
-                    <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 60px 120px 120px 120px 120px', gap: 12, padding: '12px 16px', background: '#fafafa', borderRadius: 12, margin: '0 4px 4px', border: '1px solid #f0f0f0' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: '1/5' }}>
-                        {search ? `Filtered (${filtered.length})` : `Total (${invoices.length})`}
-                      </span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(totalRecovered)}</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#11181c', textAlign: 'right' }}>{fmtUSD(totalFee)}</span>
-                      <span />
+          <div style={{ flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', border: '1px solid #d4d4d8', display: 'flex', flexDirection: 'column' }}>
+
+            {/* Column headers — sit on grey layer */}
+            {!loading && sorted.length > 0 && (() => {
+              const G = '110px minmax(0,1fr) 70px 130px 120px 120px 150px';
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 700 }}>
+                  <ColHdr label="Invoice #" col="invoice" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                  <ColHdr label="Client" col="client" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                  <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Date" col="date" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                  <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <span />
+                </div>
+              );
+            })()}
+
+            {/* White body card */}
+            <div style={{ flex: 1, overflow: 'hidden', background: '#fff', borderRadius: 12, margin: '0 6px 6px', display: 'flex', flexDirection: 'column' }}>
+              {loading ? (
+                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
+                </div>
+              ) : sorted.length === 0 ? (
+                <div style={{ padding: '48px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
+                  {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
+                </div>
+              ) : (() => {
+                const G = '110px minmax(0,1fr) 70px 130px 120px 120px 150px';
+                return (
+                  <div style={{ flex: 1, overflow: 'auto' }}>
+                    <div style={{ minWidth: 700 }}>
+                      {sorted.map(inv => (
+                        <InvoiceRow key={inv.invoice_number} inv={inv} onDelete={num => setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; })} />
+                      ))}
+                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: '1/5' }}>
+                          {search ? `Filtered (${filtered.length})` : `Total (${invoices.length})`}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(totalRecovered)}</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#11181c', textAlign: 'right' }}>{fmtUSD(totalFee)}</span>
+                        <span />
+                      </div>
                     </div>
-                  </Table.Footer>
-                </Table>
-              </div>
-            )}
-          </div>{/* white inner */}
-          </div>{/* grey outer */}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         </div>
       </div>
     </>

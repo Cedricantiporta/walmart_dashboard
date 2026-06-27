@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table } from '@heroui/react';
 import type { MonthlyHistory } from '@/types';
 import { clientGet, clientSet } from '@/lib/client-cache';
 import { useSidebar } from '@/components/DashboardShell';
@@ -77,8 +76,6 @@ export default function SummaryPage() {
       <style>{`
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         button:hover { opacity: .88; }
-        .sumtable table th { height: 46px !important; padding: 0 16px !important; vertical-align: middle; }
-        .sumtable table td { padding: 12px 16px !important; vertical-align: middle; }
       `}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -108,68 +105,60 @@ export default function SummaryPage() {
 
         {/* Table */}
         <div style={{ flex: 1, overflow: 'hidden', padding: '12px 20px 16px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', padding: '0 6px 6px', border: '1px solid #d4d4d8', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflow: 'hidden', background: '#fff', borderRadius: 10, display: 'flex', flexDirection: 'column' }}>
-            {loading ? (
-              <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} h={16} />)}
-              </div>
-            ) : (
-              <div className="sumtable" style={{ flex: 1, overflow: 'auto' }}>
-                <Table variant="secondary" style={{ width: '100%' }}>
-                  <Table.ScrollContainer>
-                    <Table.Content aria-label="Monthly History">
-                      <Table.Header>
-                        <Table.Column isRowHeader>
-                          <ColHdr label="Month" col="label" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                        </Table.Column>
-                        <Table.Column>
-                          <ColHdr label="Growth" col="growth" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                        </Table.Column>
-                      </Table.Header>
-                      <Table.Body>
-                        {sorted.map((row, i) => (
-                          <Table.Row key={row.sort || String(i)} id={row.sort || String(i)}>
-                            <Table.Cell><span style={{ fontWeight: 600, color: '#11181c', fontSize: 13 }}>{row.label}</span></Table.Cell>
-                            <Table.Cell><span style={{ display: 'block', textAlign: 'right', fontWeight: 700, color: '#006FEE', fontSize: 13 }}>{fmtFull(row.recovered)}</span></Table.Cell>
-                            <Table.Cell><span style={{ display: 'block', textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmtFull(row.fee)}</span></Table.Cell>
-                            <Table.Cell><span style={{ display: 'block', textAlign: 'right', color: '#374151', fontSize: 13 }}>{row.approvedCount}</span></Table.Cell>
-                            <Table.Cell>
-                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 600, color: row.growth >= 0 ? '#17c964' : '#f31260', background: row.growth >= 0 ? '#f0fdf4' : '#fff0f3', borderRadius: 999, padding: '3px 8px' }}>
-                                  <span style={{ fontSize: 9 }}>{row.growth >= 0 ? '▲' : '▼'}</span>
-                                  {Math.abs(row.growth).toFixed(1)}%
-                                </span>
-                              </div>
-                            </Table.Cell>
-                          </Table.Row>
-                        ))}
-                      </Table.Body>
-                    </Table.Content>
-                  </Table.ScrollContainer>
-                  <Table.Footer>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 140px 80px 100px', gap: 8, padding: '12px 16px', background: '#fafafa', borderRadius: 12, margin: '0 4px 4px', border: '1px solid #f0f0f0' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>All-time total</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtFull(totalRecovered)}</span>
-                      <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{fmtFull(totalFee)}</span>
-                      <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{history.reduce((s,r)=>s+r.approvedCount,0)}</span>
-                      <span />
+          <div style={{ flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', border: '1px solid #d4d4d8', display: 'flex', flexDirection: 'column' }}>
+
+            {/* Column headers — sit on grey layer */}
+            {!loading && sorted.length > 0 && (() => {
+              const G = 'minmax(0,1fr) 150px 130px 80px 110px';
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 500 }}>
+                  <ColHdr label="Month" col="label" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                  <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Growth" col="growth" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                </div>
+              );
+            })()}
+
+            {/* White body card */}
+            <div style={{ flex: 1, overflow: 'hidden', background: '#fff', borderRadius: 12, margin: '0 6px 6px', display: 'flex', flexDirection: 'column' }}>
+              {loading ? (
+                <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} h={36} />)}
+                </div>
+              ) : (() => {
+                const G = 'minmax(0,1fr) 150px 130px 80px 110px';
+                return (
+                  <div style={{ flex: 1, overflow: 'auto' }}>
+                    <div style={{ minWidth: 500 }}>
+                      {sorted.map((row, idx) => (
+                        <div key={row.sort || String(idx)} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 600, color: '#11181c', fontSize: 13 }}>{row.label}</span>
+                          <span style={{ textAlign: 'right', fontWeight: 700, color: '#006FEE', fontSize: 13 }}>{fmtFull(row.recovered)}</span>
+                          <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmtFull(row.fee)}</span>
+                          <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{row.approvedCount}</span>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 600, color: row.growth >= 0 ? '#17c964' : '#f31260', background: row.growth >= 0 ? '#f0fdf4' : '#fff0f3', borderRadius: 999, padding: '3px 8px' }}>
+                              <span style={{ fontSize: 9 }}>{row.growth >= 0 ? '▲' : '▼'}</span>
+                              {Math.abs(row.growth).toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>All-time total</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtFull(totalRecovered)}</span>
+                        <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{fmtFull(totalFee)}</span>
+                        <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{history.reduce((s,r)=>s+r.approvedCount,0)}</span>
+                        <span />
+                      </div>
                     </div>
-                  </Table.Footer>
-                </Table>
-              </div>
-            )}
-          </div>{/* white inner */}
-          </div>{/* grey outer */}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         </div>
       </div>
     </>
