@@ -252,11 +252,12 @@ export default function DashboardPage() {
   const [history, setHistory] = useState<Invoice[]>([]);
   const [billingInsights, setBillingInsights] = useState<BillingInsights | null>(null);
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [precomputedMonthlyHistory, setPrecomputedMonthlyHistory] = useState<MonthlyHistory[]>([]);
+  const [fullMonthlyHistory, setFullMonthlyHistory] = useState<MonthlyHistory[]>([]);
   const [lastSync, setLastSync] = useState('');
   const [rmsCasesCount, setRmsCasesCount] = useState<number | null>(null);
   const [loadingInit, setLoadingInit] = useState(true);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState('');
 
   const timeOptions = getTimeOptions();
@@ -271,7 +272,6 @@ export default function DashboardPage() {
         setBillingInsights(d.billingInsights ?? null);
         setLastSync(d.lastSyncTime ?? '');
         setRmsCasesCount(d.rmsCasesCount ?? 0);
-        if (d.precomputedMonthlyHistory?.length) setPrecomputedMonthlyHistory(d.precomputedMonthlyHistory);
         if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
         setLoadingInit(false);
       })
@@ -279,6 +279,12 @@ export default function DashboardPage() {
         setError(e.message);
         setLoadingInit(false);
       });
+
+    // Background fetch: accurate full monthly history using all rows + correct business logic
+    fetch('/api/dashboard/analytics?timeRange=lifetime')
+      .then(r => r.json())
+      .then(d => { if (d.monthlyHistory?.length) setFullMonthlyHistory(d.monthlyHistory); setLoadingHistory(false); })
+      .catch(() => setLoadingHistory(false));
   }, []);
 
   // Fetch analytics whenever filters change (skip if still loading init)
@@ -302,11 +308,8 @@ export default function DashboardPage() {
 
   const loading = loadingInit || loadingAnalytics;
 
-  const { metrics, trends, monthlyHistory = [], categoryData = [] } = analytics ?? {};
+  const { metrics, trends, categoryData = [] } = analytics ?? {};
   const totalFeesBilled = analytics ? computeTotalFeesBilled(history, analytics.dateRange) : 0;
-
-  // Full monthly history: prefer pre-computed (all months, fast) over analytics subset
-  const fullMonthlyHistory = precomputedMonthlyHistory.length ? precomputedMonthlyHistory : monthlyHistory;
 
   const chartHistory = [...fullMonthlyHistory]
     .sort((a, b) => a.sort.localeCompare(b.sort))
@@ -433,7 +436,7 @@ export default function DashboardPage() {
               <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Monthly Recovery</h3>
               <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Last 8 months</span>
             </div>
-            {loading && !analytics ? (
+            {loadingHistory ? (
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', height: 150 }}>
                 {[60,80,45,100,70,90,55,85].map((h, i) => (
                   <Skeleton key={i} h={h} w={36} radius={6} />
@@ -460,7 +463,7 @@ export default function DashboardPage() {
         {/* Monthly history table */}
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px' }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 18 }}>Monthly History</h3>
-          {loading && !analytics ? (
+          {loadingHistory ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[1,2,3,4,5].map(i => <Skeleton key={i} h={16} />)}
             </div>

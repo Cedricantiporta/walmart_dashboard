@@ -114,19 +114,32 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
         </div>
       </div>
 
-      {open && inv.case_snapshot && inv.case_snapshot.length > 0 && (
+      {open && snapCount > 0 && (
         <div style={{ background: '#f9fafb', borderTop: '1px solid #f3f4f6' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px', gap: 8, padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-            <span>Case ID</span><span>Type</span><span>Posting Date</span><span style={{ textAlign: 'right' }}>Recovered</span>
-          </div>
-          {inv.case_snapshot.map((c, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px', gap: 8, padding: '7px 16px 7px 32px', borderTop: '1px solid #f3f4f6', fontSize: 12 }}>
-              <span style={{ fontFamily: 'monospace', color: '#374151' }}>{c.case_id}</span>
-              <span style={{ color: '#374151' }}>{c.claim_type}</span>
-              <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
-              <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
-            </div>
-          ))}
+          {inv.case_snapshot && inv.case_snapshot.length > 0 ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px', gap: 8, padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                <span>Case ID</span><span>Type</span><span>Posting Date</span><span style={{ textAlign: 'right' }}>Recovered</span>
+              </div>
+              {inv.case_snapshot.map((c, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 110px', gap: 8, padding: '7px 16px 7px 32px', borderTop: '1px solid #f3f4f6', fontSize: 12 }}>
+                  <span style={{ fontFamily: 'monospace', color: '#374151' }}>{c.case_id}</span>
+                  <span style={{ color: '#374151' }}>{c.claim_type}</span>
+                  <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
+                  <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+                </div>
+              ))}
+            </>
+          ) : (
+            <>
+              <div style={{ padding: '8px 16px 6px 32px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em' }}>Case IDs</div>
+              <div style={{ padding: '4px 16px 12px 32px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {(inv.case_ids ?? []).map((id, i) => (
+                  <span key={i} style={{ fontFamily: 'monospace', fontSize: 12, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 5, padding: '3px 8px', color: '#374151' }}>{id}</span>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
