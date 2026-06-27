@@ -58,40 +58,54 @@ type Invoice = {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function downloadCSV(clients: ClientBilling[]) {
-  const rows: string[] = [
-    'Client,Case ID,Claim Type,Posting Date,Recovered,Fee,Rate',
-  ];
-  clients.forEach(c => {
-    c.cases.forEach(cs => {
-      rows.push([
-        `"${c.clientName}"`,
-        cs.caseId,
-        `"${cs.claimType}"`,
-        cs.postingDate,
-        cs.amount.toFixed(2),
-        cs.fee.toFixed(2),
-        fmtPct(c.rate),
-      ].join(','));
-    });
-  });
-  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+const GAS_HEADERS = 'Invoice To,Country,Walmart Posting Date,Item Description,Claim Type,GTIN,SKU ID,Case ID,Unit Amount,Rate,Quantity,Total Reimbursement,Conversion Rate,Currency,Total Reimbursed USD,Fee Amount';
+
+function fmtMDY(iso: string) {
+  const d = new Date(iso + (iso.length === 10 ? 'T12:00:00' : ''));
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+}
+
+function gasRow(clientName: string, rate: number, cs: BillingCase) {
+  const amt = cs.amount.toFixed(2);
+  return [
+    `"${clientName}"`,
+    'US',
+    fmtMDY(cs.postingDate),
+    `"Reimbursement Recovery for Case ID ${cs.caseId} for $${amt}"`,
+    cs.claimType || 'N/A',
+    '', // GTIN — not stored
+    '', // SKU ID — not stored
+    cs.caseId,
+    `$${amt}`,
+    fmtPct(rate),
+    '1',
+    `$${amt}`,
+    '',
+    'USD',
+    `$${amt}`,
+    `$${cs.fee.toFixed(2)}`,
+  ].join(',');
+}
+
+function buildGasCSV(invNum: string, clients: { clientName: string; rate: number; cases: BillingCase[] }[]) {
+  const dataRows = clients.flatMap(c => c.cases.map(cs => gasRow(c.clientName, c.rate, cs)));
+  return [`${invNum},,,,,,,,,,,,,,`, GAS_HEADERS, ...dataRows].join('\n');
+}
+
+function triggerDownload(content: string, filename: string) {
+  const blob = new Blob([content], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `billing-rtb-${isoToday()}.csv`;
+  a.download = filename;
   a.click();
 }
 
-function downloadClientCSV(client: ClientBilling) {
-  const rows: string[] = ['Case ID,Claim Type,Posting Date,Recovered,Fee'];
-  client.cases.forEach(cs => {
-    rows.push([cs.caseId, `"${cs.claimType}"`, cs.postingDate, cs.amount.toFixed(2), cs.fee.toFixed(2)].join(','));
-  });
-  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `invoice-${client.clientName.replace(/\s+/g, '-')}-${isoToday()}.csv`;
-  a.click();
+function downloadCSV(clients: ClientBilling[]) {
+  triggerDownload(buildGasCSV('', clients), `billing-rtb-${isoToday()}.csv`);
+}
+
+function downloadClientCSV(client: ClientBilling, invNum = '') {
+  triggerDownload(buildGasCSV(invNum, [client]), `invoice-${client.clientName.replace(/\s+/g, '-')}-${isoToday()}.csv`);
 }
 
 // ── skeleton ──────────────────────────────────────────────────────────────────
@@ -199,7 +213,7 @@ function InvoiceModal({
             <input type="date" value={billedDate} onChange={e => setBilledDate(e.target.value)} style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 6 }} />
           </label>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <button onClick={() => downloadClientCSV(client)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
+            <button onClick={() => downloadClientCSV(client, invNum)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>
               ↓ CSV
             </button>
             <button onClick={printInvoice} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#374151' }}>

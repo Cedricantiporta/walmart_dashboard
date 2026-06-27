@@ -26,6 +26,60 @@ function Sk({ h = 16, w = '100%' }: { h?: number; w?: string | number }) {
   );
 }
 
+const GAS_HEADERS = 'Invoice To,Country,Walmart Posting Date,Item Description,Claim Type,GTIN,SKU ID,Case ID,Unit Amount,Rate,Quantity,Total Reimbursement,Conversion Rate,Currency,Total Reimbursed USD,Fee Amount';
+
+function fmtMDY(iso: string) {
+  const d = new Date(iso.length === 10 ? iso + 'T12:00:00' : iso);
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+}
+
+function fmtPctNum(r: number) {
+  const p = Math.round(r * 100);
+  return `${p}%`;
+}
+
+function downloadInvoiceCSV(inv: Invoice) {
+  const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
+  const snap = inv.case_snapshot ?? [];
+  const ids = inv.case_ids ?? [];
+
+  let dataRows: string[];
+  if (snap.length > 0) {
+    dataRows = snap.map(c => {
+      const amt = c.reimbursement_amount.toFixed(2);
+      return [
+        `"${inv.client_name}"`, 'US', fmtMDY(c.rms_posting_date),
+        `"Reimbursement Recovery for Case ID ${c.case_id} for $${amt}"`,
+        c.claim_type || 'N/A', '', '', c.case_id,
+        `$${amt}`, fmtPctNum(rate), '1', `$${amt}`, '', 'USD', `$${amt}`,
+        `$${(c.reimbursement_amount * rate).toFixed(2)}`,
+      ].join(',');
+    });
+  } else {
+    // No snapshot — generate one row per case_id with amounts evenly divided
+    const perCase = ids.length > 0 ? inv.total_reimbursed / ids.length : 0;
+    const perFee = ids.length > 0 ? inv.billed_fee / ids.length : 0;
+    const postingDate = fmtMDY(inv.billed_date?.slice(0, 10) ?? isoToday());
+    dataRows = ids.map(id => {
+      const amt = perCase.toFixed(2);
+      return [
+        `"${inv.client_name}"`, 'US', postingDate,
+        `"Reimbursement Recovery for Case ID ${id} for $${amt}"`,
+        'N/A', '', '', id,
+        `$${amt}`, fmtPctNum(rate), '1', `$${amt}`, '', 'USD', `$${amt}`,
+        `$${perFee.toFixed(2)}`,
+      ].join(',');
+    });
+  }
+
+  const csv = [`${inv.invoice_number},,,,,,,,,,,,,,`, GAS_HEADERS, ...dataRows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${inv.invoice_number}-${inv.client_name.replace(/\s+/g, '-')}.csv`;
+  a.click();
+}
+
 function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) => void }) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -38,58 +92,75 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
   }
 
   function printInvoice() {
-    const w = window.open('', '_blank', 'width=800,height=1000');
+    const w = window.open('', '_blank', 'width=820,height=1060');
     if (!w) return;
     const snap = inv.case_snapshot ?? [];
-    const rate = snap.length > 0 && inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
+    const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
+    const billedDateStr = inv.billed_date?.slice(0, 10) ?? isoToday();
+    const dueDate = (() => {
+      const d = new Date(billedDateStr + 'T12:00:00'); d.setDate(d.getDate() + 7);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    })();
     w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number}</title><style>
-      *{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Helvetica Neue',sans-serif;font-size:13px;color:#111;}
+      *{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Helvetica Neue',sans-serif;font-size:13px;color:#111827;padding:40px;}
       table{width:100%;border-collapse:collapse;}
-      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:0 8px 8px;border-bottom:2px solid #e5e7eb;}
-      td{padding:8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
+      th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;padding:0 8px 10px;border-bottom:2px solid #e5e7eb;}
+      td{padding:9px 8px;font-size:12px;border-bottom:1px solid #f3f4f6;}
       @media print{body{padding:24px;}}
-    </style></head><body><div style="max-width:720px;margin:40px auto;padding:0 24px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:32px;">
+    </style></head><body>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;">
         <div>
-          <div style="font-size:22px;font-weight:800;color:#2563eb;">WFS Analytics</div>
-          <div style="font-size:11px;color:#888;">Walmart Fulfillment Services Billing</div>
+          <div style="font-size:15px;font-weight:800;color:#111827;margin-bottom:6px;">Threecolts</div>
+          <div style="font-size:11px;color:#6b7280;line-height:1.7;">16192 Coastal Highway<br/>Lewes, Delaware 19958<br/>United States<br/>support@threecolts.com</div>
         </div>
-        <div style="text-align:right;font-size:12px;color:#666;line-height:1.9;">
-          <div style="font-size:18px;font-weight:800;color:#111;">INVOICE</div>
-          <div><strong>Invoice #:</strong> ${inv.invoice_number}</div>
-          <div><strong>Date:</strong> ${fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</div>
+        <div style="text-align:right;">
+          <div style="font-size:28px;font-weight:900;color:#111827;letter-spacing:-0.02em;margin-bottom:10px;">INVOICE</div>
+          <div style="font-size:12px;color:#6b7280;line-height:2;">
+            <div><strong style="color:#374151;">Invoice #:</strong> ${inv.invoice_number}</div>
+            <div><strong style="color:#374151;">Date:</strong> ${fmtDate(billedDateStr)}</div>
+            <div><strong style="color:#374151;">Due Date:</strong> ${dueDate}</div>
+          </div>
         </div>
       </div>
       <div style="margin-bottom:28px;">
-        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Bill To</div>
-        <div style="font-size:16px;font-weight:700;">${inv.client_name}</div>
+        <div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Bill To</div>
+        <div style="height:1px;background:#e5e7eb;margin-bottom:12px;"></div>
+        <div style="font-size:13px;font-weight:700;color:#111827;">${inv.client_name}</div>
       </div>
       <table>
         <thead><tr>
           <th>Case ID</th><th>Claim Type</th><th>RMS Posting Date</th>
-          <th style="text-align:right;">Recovered</th><th style="text-align:right;">Fee</th>
+          <th style="text-align:right;">Recovered</th><th style="text-align:right;">Rate</th><th style="text-align:right;">Fee</th>
         </tr></thead>
         <tbody>
-          ${snap.map(c => `<tr>
+          ${snap.length > 0 ? snap.map(c => `<tr>
             <td style="font-family:monospace;">${c.case_id}</td>
             <td>${c.claim_type ?? ''}</td>
             <td>${c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : ''}</td>
             <td style="text-align:right;font-weight:600;color:#2563eb;">${fmtUSD(c.reimbursement_amount)}</td>
+            <td style="text-align:right;color:#6b7280;">${fmtPctNum(rate)}</td>
             <td style="text-align:right;font-weight:700;">${fmtUSD(c.reimbursement_amount * rate)}</td>
+          </tr>`).join('') : (inv.case_ids ?? []).map(id => `<tr>
+            <td style="font-family:monospace;">${id}</td>
+            <td colspan="3" style="color:#6b7280;">—</td>
+            <td style="text-align:right;color:#6b7280;">${fmtPctNum(rate)}</td>
+            <td style="text-align:right;font-weight:700;">—</td>
           </tr>`).join('')}
         </tbody>
         <tfoot>
           <tr style="background:#f9fafb;">
             <td colspan="3" style="padding:12px 8px;font-weight:700;">Total</td>
             <td style="padding:12px 8px;text-align:right;font-weight:700;color:#2563eb;">${fmtUSD(inv.total_reimbursed)}</td>
+            <td></td>
             <td style="padding:12px 8px;text-align:right;font-weight:800;">${fmtUSD(inv.billed_fee)}</td>
           </tr>
         </tfoot>
       </table>
-      <div style="margin-top:36px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#aaa;text-align:right;">
-        WFS Analytics Dashboard · Generated ${fmtDate(isoToday())}
+      <div style="margin-top:36px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;">
+        <div><div style="font-weight:600;color:#6b7280;margin-bottom:2px;">Payment</div><div>Amount due: ${fmtUSD(inv.billed_fee)}</div></div>
+        <div style="text-align:right;"><div>Threecolts — WFS Analytics</div><div>Generated ${fmtDate(isoToday())}</div></div>
       </div>
-    </div></body></html>`);
+    </body></html>`);
     w.document.close();
     w.focus();
     w.print();
@@ -109,6 +180,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
           <button onClick={() => setOpen(o => !o)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #e5e7eb', borderRadius: 6, background: open ? '#f9fafb' : '#fff', cursor: 'pointer', color: '#374151' }}>
             {snapCount} case{snapCount !== 1 ? 's' : ''}
           </button>
+          <button onClick={() => downloadInvoiceCSV(inv)} title="Download CSV" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 12, fontWeight: 600, color: '#374151' }}>↓</button>
           <button onClick={printInvoice} title="Print PDF" style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 13 }}>🖨</button>
           <button onClick={deleteInvoice} disabled={deleting} title="Delete" style={{ border: '1px solid #fca5a5', borderRadius: 6, background: '#fff', cursor: 'pointer', padding: '4px 8px', fontSize: 13, color: '#dc2626' }}>✕</button>
         </div>
