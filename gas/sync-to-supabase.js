@@ -98,21 +98,27 @@ function _syncOnboardingTracker(apiUrl, secret) {
   const rawHeaders = allValues[0].map(h => String(h).trim());
   const headers = rawHeaders.map(h => h.toLowerCase());
 
-  // Flexible header detection — handles renamed columns
+  // Flexible header detection — exact match first, then header-contains-candidate
+  // NOTE: do NOT use c.includes(h) — it causes 'company name'.includes('name') to
+  // match column A (Name) instead of column D (Company Name).
   function findCol(candidates) {
     for (const c of candidates) {
-      const i = headers.findIndex(h => h === c || h.includes(c) || c.includes(h));
+      const i = headers.indexOf(c);
+      if (i >= 0) return i;
+    }
+    for (const c of candidates) {
+      const i = headers.findIndex(h => h.includes(c));
       if (i >= 0) return i;
     }
     return -1;
   }
 
   const idx = {
-    client:       findCol(['client name', 'client', 'store name', 'account name']),
-    status:       findCol(['status', 'client status', 'billing status', 'account status']),
-    rate:         findCol(['rate', 'billing rate', 'fee rate', 'fee %', '% fee', 'commission', '% commission']),
-    startDate:    findCol(['start date', 'go live', 'contract start', 'billable from', 'live date', 'start']),
-    pilotEndDate: findCol(['(pilot) end date', 'pilot end', 'billable start', 'end of pilot', 'pilot end date', 'post-pilot']),
+    client:       findCol(['company name', 'client name', 'store name', 'account name', 'client']),
+    status:       findCol(['client status', 'billing status', 'account status', 'status']),
+    rate:         findCol(['billing rate', 'fee rate', 'fee %', '% fee', 'commission', '% commission', 'rate']),
+    startDate:    findCol(['start date', 'go live', 'contract start', 'billable from', 'live date']),
+    pilotEndDate: findCol(['(pilot) end date', 'pilot end date', 'pilot end', 'billable start', 'end of pilot', 'post-pilot']),
   };
 
   Logger.log('Onboarding Tracker columns: ' + JSON.stringify(
