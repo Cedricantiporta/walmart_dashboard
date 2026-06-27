@@ -119,6 +119,7 @@ function PillDropdown({
   icon?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find(o => o.value === value);
 
@@ -151,23 +152,29 @@ function PillDropdown({
           position: 'absolute', top: '100%', right: 0, marginTop: 6,
           background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100,
-          minWidth: 190, overflow: 'hidden',
+          minWidth: 190, maxHeight: 240, overflowY: 'auto',
         }}>
+          <div style={{ padding: 4 }}>
           {options.map(opt => (
             <button
               key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
+              onMouseEnter={() => setHovered(opt.value)}
+              onMouseLeave={() => setHovered(null)}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
-                padding: '9px 16px', fontSize: 13, border: 'none', cursor: 'pointer',
+                padding: '7px 12px', fontSize: 12, border: 'none', cursor: 'pointer',
+                borderRadius: 8,
                 color: opt.value === value ? '#006FEE' : '#11181c',
-                background: opt.value === value ? '#f0f7ff' : 'transparent',
+                background: hovered === opt.value ? '#e4e4e7' : (opt.value === value ? '#f0f7ff' : 'transparent'),
                 fontWeight: opt.value === value ? 600 : 400,
+                transition: 'background 0.1s',
               }}
             >
               {opt.label}
             </button>
           ))}
+          </div>
         </div>
       )}
     </div>
@@ -497,8 +504,13 @@ export default function DashboardPage() {
             </button>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
           </div>
-          {dateRangeLabel && <span style={{ fontSize: 12, color: '#a1a1aa', fontWeight: 400 }}>{dateRangeLabel}</span>}
         </div>
+
+        {dateRangeLabel && (
+          <div style={{ padding: '10px 20px 4px', flexShrink: 0, background: '#f4f4f5' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 14, fontWeight: 600, color: '#11181c', background: '#eaebec', borderRadius: 999, padding: '6px 14px' }}>{dateRangeLabel}</span>
+          </div>
+        )}
 
         <div style={{ padding: '20px', maxWidth: 1200 }}>
 

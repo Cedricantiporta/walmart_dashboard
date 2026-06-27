@@ -64,7 +64,7 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
           display: 'flex',
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
-          minHeight: 60,
+          minHeight: 68,
           gap: 8,
         }}>
           <div style={{
@@ -74,8 +74,8 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
           }} />
           {!collapsed && (
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
-              <div style={{ fontSize: 13, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Admin</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
+              <div style={{ fontSize: 12, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Admin</div>
             </div>
           )}
         </div>
@@ -98,7 +98,7 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   borderRadius: 999,
                   marginBottom: 2,
-                  fontSize: 15,
+                  fontSize: 13,
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? '#11181c' : '#71717a',
                   background: isActive ? '#e4e4e7' : 'transparent',
@@ -117,7 +117,7 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
         {/* Footer */}
         {!collapsed && (
           <div style={{ padding: '10px 14px', flexShrink: 0, borderTop: '1px solid #e4e4e7' }}>
-            <div style={{ fontSize: 13, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
+            <div style={{ fontSize: 12, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
             {syncLabel && (
               <div style={{ fontSize: 12, color: '#a1a1aa', marginTop: 3 }}>Synced {syncLabel}</div>
             )}

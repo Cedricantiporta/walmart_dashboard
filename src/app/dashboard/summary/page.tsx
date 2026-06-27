@@ -68,9 +68,6 @@ export default function SummaryPage() {
     return sortDir === 'asc' ? av - (bv as number) : (bv as number) - av;
   });
 
-  const totalRecovered = history.reduce((s, r) => s + r.recovered, 0);
-  const totalFee = history.reduce((s, r) => s + r.fee, 0);
-
   return (
     <>
       <style>{`
@@ -86,22 +83,9 @@ export default function SummaryPage() {
             <PanelIcon />
           </button>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>Summary</h1>
-          <span style={{ fontSize: 13, color: '#a1a1aa' }}>All-time monthly breakdown</span>
         </div>
 
         {error && <div style={{ padding: '10px 20px', background: '#fff0f3', borderBottom: '1px solid #fca5a5', color: '#f31260', fontSize: 13 }}>{error}</div>}
-
-        {/* Stat cards */}
-        {!loading && history.length > 0 && (
-          <div style={{ display: 'flex', gap: 12, padding: '16px 20px 0', flexWrap: 'wrap' }}>
-            {[{ label: 'Total Recovered', value: fmtFull(totalRecovered) }, { label: 'Total Fees Earned', value: fmtFull(totalFee) }, { label: 'Months Active', value: String(history.length) }].map(card => (
-              <div key={card.label} style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, padding: '14px 18px', flex: '1 1 150px', minWidth: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', letterSpacing: 0, marginBottom: 8 }}>{card.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{card.value}</div>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Table */}
         <div style={{ flex: 1, overflow: 'hidden', padding: '12px 20px 16px', display: 'flex', flexDirection: 'column' }}>
@@ -146,13 +130,6 @@ export default function SummaryPage() {
                           </div>
                         </div>
                       ))}
-                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>All-time total</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtFull(totalRecovered)}</span>
-                        <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{fmtFull(totalFee)}</span>
-                        <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{history.reduce((s,r)=>s+r.approvedCount,0)}</span>
-                        <span />
-                      </div>
                     </div>
                   </div>
                 );

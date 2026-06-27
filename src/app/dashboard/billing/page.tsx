@@ -118,6 +118,13 @@ const toolbarPill: React.CSSProperties = {
   cursor: 'pointer', outline: 'none', flexShrink: 0,
 };
 
+const OPTIONAL_COLS = [
+  { key: 'rate',      label: 'Rate',      width: '80px'  },
+  { key: 'recovered', label: 'Recovered', width: '130px' },
+  { key: 'fee',       label: 'Fee',       width: '120px' },
+  { key: 'cases',     label: 'Cases',     width: '70px'  },
+] as const;
+
 function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
   label: string; col: string; sortCol: string; sortDir: 'asc'|'desc';
   onSort: (c: string) => void; align?: 'left'|'right';
@@ -248,8 +255,21 @@ export default function BillingPage() {
   const [sortCol, setSortCol] = useState('fee');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
   const [sidebarWidth, setSidebarWidth] = useState(360);
+  const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'|'cols'>(null);
+  const [filterType, setFilterType] = useState<'all'|'prevMonth'>('all');
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
+  const popupAreaRef = useRef<HTMLDivElement>(null);
 
   const { onToggle } = useSidebar();
+
+  useEffect(() => {
+    if (!openPopup) return;
+    function handler(e: MouseEvent) {
+      if (popupAreaRef.current && !popupAreaRef.current.contains(e.target as Node)) setOpenPopup(null);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openPopup]);
 
   function handleDragStart(e: React.MouseEvent) {
     e.preventDefault();
@@ -285,6 +305,7 @@ export default function BillingPage() {
   }
 
   const filtered = (data?.clients ?? []).filter(c => {
+    if (filterType === 'prevMonth' && c.prevMonthFee === 0) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q));
@@ -351,10 +372,54 @@ export default function BillingPage() {
                 Ready to Bill <span style={{ fontWeight: 400, color: '#a1a1aa' }}>{filtered.length}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button style={toolbarPill}><IconFilter /> Filter</button>
-                  <button style={toolbarPill}><IconSort /> Sort</button>
-                  <button style={toolbarPill}><IconCols /> Columns</button>
+                <div ref={popupAreaRef} style={{ display: 'flex', gap: 6 }}>
+
+                  {/* Filter popup */}
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setOpenPopup(p => p === 'filter' ? null : 'filter')} style={{ ...toolbarPill, ...(filterType !== 'all' ? { background: '#dbeafe', color: '#1d4ed8' } : {}) }}>
+                      <IconFilter /> Filter{filterType !== 'all' ? ' ·' : ''}
+                    </button>
+                    {openPopup === 'filter' && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 210, padding: 4 }}>
+                        {([{ val: 'all', lbl: 'All clients' }, { val: 'prevMonth', lbl: 'Previous month charges only' }] as const).map(({ val, lbl }) => (
+                          <button key={val} onClick={() => { setFilterType(val); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 8, cursor: 'pointer', background: filterType === val ? '#f0f7ff' : 'transparent', color: filterType === val ? '#006FEE' : '#11181c', fontWeight: filterType === val ? 600 : 400 }}>{lbl}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sort popup */}
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setOpenPopup(p => p === 'sort' ? null : 'sort')} style={toolbarPill}>
+                      <IconSort /> Sort
+                    </button>
+                    {openPopup === 'sort' && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 180, padding: 4 }}>
+                        {([{ col: 'fee', lbl: 'Fee' }, { col: 'recovered', lbl: 'Recovered' }, { col: 'name', lbl: 'Client name' }, { col: 'rate', lbl: 'Rate' }, { col: 'cases', lbl: 'Cases' }] as const).map(({ col, lbl }) => (
+                          <button key={col} onClick={() => { handleSort(col); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 8, cursor: 'pointer', background: sortCol === col ? '#f0f7ff' : 'transparent', color: sortCol === col ? '#006FEE' : '#11181c', fontWeight: sortCol === col ? 600 : 400 }}>
+                            {lbl}{sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Columns popup */}
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setOpenPopup(p => p === 'cols' ? null : 'cols')} style={toolbarPill}>
+                      <IconCols /> Columns
+                    </button>
+                    {openPopup === 'cols' && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 160, padding: 4 }}>
+                        {OPTIONAL_COLS.map(c => (
+                          <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', cursor: 'pointer', borderRadius: 8, fontSize: 12, color: '#11181c' }}>
+                            <input type="checkbox" checked={!hiddenCols.has(c.key)} onChange={() => setHiddenCols(prev => { const n = new Set(prev); if (n.has(c.key)) n.delete(c.key); else n.add(c.key); return n; })} style={{ cursor: 'pointer', accentColor: '#006FEE' }} />
+                            {c.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <input
                   placeholder="Search client or case ID…"
@@ -369,7 +434,8 @@ export default function BillingPage() {
           {/* Two-panel: RTB table + case detail */}
           {(() => {
             const showHdr = !loading && filtered.length > 0;
-            const G = 'minmax(0,1fr) 80px 130px 120px 70px 120px';
+            const visOpt = OPTIONAL_COLS.filter(c => !hiddenCols.has(c.key));
+            const G = `minmax(0,1fr) ${visOpt.map(c => c.width).join(' ')} 120px`;
             return (
               <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#eaebec', flexDirection: 'column' }}>
 
@@ -378,10 +444,9 @@ export default function BillingPage() {
                   <div style={{ display: 'flex', flexShrink: 0 }}>
                     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 22px', gap: 8, minWidth: 420 }}>
                       <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                      <ColHdr label="Rate" col="rate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                      <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                      <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                      <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                      {visOpt.map(c => (
+                        <ColHdr key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                      ))}
                       <span />
                     </div>
                     {selectedClient && <div style={{ width: sidebarWidth + 18, flexShrink: 0 }} />}
@@ -412,10 +477,10 @@ export default function BillingPage() {
                               <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
                               {c.prevMonthFee > 0 && <span style={{ fontSize: 10, fontWeight: 600, background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '1px 6px', alignSelf: 'flex-start' }}>+prev month</span>}
                             </div>
-                            <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>
-                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.totalAmount)}</span>
-                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>
-                            <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.cases.length}</span>
+                            {!hiddenCols.has('rate') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>}
+                            {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.totalAmount)}</span>}
+                            {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>}
+                            {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.cases.length}</span>}
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
                               <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 <IconInvoice /> Invoice
@@ -425,10 +490,10 @@ export default function BillingPage() {
                         ))}
                         <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
-                          <span />
-                          <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
-                          <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
-                          <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
+                          {!hiddenCols.has('rate') && <span />}
+                          {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>}
+                          {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>}
+                          {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>}
                           <span />
                         </div>
                       </div>
