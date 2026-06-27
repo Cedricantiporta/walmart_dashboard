@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF } from '@/lib/invoice-pdf';
+import { useSidebar } from '@/components/DashboardShell';
 
 // ── formatters ────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,7 @@ const IconFilter = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="n
 const IconSort = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/></svg>;
 const IconCols = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>;
 const IconEye = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+const PanelIcon = () => <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="16" height="16" rx="3"/><line x1="7" y1="2" x2="7" y2="18"/></svg>;
 const IconInvoice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
 
 const pillBtn: React.CSSProperties = {
@@ -430,6 +432,8 @@ export default function BillingPage() {
   const [sortCol, setSortCol] = useState('fee');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
 
+  const { onToggle } = useSidebar();
+
   function handleSort(col: string) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortCol(col); setSortDir('desc'); }
@@ -516,103 +520,109 @@ export default function BillingPage() {
       <div style={{ padding: '20px 28px' }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e4e4e7', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', flexShrink: 0, outline: 'none' }}>
+            <PanelIcon />
+          </button>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>Billing</h1>
           {currentMonthLabel && <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 500 }}>Ready to bill — {currentMonthLabel}</span>}
         </div>
 
         {error && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>{error}</div>}
 
-        {/* RTB Client table */}
-        <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 130px)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+        {/* RTB table + sliding case sidebar — side-by-side */}
+        <div style={{ display: 'flex', border: '1px solid #e4e4e7', borderRadius: 14, overflow: 'hidden', maxHeight: 'calc(100vh - 130px)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
 
-          {/* Toolbar */}
-          <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid #e4e4e7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#11181c' }}>
-                Ready to Bill{' '}
-                {!loading && <span style={{ fontSize: 14, color: '#a1a1aa', fontWeight: 500 }}>{filtered.length}</span>}
-              </span>
-              {!loading && (
-                <>
-                  <button style={pillBtn}><IconFilter /> Filter</button>
-                  <button style={pillBtn}><IconSort /> Sort</button>
-                  <button style={pillBtn}><IconCols /> Columns</button>
-                </>
-              )}
-            </div>
-            <input
-              placeholder="Search client or case ID…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 210, color: '#11181c', outline: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: '10px center' }}
-            />
-          </div>
+          {/* Table column */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden' }}>
 
-          {loading ? (
-            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1,2,3,4,5].map(i => <Sk key={i} h={52} />)}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
-              {search ? 'No clients match.' : 'No clients ready to bill.'}
-            </div>
-          ) : (
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              <div style={{ minWidth: 600 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 52px 72px', gap: 8, padding: '8px 16px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
-                  <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                  <ColHdr label="Rate" col="rate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <span />
-                </div>
-                {sorted.map(c => (
-                  <ClientRow
-                    key={c.clientName}
-                    client={c}
-                    selected={selectedClient?.clientName === c.clientName}
-                    onRowClick={c => setSelectedClient(c)}
-                    onGenerateInvoice={c => setActiveClient(c)}
-                    sortCol={sortCol}
-                    sortDir={sortDir}
-                  />
-                ))}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 52px 72px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e4e4e7', background: '#fafafa', position: 'sticky', bottom: 0, zIndex: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
-                  <span />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#11181c', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
-                  <span style={{ fontSize: 12, color: '#71717a', textAlign: 'right' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
-                  <span />
-                </div>
+            {/* Toolbar */}
+            <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid #e4e4e7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#11181c' }}>
+                  Ready to Bill{' '}
+                  {!loading && <span style={{ fontSize: 14, color: '#a1a1aa', fontWeight: 500 }}>{filtered.length}</span>}
+                </span>
+                {!loading && (
+                  <>
+                    <button style={pillBtn}><IconFilter /> Filter</button>
+                    <button style={pillBtn}><IconSort /> Sort</button>
+                    <button style={pillBtn}><IconCols /> Columns</button>
+                  </>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Case detail drawer — overlays RTB table */}
-        {selectedClient && (
-          <>
-            <div
-              onClick={() => setSelectedClient(null)}
-              style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.08)' }}
-            />
-            <div style={{
-              position: 'fixed', top: 0, right: 0, bottom: 0, width: 440,
-              background: '#fff', borderLeft: '1px solid #e5e7eb',
-              boxShadow: '-8px 0 32px rgba(0,0,0,0.10)',
-              display: 'flex', flexDirection: 'column', zIndex: 50, overflow: 'hidden',
-            }}>
-              <CaseSidebar
-                client={selectedClient}
-                onClose={() => setSelectedClient(null)}
-                highlight={search || undefined}
+              <input
+                placeholder="Search client or case ID…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 210, color: '#11181c', outline: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: '10px center' }}
               />
             </div>
-          </>
-        )}
+
+            {loading ? (
+              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[1,2,3,4,5].map(i => <Sk key={i} h={52} />)}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
+                {search ? 'No clients match.' : 'No clients ready to bill.'}
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflow: 'auto' }}>
+                <div style={{ minWidth: 480 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 52px 72px', gap: 8, padding: '8px 16px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6', position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
+                    <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                    <ColHdr label="Rate" col="rate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                    <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                    <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                    <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                    <span />
+                  </div>
+                  {sorted.map(c => (
+                    <ClientRow
+                      key={c.clientName}
+                      client={c}
+                      selected={selectedClient?.clientName === c.clientName}
+                      onRowClick={c => setSelectedClient(c)}
+                      onGenerateInvoice={c => setActiveClient(c)}
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                    />
+                  ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 52px 72px', gap: 8, padding: '13px 16px', borderTop: '2px solid #e4e4e7', background: '#fafafa', position: 'sticky', bottom: 0, zIndex: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
+                    <span />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalAmount,0))}</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#11181c', textAlign: 'right' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.totalFee,0))}</span>
+                    <span style={{ fontSize: 12, color: '#71717a', textAlign: 'right' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>
+                    <span />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sliding case sidebar — pushes table, no overlay */}
+          <div style={{
+            width: selectedClient ? 400 : 0,
+            transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1)',
+            overflow: 'hidden',
+            borderLeft: selectedClient ? '1px solid #e4e4e7' : 'none',
+            background: '#fff',
+            flexShrink: 0,
+            display: 'flex',
+          }}>
+            {selectedClient && (
+              <div style={{ width: 400, display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
+                <CaseSidebar
+                  client={selectedClient}
+                  onClose={() => setSelectedClient(null)}
+                  highlight={search || undefined}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
       </div>
     </>

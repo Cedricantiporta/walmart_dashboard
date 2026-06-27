@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { DashboardAnalytics, Invoice, BillingInsights, MonthlyHistory } from '@/types';
 import { clientGet, clientSet } from '@/lib/client-cache';
+import { useSidebar } from '@/components/DashboardShell';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -13,8 +14,6 @@ const fmtCompact = (v: number) =>
   v >= 1000
     ? `$${(v / 1000).toFixed(1)}k`
     : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
-
-const fmtTrend = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
 function getTimeOptions() {
   const now = new Date();
@@ -34,17 +33,11 @@ function getTimeOptions() {
   return opts;
 }
 
-// Cards 1-3 use analytics.metrics directly (same source as Monthly History).
-// Card 4 (Total Fees Billed) = invoices issued that fall in the selected period.
-function computeTotalFeesBilled(
-  history: Invoice[],
-  dateRange: { start: string; end: string },
-) {
+function computeTotalFeesBilled(history: Invoice[], dateRange: { start: string; end: string }) {
   const startRange = new Date(dateRange.start);
   const endRange = new Date(dateRange.end);
   startRange.setHours(0, 0, 0, 0);
   endRange.setHours(23, 59, 59, 999);
-
   let total = 0;
   history.forEach(inv => {
     let billedDate = new Date(inv.billed_date);
@@ -53,27 +46,140 @@ function computeTotalFeesBilled(
     }
     const periodDate = new Date(billedDate);
     if (billedDate.getDate() <= 7) periodDate.setMonth(periodDate.getMonth() - 1);
-    if (periodDate >= startRange && periodDate <= endRange) {
-      total += inv.billed_fee || 0;
-    }
+    if (periodDate >= startRange && periodDate <= endRange) total += inv.billed_fee || 0;
   });
   return total;
 }
 
-// ── sub-components ────────────────────────────────────────────────────────────
+// ── chart geometry ────────────────────────────────────────────────────────────
+
+function pillBarPath(x: number, y: number, w: number, h: number): string {
+  const r = Math.min(w / 2, 7);
+  if (h < 1) return '';
+  return `M ${x} ${y+h} H ${x+w} V ${y+r} Q ${x+w} ${y} ${x+w-r} ${y} H ${x+r} Q ${x} ${y} ${x} ${y+r} Z`;
+}
+
+function polarToXY(cx: number, cy: number, r: number, deg: number) {
+  const rad = (deg - 90) * (Math.PI / 180);
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function donutPath(cx: number, cy: number, outerR: number, innerR: number, s: number, e: number): string {
+  if (e - s >= 360) e = s + 359.99;
+  const p1 = polarToXY(cx, cy, outerR, s);
+  const p2 = polarToXY(cx, cy, outerR, e);
+  const p3 = polarToXY(cx, cy, innerR, e);
+  const p4 = polarToXY(cx, cy, innerR, s);
+  const large = e - s > 180 ? 1 : 0;
+  return `M ${p1.x} ${p1.y} A ${outerR} ${outerR} 0 ${large} 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${innerR} ${innerR} 0 ${large} 0 ${p4.x} ${p4.y} Z`;
+}
+
+// ── icons ─────────────────────────────────────────────────────────────────────
+
+const ArrowUp = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+  </svg>
+);
+const ArrowDown = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+  </svg>
+);
+const PanelIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="16" height="16" rx="3"/><line x1="7" y1="2" x2="7" y2="18"/>
+  </svg>
+);
+const CalendarIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
+const UserIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+const ChevronDownIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9"/>
+  </svg>
+);
+
+// ── pill dropdown ─────────────────────────────────────────────────────────────
+
+function PillDropdown({
+  value, options, onChange, icon,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+  icon?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find(o => o.value === value);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '7px 12px', borderRadius: 999,
+          border: '1px solid #d4d4d8', background: '#f4f4f5',
+          color: '#11181c', fontSize: 13, fontWeight: 500,
+          cursor: 'pointer', outline: 'none', whiteSpace: 'nowrap',
+        }}
+      >
+        {icon && <span style={{ color: '#71717a', display: 'flex' }}>{icon}</span>}
+        {selected?.label}
+        <span style={{ color: '#71717a', display: 'flex' }}><ChevronDownIcon /></span>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', right: 0, marginTop: 6,
+          background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100,
+          minWidth: 190, overflow: 'hidden',
+        }}>
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '9px 16px', fontSize: 13, border: 'none', cursor: 'pointer',
+                color: opt.value === value ? '#006FEE' : '#11181c',
+                background: opt.value === value ? '#f0f7ff' : 'transparent',
+                fontWeight: opt.value === value ? 600 : 400,
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── metric card ───────────────────────────────────────────────────────────────
 
 function MetricCard({
-  label,
-  value,
-  sub,
-  trend,
-  format = 'currency',
+  label, value, sub, trend, format = 'currency',
 }: {
-  label: string;
-  value: number;
-  sub?: string;
-  trend?: number;
-  format?: 'currency' | 'number';
+  label: string; value: number; sub?: string; trend?: number; format?: 'currency' | 'number';
 }) {
   const trendUp = trend !== undefined && trend >= 0;
 
@@ -94,121 +200,149 @@ function MetricCard({
   }
 
   return (
-    <div style={{
-      background: '#fff',
-      border: '1px solid #e4e4e7',
-      borderRadius: 14,
-      padding: '16px 18px',
-      minWidth: 0,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#a1a1aa', marginBottom: 10 }}>
-        {label}
+    <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '14px 16px', minWidth: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+      {/* Label + trend pill on same row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: '#71717a' }}>{label}</div>
+        {trend !== undefined && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: trendUp ? '#17c964' : '#f31260', background: trendUp ? '#f0fdf4' : '#fff0f3', borderRadius: 999, padding: '2px 7px', flexShrink: 0 }}>
+            {trendUp ? <ArrowUp /> : <ArrowDown />}
+            {Math.abs(trend).toFixed(1)}%
+          </div>
+        )}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em', marginBottom: 8 }}>
+      <div style={{ fontSize: 26, fontWeight: 700, color: '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
         {mainDisplay}
       </div>
-      {trend !== undefined && (
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-          fontSize: 11, fontWeight: 600,
-          color: trendUp ? '#17c964' : '#f31260',
-          background: trendUp ? '#f0fdf4' : '#fff0f3',
-          borderRadius: 999, padding: '3px 8px',
-        }}>
-          <span style={{ fontSize: 9 }}>{trendUp ? '▲' : '▼'}</span>
-          {Math.abs(trend).toFixed(1)}%
-        </div>
-      )}
-      {sub && (
-        <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 6 }}>{sub}</div>
-      )}
+      {sub && <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 6 }}>{sub}</div>}
     </div>
   );
 }
 
+// ── bar chart (pill bars + hover tooltip) ─────────────────────────────────────
+
 function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: number }[] }) {
-  if (!data.length) return <div style={{ color: '#9ca3af', fontSize: 13 }}>No data</div>;
+  const [hov, setHov] = useState<number | null>(null);
+  const [tip, setTip] = useState({ x: 0, y: 0 });
+
+  if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
 
   const maxVal = Math.max(...data.map(d => d.recovered), 1);
-  const H = 150;
-  const barW = 36;
-  const gap = 14;
-  const paddingTop = 28;
-  const paddingBottom = 28;
+  const H = 140, barW = 32, gap = 10, padTop = 24, padBot = 28;
   const totalW = data.length * (barW + gap) - gap;
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <svg
-        width={totalW + 2}
-        height={H + paddingTop + paddingBottom}
-        style={{ display: 'block', overflow: 'visible' }}
-      >
+    <div style={{ overflowX: 'auto', position: 'relative' }}>
+      <svg width={totalW + 2} height={H + padTop + padBot} style={{ display: 'block', overflow: 'visible' }}>
         {data.map((d, i) => {
           const barH = Math.max((d.recovered / maxVal) * H, 3);
           const x = i * (barW + gap);
-          const y = paddingTop + (H - barH);
-          const labelY = paddingTop + H + 18;
+          const y = padTop + (H - barH);
           const month = d.label.split(' ')[0].slice(0, 3);
-          const opacity = 0.45 + 0.55 * (d.recovered / maxVal);
+          const isHov = hov === i;
+          const opacity = hov !== null && !isHov ? 0.25 : 0.45 + 0.55 * (d.recovered / maxVal);
 
           return (
-            <g key={i}>
-              <rect x={x} y={y} width={barW} height={barH} rx={6} fill="#2563eb" opacity={opacity} />
-              {d.recovered > 0 && (
-                <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={10} fill="#374151" fontWeight={700}>
-                  {fmtCompact(d.recovered)}
-                </text>
+            <g key={i} style={{ cursor: 'pointer' }}
+              onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
+              onMouseLeave={() => setHov(null)}
+              onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
+            >
+              <path d={pillBarPath(x, y, barW, barH)} fill="#006FEE" opacity={opacity} style={{ transition: 'opacity 0.15s' }} />
+              {isHov && d.recovered > 0 && (
+                <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={10} fill="#11181c" fontWeight={700}>{fmtCompact(d.recovered)}</text>
               )}
-              <text x={x + barW / 2} y={labelY} textAnchor="middle" fontSize={11} fill="#6b7280" fontWeight={500}>
-                {month}
-              </text>
+              <text x={x + barW / 2} y={padTop + H + 18} textAnchor="middle" fontSize={11} fill="#71717a" fontWeight={500}>{month}</text>
             </g>
           );
         })}
       </svg>
+
+      {hov !== null && (
+        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 48, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 8, padding: '7px 11px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+          <div style={{ color: '#71717a', fontSize: 11, marginBottom: 4 }}>{data[hov].label}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#006FEE' }} />
+            <span style={{ color: '#71717a' }}>recovered</span>
+            <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].recovered)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function CategoryBreakdown({ data }: { data: { category: string; amount: number }[] }) {
-  if (!data.length) return <div style={{ color: '#9ca3af', fontSize: 13 }}>No data</div>;
-  const maxAmt = data[0]?.amount || 1;
+// ── donut chart (category breakdown) ─────────────────────────────────────────
+
+const CHART_COLORS = ['#006FEE','#17c964','#f5a524','#7828C8','#f31260','#00b7eb','#a1a1aa','#e4e4e7'];
+
+function DonutChart({ data }: { data: { category: string; amount: number }[] }) {
+  const [hov, setHov] = useState<number | null>(null);
+  const [tip, setTip] = useState({ x: 0, y: 0 });
+
+  if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
+
+  const total = data.reduce((s, d) => s + d.amount, 0);
+  const cx = 75, cy = 75, outerR = 70, innerR = 44;
+  let cum = 0;
+  const slices = data.slice(0, 8).map((d, i) => {
+    const frac = d.amount / total;
+    const start = cum * 360;
+    cum += frac;
+    return { ...d, frac, start, end: cum * 360, color: CHART_COLORS[i % CHART_COLORS.length] };
+  });
 
   return (
-    <div>
-      {data.slice(0, 10).map((c, i) => (
-        <div key={i} style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
-            <span style={{ color: '#374151', fontWeight: 500, flex: 1, marginRight: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {c.category || 'Other'}
-            </span>
-            <span style={{ color: '#6b7280', fontWeight: 600, flexShrink: 0 }}>{fmtFull(c.amount)}</span>
+    <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ flexShrink: 0 }}>
+        <svg width={150} height={150} style={{ overflow: 'visible' }}>
+          {slices.map((s, i) => (
+            <path
+              key={i}
+              d={donutPath(cx, cy, outerR, innerR, s.start, s.end)}
+              fill={s.color}
+              opacity={hov === null || hov === i ? 1 : 0.2}
+              onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
+              onMouseLeave={() => setHov(null)}
+              onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
+              style={{ cursor: 'pointer', transition: 'opacity 0.15s', outline: 'none' }}
+            />
+          ))}
+          <text x={cx} y={cy - 5} textAnchor="middle" fontSize={10} fill="#71717a">Total</text>
+          <text x={cx} y={cy + 11} textAnchor="middle" fontSize={13} fontWeight={700} fill="#11181c">{fmtCompact(total)}</text>
+        </svg>
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {slices.map((s, i) => (
+          <div key={i}
+            onMouseEnter={() => setHov(i)}
+            onMouseLeave={() => setHov(null)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7, opacity: hov === null || hov === i ? 1 : 0.35, transition: 'opacity 0.15s', cursor: 'pointer' }}
+          >
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: '#71717a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.category || 'Other'}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{(s.frac * 100).toFixed(1)}%</span>
           </div>
-          <div style={{ height: 4, background: '#f3f4f6', borderRadius: 2 }}>
-            <div style={{
-              height: '100%',
-              width: `${(c.amount / maxAmt) * 100}%`,
-              background: '#2563eb',
-              borderRadius: 2,
-              opacity: 0.5 + 0.5 * (c.amount / maxAmt),
-            }} />
+        ))}
+      </div>
+
+      {hov !== null && (
+        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 48, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 8, padding: '7px 11px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: slices[hov].color }} />
+            <span style={{ fontWeight: 600, color: '#11181c' }}>{slices[hov].category || 'Other'}</span>
           </div>
+          <div style={{ color: '#71717a' }}>{fmtFull(slices[hov].amount)} · {(slices[hov].frac * 100).toFixed(1)}%</div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
 function Skeleton({ h = 20, w = '100%', radius = 6 }: { h?: number; w?: string | number; radius?: number }) {
   return (
-    <div style={{
-      height: h, width: w, borderRadius: radius,
-      background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)',
-      backgroundSize: '200% 100%',
-      animation: 'shimmer 1.4s infinite',
-    }} />
+    <div style={{ height: h, width: w, borderRadius: radius, background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite' }} />
   );
 }
 
@@ -229,9 +363,9 @@ export default function DashboardPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState('');
 
+  const { onToggle } = useSidebar();
   const timeOptions = getTimeOptions();
 
-  // Fetch initial payload once (client-cached for instant tab re-visits)
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cached = clientGet<any>('initial-payload');
@@ -256,25 +390,17 @@ export default function DashboardPage() {
           if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
           setLoadingInit(false);
         })
-        .catch(e => {
-          setError(e.message);
-          setLoadingInit(false);
-        });
+        .catch(e => { setError(e.message); setLoadingInit(false); });
     }
 
-    // Background fetch: monthly history from pre-computed table + current month live
     fetch('/api/summary')
       .then(r => r.json())
       .then((d: Array<{ month_key: string; label: string; recovered: number; fee: number; approved_count: number; declined_count: number; growth: number }>) => {
         if (Array.isArray(d) && d.length) {
           setFullMonthlyHistory(d.map(r => ({
-            label: r.label,
-            sort: r.month_key,
-            recovered: r.recovered,
-            fee: r.fee,
-            approvedCount: r.approved_count,
-            declinedCount: r.declined_count,
-            growth: r.growth,
+            label: r.label, sort: r.month_key,
+            recovered: r.recovered, fee: r.fee,
+            approvedCount: r.approved_count, declinedCount: r.declined_count, growth: r.growth,
           })));
         }
         setLoadingHistory(false);
@@ -282,17 +408,12 @@ export default function DashboardPage() {
       .catch(() => setLoadingHistory(false));
   }, []);
 
-  // Fetch analytics whenever filters change (skip if still loading init)
   const fetchAnalytics = useCallback(() => {
     if (loadingInit) return;
     setLoadingAnalytics(true);
     const isYYYYMM = /^\d{4}-\d{2}$/.test(timeRange);
-    const params = new URLSearchParams({
-      timeRange: isYYYYMM ? 'specificMonth' : timeRange,
-      client,
-    });
+    const params = new URLSearchParams({ timeRange: isYYYYMM ? 'specificMonth' : timeRange, client });
     if (isYYYYMM) params.set('startDate', `${timeRange}-01`);
-
     fetch(`/api/dashboard/analytics?${params}`)
       .then(r => r.json())
       .then(d => { setAnalytics(d); setLoadingAnalytics(false); })
@@ -301,11 +422,34 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
-  const loading = loadingInit || loadingAnalytics;
-
   const { metrics, trends, categoryData = [] } = analytics ?? {};
+  const totalFeesBilled = analytics ? computeTotalFeesBilled(history, analytics.dateRange) : 0;
 
-  // Real trend % from monthly history: compare last 2 months
+  const chartHistory = [...fullMonthlyHistory]
+    .sort((a, b) => a.sort.localeCompare(b.sort))
+    .slice(-8)
+    .map(h => ({ label: h.label, recovered: h.recovered, fee: h.fee }));
+
+  const dateRangeLabel = analytics?.dateRange
+    ? (() => {
+        const s = new Date(analytics.dateRange.start);
+        const e = new Date(analytics.dateRange.end);
+        return `${s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} – ${e.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      })()
+    : '';
+
+  const syncLabel = lastSync
+    ? new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '';
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
+
+  // Accurate trends from monthly history (API only fetches current month → prevM = 0 → 100%)
   const historyTrends = useMemo(() => {
     if (fullMonthlyHistory.length < 2) return null;
     const sorted = [...fullMonthlyHistory].sort((a, b) => a.sort.localeCompare(b.sort));
@@ -320,83 +464,43 @@ export default function DashboardPage() {
     };
   }, [fullMonthlyHistory]);
 
-  // Use history-based trends for current month (API only fetches current month data
-  // so prevM is always 0 → 100% trend). For other timeframes, analytics computes correctly.
   const displayTrends = timeRange === 'thisMonth' ? (historyTrends ?? trends) : trends;
-  const totalFeesBilled = analytics ? computeTotalFeesBilled(history, analytics.dateRange) : 0;
 
-  const chartHistory = [...fullMonthlyHistory]
-    .sort((a, b) => a.sort.localeCompare(b.sort))
-    .slice(-8)
-    .map(h => ({ label: h.label, recovered: h.recovered, fee: h.fee }));
-
-  // Date range display
-  const dateRangeLabel = analytics?.dateRange
-    ? (() => {
-        const s = new Date(analytics.dateRange.start);
-        const e = new Date(analytics.dateRange.end);
-        return `${s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} – ${e.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-      })()
-    : '';
-
-  // Format last sync
-  const syncLabel = lastSync
-    ? new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : '';
-
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  })();
-
-  const pillSelect: React.CSSProperties = {
-    fontSize: 13, fontWeight: 500, color: '#11181c',
-    background: '#fff', border: '1px solid #e4e4e7',
-    borderRadius: 999, padding: '6px 14px',
-    cursor: 'pointer', outline: 'none', appearance: 'none' as const,
-  };
+  const clientOptions = [{ value: 'all', label: 'All Clients' }, ...clientList.map(c => ({ value: c, label: c }))];
 
   return (
     <>
       <style>{`
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-        .pill-select:hover { border-color: #a1a1aa !important; }
-        .pill-btn:hover { background: #f4f4f5 !important; }
+        button:hover { opacity: .88; }
       `}</style>
 
       <div style={{ padding: '24px 28px', maxWidth: 1200 }}>
 
-        {/* Greeting row */}
+        {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
-            {dateRangeLabel && <p style={{ fontSize: 12, color: '#a1a1aa', marginTop: 2 }}>{dateRangeLabel}</p>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={onToggle}
+                title="Toggle sidebar"
+                style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e4e4e7', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', flexShrink: 0, outline: 'none' }}
+              >
+                <PanelIcon />
+              </button>
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
+            </div>
+            {dateRangeLabel && <p style={{ fontSize: 12, color: '#a1a1aa', marginTop: 3, paddingLeft: 42 }}>{dateRangeLabel}</p>}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {syncLabel && <span style={{ fontSize: 11, color: '#a1a1aa' }}>Synced {syncLabel}</span>}
-            {/* Timeframe pill select */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <span style={{ position: 'absolute', left: 12, pointerEvents: 'none', fontSize: 13, color: '#71717a' }}>📅</span>
-              <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className="pill-select" style={{ ...pillSelect, paddingLeft: 32, paddingRight: 28 }}>
-                {timeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <span style={{ position: 'absolute', right: 10, pointerEvents: 'none', fontSize: 10, color: '#71717a' }}>▾</span>
-            </div>
-            {/* Client pill select */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <select value={client} onChange={e => setClient(e.target.value)} className="pill-select" style={{ ...pillSelect, paddingRight: 28 }}>
-                <option value="all">All Clients</option>
-                {clientList.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <span style={{ position: 'absolute', right: 10, pointerEvents: 'none', fontSize: 10, color: '#71717a' }}>▾</span>
-            </div>
+            <PillDropdown value={timeRange} options={timeOptions} onChange={setTimeRange} icon={<CalendarIcon />} />
+            <PillDropdown value={client} options={clientOptions} onChange={setClient} icon={<UserIcon />} />
           </div>
         </div>
 
         {error && (
-          <div style={{ background: '#fff0f0', border: '1px solid #fecdd3', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#be123c', fontSize: 13 }}>
+          <div style={{ background: '#fff0f3', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#f31260', fontSize: 13 }}>
             Failed to load data: {error}
           </div>
         )}
@@ -411,10 +515,12 @@ export default function DashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
           {loadingAnalytics ? (
             [1,2,3,4].map(i => (
-              <div key={i} style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <Skeleton h={10} w={80} /><div style={{ height: 10 }} />
-                <Skeleton h={28} w={110} /><div style={{ height: 8 }} />
-                <Skeleton h={10} w={60} />
+              <div key={i} style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <Skeleton h={10} w={90} />
+                  <Skeleton h={18} w={52} radius={999} />
+                </div>
+                <Skeleton h={28} w={110} />
               </div>
             ))
           ) : metrics ? (
@@ -432,21 +538,19 @@ export default function DashboardPage() {
           {/* Monthly bar chart */}
           <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c' }}>Monthly Recovery</h3>
-              </div>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c' }}>Monthly Recovery</h3>
               <span style={{ fontSize: 11, color: '#a1a1aa', background: '#f4f4f5', borderRadius: 999, padding: '3px 10px' }}>Last 8 months</span>
             </div>
             {loadingHistory ? (
-              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', height: 150 }}>
-                {[60,80,45,100,70,90,55,85].map((h, i) => <Skeleton key={i} h={h} w={36} radius={6} />)}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', height: 140 }}>
+                {[60,80,45,100,70,90,55,85].map((h, i) => <Skeleton key={i} h={h} w={32} radius={7} />)}
               </div>
             ) : (
               <SvgBarChart data={chartHistory} />
             )}
           </div>
 
-          {/* Category breakdown */}
+          {/* Donut chart */}
           <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c', marginBottom: 16 }}>By Category</h3>
             {loadingAnalytics ? (
@@ -454,7 +558,7 @@ export default function DashboardPage() {
                 {[1,2,3,4,5].map(i => <Skeleton key={i} h={10} />)}
               </div>
             ) : (
-              <CategoryBreakdown data={categoryData ?? []} />
+              <DonutChart data={categoryData ?? []} />
             )}
           </div>
         </div>

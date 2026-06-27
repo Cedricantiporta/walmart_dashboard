@@ -15,7 +15,9 @@
       "Bash(cat next.config.ts)",
       "Bash(cat next.config.js)",
       "Bash(claude mcp *)",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('main',''\\), d.get\\('module',''\\), list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:5]\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('main',''\\), d.get\\('module',''\\), list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:5]\\)\")",
+      "mcp__heroui-react__get_theme_variables",
+      "mcp__heroui-react__get_docs"
     ]
   }
 }
