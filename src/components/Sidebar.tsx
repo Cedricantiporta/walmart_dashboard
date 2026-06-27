@@ -123,14 +123,14 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                   marginBottom: 2,
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 500,
-                  color: isActive ? '#fff' : '#71717a',
-                  background: isActive ? '#006FEE' : 'transparent',
+                  color: isActive ? '#11181c' : '#71717a',
+                  background: isActive ? '#f4f4f5' : 'transparent',
                   textDecoration: 'none',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                 }}
               >
-                <span style={{ color: isActive ? '#fff' : '#71717a', flexShrink: 0, lineHeight: 1, display: 'flex' }}>{icon}</span>
+                <span style={{ color: isActive ? '#11181c' : '#71717a', flexShrink: 0, lineHeight: 1, display: 'flex' }}>{icon}</span>
                 {!collapsed && label}
               </Link>
             );

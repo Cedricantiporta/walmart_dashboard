@@ -96,34 +96,32 @@ function MetricCard({
   return (
     <div style={{
       background: '#fff',
-      border: '1px solid #e5e7eb',
+      border: '1px solid #e4e4e7',
       borderRadius: 14,
-      padding: '18px 22px',
-      flex: '1 1 180px',
+      padding: '16px 18px',
       minWidth: 0,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#9ca3af', letterSpacing: '0.02em', marginBottom: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 500, color: '#a1a1aa', marginBottom: 10 }}>
         {label}
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 26, fontWeight: 800, color: '#111827', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
-          {mainDisplay}
-        </div>
-        {trend !== undefined && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 2,
-            fontSize: 11, fontWeight: 700,
-            color: trendUp ? '#16a34a' : '#dc2626',
-            background: trendUp ? '#dcfce7' : '#fee2e2',
-            borderRadius: 20, padding: '3px 8px', marginBottom: 2,
-          }}>
-            <span style={{ fontSize: 10 }}>{trendUp ? '▲' : '▼'}</span>
-            {Math.abs(trend).toFixed(1)}%
-          </div>
-        )}
+      <div style={{ fontSize: 26, fontWeight: 700, color: '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em', marginBottom: 8 }}>
+        {mainDisplay}
       </div>
+      {trend !== undefined && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+          fontSize: 11, fontWeight: 600,
+          color: trendUp ? '#17c964' : '#f31260',
+          background: trendUp ? '#f0fdf4' : '#fff0f3',
+          borderRadius: 999, padding: '3px 8px',
+        }}>
+          <span style={{ fontSize: 9 }}>{trendUp ? '▲' : '▼'}</span>
+          {Math.abs(trend).toFixed(1)}%
+        </div>
+      )}
       {sub && (
-        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>{sub}</div>
+        <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 6 }}>{sub}</div>
       )}
     </div>
   );
@@ -327,115 +325,102 @@ export default function DashboardPage() {
     ? new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '';
 
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
+
+  const pillSelect: React.CSSProperties = {
+    fontSize: 13, fontWeight: 500, color: '#11181c',
+    background: '#fff', border: '1px solid #e4e4e7',
+    borderRadius: 999, padding: '6px 14px',
+    cursor: 'pointer', outline: 'none', appearance: 'none' as const,
+  };
+
   return (
     <>
       <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-        select:hover { border-color: #9ca3af !important; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        .pill-select:hover { border-color: #a1a1aa !important; }
+        .pill-btn:hover { background: #f4f4f5 !important; }
       `}</style>
 
-      <div style={{ padding: '20px 28px', maxWidth: 1200 }}>
+      <div style={{ padding: '24px 28px', maxWidth: 1200 }}>
 
-        {/* Header — one row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>Overview</h1>
-            {dateRangeLabel && (
-              <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, whiteSpace: 'nowrap' }}>{dateRangeLabel}</span>
-            )}
+        {/* Greeting row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
+            {dateRangeLabel && <p style={{ fontSize: 12, color: '#a1a1aa', marginTop: 2 }}>{dateRangeLabel}</p>}
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {syncLabel && (
-              <span style={{ fontSize: 11, color: '#9ca3af', marginRight: 4 }}>Synced {syncLabel}</span>
-            )}
-            <select
-              value={timeRange}
-              onChange={e => setTimeRange(e.target.value)}
-              style={{ fontSize: 13, fontWeight: 500, color: '#374151', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 10px', cursor: 'pointer', outline: 'none' }}
-            >
-              {timeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-            <select
-              value={client}
-              onChange={e => setClient(e.target.value)}
-              style={{ fontSize: 13, fontWeight: 500, color: '#374151', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 10px', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="all">All Clients</option>
-              {clientList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {syncLabel && <span style={{ fontSize: 11, color: '#a1a1aa' }}>Synced {syncLabel}</span>}
+            {/* Timeframe pill select */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span style={{ position: 'absolute', left: 12, pointerEvents: 'none', fontSize: 13, color: '#71717a' }}>📅</span>
+              <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className="pill-select" style={{ ...pillSelect, paddingLeft: 32, paddingRight: 28 }}>
+                {timeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <span style={{ position: 'absolute', right: 10, pointerEvents: 'none', fontSize: 10, color: '#71717a' }}>▾</span>
+            </div>
+            {/* Client pill select */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <select value={client} onChange={e => setClient(e.target.value)} className="pill-select" style={{ ...pillSelect, paddingRight: 28 }}>
+                <option value="all">All Clients</option>
+                {clientList.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <span style={{ position: 'absolute', right: 10, pointerEvents: 'none', fontSize: 10, color: '#71717a' }}>▾</span>
+            </div>
           </div>
         </div>
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>
+          <div style={{ background: '#fff0f0', border: '1px solid #fecdd3', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#be123c', fontSize: 13 }}>
             Failed to load data: {error}
           </div>
         )}
 
         {rmsCasesCount === 0 && !loadingInit && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '14px 16px', marginBottom: 20, fontSize: 13, color: '#78350f', lineHeight: 1.6 }}>
-            <strong>⚠ No RMS cases in database.</strong> Current month and live data will show $0 until you complete the migration:
-            <ol style={{ marginTop: 8, marginLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <li>Supabase SQL Editor → <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>ALTER TABLE rms_cases DROP CONSTRAINT IF EXISTS rms_cases_case_id_key;</code></li>
-              <li>GAS editor → run <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>migrateAll()</code></li>
-              <li>GAS editor → run <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>setupSyncTrigger()</code></li>
-            </ol>
+          <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#854d0e', lineHeight: 1.6 }}>
+            <strong>⚠ No RMS cases.</strong> Run <code style={{ background: '#fef9c3', padding: '1px 5px', borderRadius: 3 }}>migrateAll()</code> + <code style={{ background: '#fef9c3', padding: '1px 5px', borderRadius: 3 }}>setupSyncTrigger()</code> in GAS.
           </div>
         )}
 
         {/* Metric cards */}
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
           {loadingAnalytics ? (
             [1,2,3,4].map(i => (
-              <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px', flex: '1 1 180px' }}>
+              <div key={i} style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <Skeleton h={10} w={80} /><div style={{ height: 10 }} />
-                <Skeleton h={32} w={120} /><div style={{ height: 8 }} />
-                <Skeleton h={12} w={100} />
+                <Skeleton h={28} w={110} /><div style={{ height: 8 }} />
+                <Skeleton h={10} w={60} />
               </div>
             ))
           ) : metrics ? (
             <>
-              <MetricCard
-                label="Total Reimbursed"
-                value={metrics.totalReimbursed}
-                trend={trends?.totalReimbursed}
-              />
-              <MetricCard
-                label="Total Fees"
-                value={metrics.totalFees}
-                trend={trends?.totalFees}
-              />
-              <MetricCard
-                label="Approved Cases"
-                value={metrics.approvedCases}
-                trend={trends?.approvedCases}
-                format="number"
-              />
-              <MetricCard
-                label="Total Fees Billed"
-                value={totalFeesBilled}
-                sub={billingInsights ? `${billingInsights.clientCount} client${billingInsights.clientCount !== 1 ? 's' : ''} ready to bill` : undefined}
-              />
+              <MetricCard label="Total Reimbursed" value={metrics.totalReimbursed} trend={trends?.totalReimbursed} />
+              <MetricCard label="Total Fees" value={metrics.totalFees} trend={trends?.totalFees} />
+              <MetricCard label="Approved Cases" value={metrics.approvedCases} trend={trends?.approvedCases} format="number" />
+              <MetricCard label="Total Fees Billed" value={totalFeesBilled} />
             </>
           ) : null}
         </div>
 
         {/* Charts row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 16, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 12, marginBottom: 16 }}>
           {/* Monthly bar chart */}
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Monthly Recovery</h3>
-              <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Last 8 months</span>
+          <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c' }}>Monthly Recovery</h3>
+              </div>
+              <span style={{ fontSize: 11, color: '#a1a1aa', background: '#f4f4f5', borderRadius: 999, padding: '3px 10px' }}>Last 8 months</span>
             </div>
             {loadingHistory ? (
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', height: 150 }}>
-                {[60,80,45,100,70,90,55,85].map((h, i) => (
-                  <Skeleton key={i} h={h} w={36} radius={6} />
-                ))}
+                {[60,80,45,100,70,90,55,85].map((h, i) => <Skeleton key={i} h={h} w={36} radius={6} />)}
               </div>
             ) : (
               <SvgBarChart data={chartHistory} />
@@ -443,8 +428,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Category breakdown */}
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 22px' }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 18 }}>By Category</h3>
+          <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c', marginBottom: 16 }}>By Category</h3>
             {loadingAnalytics ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[1,2,3,4,5].map(i => <Skeleton key={i} h={10} />)}
