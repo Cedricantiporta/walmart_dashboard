@@ -24,7 +24,7 @@ export async function GET() {
     db.from('billing_contacts').select('*'),
     db.from('invoices').select('*').order('invoice_number', { ascending: false }),
     db.from('app_config').select('*'),
-    db.from('hardcoded_billed_cases').select('case_id'),
+    db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('excluded_clients').select('client_name'),
   ]);
 
@@ -39,9 +39,10 @@ export async function GET() {
 
   const vantageCutoff = settings['VANTAGE_CUTOFF_DATE'] ?? DEFAULT_VANTAGE_CUTOFF;
 
-  // Hardcoded billed IDs from DB (replaces HARDCODED_BILLED_IDS constant)
-  const hardcodedBilledIds = new Set<string>(
-    (hardcodedBilledRaw ?? []).map((r: { case_id: string }) => r.case_id)
+  // Hardcoded billed IDs — supports plain case_id OR composite "case_id:date" for row-level control
+  const hardcodedBilledIds = (hardcodedBilledRaw ?? []).map(
+    (r: { case_id: string; rms_posting_date: string | null }) =>
+      r.rms_posting_date ? `${r.case_id}:${r.rms_posting_date}` : r.case_id
   );
 
   // Excluded clients from DB

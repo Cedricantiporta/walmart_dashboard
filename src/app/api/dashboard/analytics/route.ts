@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     db.from('clients').select('*'),
     db.from('app_config').select('*'),
     db.from('invoices').select('case_ids'),
-    db.from('hardcoded_billed_cases').select('case_id'),
+    db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('excluded_clients').select('client_name'),
   ]);
 
@@ -39,7 +39,9 @@ export async function GET(req: NextRequest) {
   (config ?? []).forEach((row: { key: string; value: string }) => { settings[row.key] = row.value; });
   const vantageCutoff = settings['VANTAGE_CUTOFF_DATE'] ?? DEFAULT_VANTAGE_CUTOFF;
 
-  const hardcodedBilledIds = new Set<string>((hardcodedRaw ?? []).map((r: { case_id: string }) => r.case_id));
+  const hardcodedBilledIds = (hardcodedRaw ?? []).map((r: { case_id: string; rms_posting_date: string | null }) =>
+    r.rms_posting_date ? `${r.case_id}:${r.rms_posting_date}` : r.case_id
+  );
   const excludedClients = new Set<string>((excludedRaw ?? []).map((r: { client_name: string }) => r.client_name.toLowerCase()));
 
   const invoiceBilledIds = [...new Set(
