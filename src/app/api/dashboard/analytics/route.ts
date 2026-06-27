@@ -8,22 +8,32 @@ export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const timeRange = searchParams.get('timeRange') ?? 'thisMonth';
+  const timeRange    = searchParams.get('timeRange') ?? 'thisMonth';
   const startDateStr = searchParams.get('startDate');
-  const endDateStr = searchParams.get('endDate');
+  const endDateStr   = searchParams.get('endDate');
   const specificClient = searchParams.get('client') ?? 'all';
-  const extraClients = searchParams.get('extraClients')?.split(',').filter(Boolean) ?? [];
+  const extraClients   = searchParams.get('extraClients')?.split(',').filter(Boolean) ?? [];
 
   const db = createServerClient();
 
-  const [{ data: rmsCases }, { data: clientsRaw }, { data: config }, { data: invoicesRaw }] = await Promise.all([
+  const [
+    { data: rmsCases },
+    { data: clientsRaw },
+    { data: config },
+    { data: invoicesRaw },
+    { data: hardcodedRaw },
+    { data: excludedRaw },
+  ] = await Promise.all([
     db.from('rms_cases').select('*'),
     db.from('clients').select('*'),
     db.from('app_config').select('*'),
     db.from('invoices').select('case_ids'),
+    db.from('hardcoded_billed_cases').select('case_id'),
+    db.from('excluded_clients').select('client_name'),
   ]);
 
   const allData: RmsCase[] = rmsCases ?? [];
+
   const onboardingInfo: Record<string, ClientInfo> = {};
   (clientsRaw ?? []).forEach((c: ClientInfo) => { onboardingInfo[c.client_name] = c; });
 
@@ -31,13 +41,17 @@ export async function GET(req: NextRequest) {
   (config ?? []).forEach((row: { key: string; value: string }) => { settings[row.key] = row.value; });
   const vantageCutoff = settings['VANTAGE_CUTOFF_DATE'] ?? DEFAULT_VANTAGE_CUTOFF;
 
-  const billedIds = [...new Set(
+  const hardcodedBilledIds = new Set<string>((hardcodedRaw ?? []).map((r: { case_id: string }) => r.case_id));
+  const excludedClients = new Set<string>((excludedRaw ?? []).map((r: { client_name: string }) => r.client_name.toLowerCase()));
+
+  const invoiceBilledIds = [...new Set(
     (invoicesRaw ?? []).flatMap((inv: { case_ids: string[] }) => (inv.case_ids ?? []).map(String))
   )];
+  const billedIds = [...new Set([...invoiceBilledIds, ...hardcodedBilledIds])];
 
   const result = calculateDashboardAnalytics(
     { timeRange, startDateStr, endDateStr, specificClient, extraClients },
-    allData, onboardingInfo, billedIds, vantageCutoff
+    allData, onboardingInfo, billedIds, vantageCutoff, excludedClients
   );
 
   return NextResponse.json(result);

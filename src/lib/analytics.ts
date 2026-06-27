@@ -1,5 +1,5 @@
 import { RmsCase, ClientInfo, DashboardAnalytics, MonthlyHistory } from '@/types';
-import { ALWAYS_EXCLUDED_CLIENTS, DEFAULT_RATE, HARDCODED_BILLED_IDS, DEFAULT_VANTAGE_CUTOFF } from './constants';
+import { ALWAYS_EXCLUDED_CLIENTS, DEFAULT_RATE, DEFAULT_VANTAGE_CUTOFF } from './constants';
 
 interface AnalyticsParams {
   timeRange: string;
@@ -21,7 +21,8 @@ export function calculateDashboardAnalytics(
   allData: RmsCase[],
   clientOnboardingInfo: Record<string, ClientInfo>,
   billedIds: string[],
-  vantageCutoff: string = DEFAULT_VANTAGE_CUTOFF
+  vantageCutoff: string = DEFAULT_VANTAGE_CUTOFF,
+  excludedClients: Set<string> = new Set()
 ): DashboardAnalytics {
   const empty: DashboardAnalytics = {
     metrics: { totalReimbursed: 0, totalFees: 0, approvedCases: 0, approvalRate: 0 },
@@ -39,7 +40,8 @@ export function calculateDashboardAnalytics(
 
   const { timeRange, startDateStr, endDateStr, specificClient = 'all', extraClients = [] } = params;
 
-  const billedCaseIdSet = new Set([...billedIds.map(String), ...HARDCODED_BILLED_IDS]);
+  // billedIds already includes hardcoded IDs (merged in the API route before calling this)
+  const billedCaseIdSet = new Set(billedIds.map(String));
   const extraSet = new Set(extraClients.map(c => c.trim().toLowerCase()));
   const vCutoff = new Date(vantageCutoff + 'T00:00:00');
   const isHistoricalMonth = timeRange === 'specificMonth' && !!startDateStr;
@@ -64,7 +66,8 @@ export function calculateDashboardAnalytics(
       if (mk) info = clientOnboardingInfo[mk];
     }
 
-    if (ALWAYS_EXCLUDED_CLIENTS.has(clientName.toLowerCase()) && !isExtra) return [];
+    const isExcluded = ALWAYS_EXCLUDED_CLIENTS.has(clientName.toLowerCase()) || excludedClients.has(clientName.toLowerCase());
+    if (isExcluded && !isExtra) return [];
     if (!isExtra && (!info || info.status !== 'Client') && clientName !== 'Premium Convenience') return [];
 
     const dateFiledStr = row.date_filed;
@@ -239,7 +242,7 @@ export function calculateDashboardAnalytics(
       if (mk) info = clientOnboardingInfo[mk];
     }
     const isExtraChart = extraSet.has(clientName.toLowerCase());
-    if (ALWAYS_EXCLUDED_CLIENTS.has(clientName.toLowerCase()) && !isExtraChart) return;
+    if ((ALWAYS_EXCLUDED_CLIENTS.has(clientName.toLowerCase()) || excludedClients.has(clientName.toLowerCase())) && !isExtraChart) return;
     if (!isExtraChart && (!info || info.status !== 'Client') && clientName !== 'Premium Convenience') return;
     if (row.reimbursement_status !== 'Approved') return;
     const approvalStr = row.rms_posting_date;
@@ -267,7 +270,7 @@ export function calculateDashboardAnalytics(
   const allNames = [...new Set(allData.map(r => r.client_name?.trim()).filter(Boolean))] as string[];
   allNames.forEach(name => {
     const key = name.toLowerCase();
-    if (ALWAYS_EXCLUDED_CLIENTS.has(key)) { dynamicHiddenClientsSet.add(name); return; }
+    if (ALWAYS_EXCLUDED_CLIENTS.has(key) || excludedClients.has(key)) { dynamicHiddenClientsSet.add(name); return; }
     let info = clientOnboardingInfo[name];
     if (!info) { const mk = Object.keys(clientOnboardingInfo).find(k => k.toLowerCase() === key); if (mk) info = clientOnboardingInfo[mk]; }
     if ((!info || info.status !== 'Client') && name !== 'Premium Convenience') { dynamicHiddenClientsSet.add(name); return; }

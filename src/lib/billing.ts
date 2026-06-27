@@ -6,10 +6,12 @@ export function getBillingSummary(
   clientOnboardingInfo: Record<string, ClientInfo>,
   billedIds: string[],
   vantageCutoff: string = DEFAULT_VANTAGE_CUTOFF,
-  extraClients: string[] = []
+  extraClients: string[] = [],
+  excludedClients: Set<string> = new Set()
 ): ClientSummary[] {
   const extraSet = new Set(extraClients.map(c => c.trim().toLowerCase()));
-  const billedCaseIdSet = new Set([...billedIds.map(String), ...HARDCODED_BILLED_IDS]);
+  // billedIds already includes hardcoded IDs (merged in the API route)
+  const billedCaseIdSet = new Set(billedIds.map(String));
   const vCutoff = new Date(vantageCutoff + 'T00:00:00');
 
   const now = new Date();
@@ -26,7 +28,7 @@ export function getBillingSummary(
     const clientKey = rawClient.toLowerCase();
     const isExtra = extraSet.has(clientKey);
 
-    if (ALWAYS_EXCLUDED_CLIENTS.has(clientKey) && !isExtra) return;
+    if ((ALWAYS_EXCLUDED_CLIENTS.has(clientKey) || excludedClients.has(clientKey)) && !isExtra) return;
 
     const info =
       clientOnboardingInfo[rawClient] ??

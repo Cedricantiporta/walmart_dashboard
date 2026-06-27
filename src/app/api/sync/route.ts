@@ -42,21 +42,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ synced: data.length, type });
   }
 
+  // invoices — camelCase from old GAS migrateInvoicesToSupabase()
   if (type === 'invoices') {
-    // One-time migration: map GAS camelCase to DB snake_case
     const mapped = data.map((inv: Record<string, unknown>) => ({
-      invoice_number: inv.invoiceNumber,
-      client_name: inv.clientName,
-      billed_date: inv.billedDate,
-      billed_fee: inv.billedFee,
+      invoice_number:   inv.invoiceNumber,
+      client_name:      inv.clientName,
+      billed_date:      inv.billedDate,
+      billed_fee:       inv.billedFee,
       total_reimbursed: inv.totalReimbursed,
-      case_ids: inv.caseIds ?? [],
-      case_snapshot: inv.caseSnapshot ?? [],
-      pdf_url: inv.pdfUrl ?? '',
+      case_ids:         inv.caseIds ?? [],
+      case_snapshot:    inv.caseSnapshot ?? [],
+      pdf_url:          inv.pdfUrl ?? '',
     }));
     const { error } = await db.from('invoices').upsert(mapped, { onConflict: 'invoice_number' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ synced: mapped.length, type });
+  }
+
+  // invoices_raw — already snake_case from new GAS _migrateInvoiceLog()
+  if (type === 'invoices_raw') {
+    const { error } = await db.from('invoices').upsert(data, { onConflict: 'invoice_number' });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ synced: data.length, type });
   }
 
   return NextResponse.json({ error: 'Unknown sync type' }, { status: 400 });

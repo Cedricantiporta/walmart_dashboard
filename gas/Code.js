@@ -2,13 +2,12 @@
 // Clients hardcoded excluded regardless of onboarding status — only bypass if explicitly in extraClients
 const ALWAYS_EXCLUDED_CLIENTS = new Set([]);
 // Source RMS data — the live "All Client RMS Report" sheet
-const SPREADSHEET_ID = '1elkpl1-ONYSzTtAAGvhlBSJs8-JDxwpfL-_P4TPt-qA';
+const SPREADSHEET_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
 const SHEET_NAME = 'All Client RMS Report';
-// InvoiceLog (billing history) physically lives in the original spreadsheet — keep it there so no history is lost
 const INVOICE_LOG_SPREADSHEET_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
 
-const ONBOARDING_SPREADSHEET_ID = '1lGsy7twdGxSpM-DoWkOBqqzOtU3pMBkZHe016uGW4gE';
-const ONBOARDING_SHEET_NAME = 'WFS Onboarding';
+const ONBOARDING_SPREADSHEET_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
+const ONBOARDING_SHEET_NAME = 'Onboarding Tracker';
 const INVOICE_LOG_SHEET_NAME = 'InvoiceLog';
 
 const BILLING_SUMMARY_SPREADSHEET_ID = '1J_weTVTbY2cFgHNbs3TbjQ6ToWXAEbXf7RUMg_RjGEo';

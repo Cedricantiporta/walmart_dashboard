@@ -16,15 +16,20 @@ export async function GET() {
     { data: billingContactsRaw },
     { data: invoicesRaw },
     { data: config },
+    { data: hardcodedBilledRaw },
+    { data: excludedClientsRaw },
   ] = await Promise.all([
     db.from('rms_cases').select('*'),
     db.from('clients').select('*'),
     db.from('billing_contacts').select('*'),
     db.from('invoices').select('*').order('invoice_number', { ascending: false }),
     db.from('app_config').select('*'),
+    db.from('hardcoded_billed_cases').select('case_id'),
+    db.from('excluded_clients').select('client_name'),
   ]);
 
   const allData: RmsCase[] = rmsCases ?? [];
+
   const onboardingInfo: Record<string, ClientInfo> = {};
   (clientsRaw ?? []).forEach((c: ClientInfo) => { onboardingInfo[c.client_name] = c; });
 
@@ -36,26 +41,39 @@ export async function GET() {
 
   const vantageCutoff = settings['VANTAGE_CUTOFF_DATE'] ?? DEFAULT_VANTAGE_CUTOFF;
 
+  // Hardcoded billed IDs from DB (replaces HARDCODED_BILLED_IDS constant)
+  const hardcodedBilledIds = new Set<string>(
+    (hardcodedBilledRaw ?? []).map((r: { case_id: string }) => r.case_id)
+  );
+
+  // Excluded clients from DB
+  const excludedClientsSet = new Set<string>(
+    (excludedClientsRaw ?? []).map((r: { client_name: string }) => r.client_name.toLowerCase())
+  );
+
   const history: Invoice[] = (invoicesRaw ?? []).map((inv: Record<string, unknown>) => ({
-    id: inv.id as number,
-    invoice_number: inv.invoice_number as string,
-    client_name: inv.client_name as string,
-    billed_date: inv.billed_date as string,
-    billed_fee: inv.billed_fee as number,
+    id:               inv.id as number,
+    invoice_number:   inv.invoice_number as string,
+    client_name:      inv.client_name as string,
+    billed_date:      inv.billed_date as string,
+    billed_fee:       inv.billed_fee as number,
     total_reimbursed: inv.total_reimbursed as number,
-    case_ids: (inv.case_ids as string[]) ?? [],
-    case_snapshot: (inv.case_snapshot as []) ?? [],
-    pdf_url: (inv.pdf_url as string) ?? '',
+    case_ids:         (inv.case_ids as string[]) ?? [],
+    case_snapshot:    (inv.case_snapshot as []) ?? [],
+    pdf_url:          (inv.pdf_url as string) ?? '',
   }));
 
-  const billedIds = [...new Set(history.flatMap(inv => inv.case_ids.map(String)))];
+  // All billed IDs = invoice case_ids + hardcoded
+  const billedIdsFromInvoices = [...new Set(history.flatMap(inv => inv.case_ids.map(String)))];
+  const billedIds = [...new Set([...billedIdsFromInvoices, ...hardcodedBilledIds])];
 
-  const billingSummary = getBillingSummary(allData, onboardingInfo, billedIds, vantageCutoff);
+  const billingSummary = getBillingSummary(allData, onboardingInfo, billedIds, vantageCutoff, [], excludedClientsSet);
   const activeClients = billingSummary.map(c => c.clientName).sort();
 
   const allDataClientNames = [...new Set(allData.map(r => r.client_name?.trim()).filter(Boolean))] as string[];
   const hiddenClientList = allDataClientNames.filter(name => {
     const key = name.toLowerCase();
+    if (excludedClientsSet.has(key)) return true;
     if (activeClients.map(c => c.toLowerCase()).includes(key)) return false;
     const info = onboardingInfo[name] ?? onboardingInfo[Object.keys(onboardingInfo).find(k => k.toLowerCase() === key) ?? ''];
     return !info || info.status !== 'Client';
@@ -66,13 +84,12 @@ export async function GET() {
 
   const dashboardAnalytics = calculateDashboardAnalytics(
     { timeRange, extraClients: [] },
-    allData, onboardingInfo, billedIds, vantageCutoff
+    allData, onboardingInfo, billedIds, vantageCutoff, excludedClientsSet
   );
 
   const billingInsights = getBillingInsights(billingSummary);
 
-  const lastSyncRow = await db.from('rms_cases').select('synced_at').order('synced_at', { ascending: false }).limit(1).single();
-  const lastSyncTime = lastSyncRow.data?.synced_at ?? new Date().toISOString();
+  const { data: lastSync } = await db.from('rms_cases').select('synced_at').order('synced_at', { ascending: false }).limit(1).single();
 
   return NextResponse.json({
     billingSummary,
@@ -80,19 +97,19 @@ export async function GET() {
     billedIds,
     onboardingInfo,
     defaultDashboardSettings: {
-      time: timeRange,
+      time:       timeRange,
       startupTab: settings['DEFAULT_STARTUP_TAB'] ?? 'dashboard',
       billingTab: settings['DEFAULT_BILLING_TAB'] ?? 'ready',
-      feeRate: settings['DEFAULT_FEE_RATE'] ?? '0',
-      theme: settings['DEFAULT_THEME'] ?? 'light',
+      feeRate:    settings['DEFAULT_FEE_RATE'] ?? '0',
+      theme:      settings['DEFAULT_THEME'] ?? 'light',
       vantageCutoff,
     },
     dashboardAnalytics,
     billingInsights,
     billingSummaryInfo,
-    clientList: activeClients,
+    clientList:       activeClients,
     hiddenClientList,
-    lastSyncTime,
+    lastSyncTime:     lastSync?.synced_at ?? new Date().toISOString(),
     vantageCutoff,
   });
 }
