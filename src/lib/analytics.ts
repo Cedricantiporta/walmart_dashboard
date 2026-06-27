@@ -68,7 +68,9 @@ export function calculateDashboardAnalytics(
 
     const isExcluded = ALWAYS_EXCLUDED_CLIENTS.has(clientName.toLowerCase()) || excludedClients.has(clientName.toLowerCase());
     if (isExcluded && !isExtra) return [];
-    if (!isExtra && (!info || info.status !== 'Client') && clientName !== 'Premium Convenience') return [];
+    // Skip only when client is explicitly in the tracker with non-Client status.
+    // Unknown clients (no tracker entry) are included with DEFAULT_RATE so no cases are silently dropped.
+    if (!isExtra && info && info.status !== 'Client' && clientName !== 'Premium Convenience') return [];
 
     const dateFiledStr = row.date_filed;
     if (!dateFiledStr) return [];
@@ -83,7 +85,7 @@ export function calculateDashboardAnalytics(
     }
 
     const approvalStr = row.rms_posting_date;
-    if (!approvalStr || row.reimbursement_status !== 'Approved') return [];
+    if (!approvalStr || row.reimbursement_status?.trim().toLowerCase() !== 'approved') return [];
 
     const caseId = String(row.case_id);
     let effectiveDate = new Date(approvalStr);
@@ -243,8 +245,8 @@ export function calculateDashboardAnalytics(
     }
     const isExtraChart = extraSet.has(clientName.toLowerCase());
     if ((ALWAYS_EXCLUDED_CLIENTS.has(clientName.toLowerCase()) || excludedClients.has(clientName.toLowerCase())) && !isExtraChart) return;
-    if (!isExtraChart && (!info || info.status !== 'Client') && clientName !== 'Premium Convenience') return;
-    if (row.reimbursement_status !== 'Approved') return;
+    if (!isExtraChart && info && info.status !== 'Client' && clientName !== 'Premium Convenience') return;
+    if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
     const approvalStr = row.rms_posting_date;
     if (!approvalStr) return;
     const approvalDate = new Date(approvalStr);
@@ -273,7 +275,7 @@ export function calculateDashboardAnalytics(
     if (ALWAYS_EXCLUDED_CLIENTS.has(key) || excludedClients.has(key)) { dynamicHiddenClientsSet.add(name); return; }
     let info = clientOnboardingInfo[name];
     if (!info) { const mk = Object.keys(clientOnboardingInfo).find(k => k.toLowerCase() === key); if (mk) info = clientOnboardingInfo[mk]; }
-    if ((!info || info.status !== 'Client') && name !== 'Premium Convenience') { dynamicHiddenClientsSet.add(name); return; }
+    if (info && info.status !== 'Client' && name !== 'Premium Convenience') { dynamicHiddenClientsSet.add(name); return; }
     if (key === 'vantage inc' && curEnd < vCutoff) dynamicHiddenClientsSet.add(name);
   });
 
