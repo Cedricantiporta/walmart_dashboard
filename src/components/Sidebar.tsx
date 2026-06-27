@@ -30,108 +30,120 @@ const NAV = [
   )},
 ];
 
-function ChevronLeft() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 18 9 12 15 6"/>
-    </svg>
-  );
-}
-function ChevronRight() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="9 18 15 12 9 6"/>
-    </svg>
-  );
-}
-
 export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside style={{
-      width: collapsed ? 64 : 220,
-      transition: 'width 0.18s ease',
-      height: '100vh',
-      background: '#fff',
-      borderRight: '1px solid #e5e7eb',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'sticky',
-      top: 0,
-      flexShrink: 0,
-      overflow: 'hidden',
-    }}>
+    <>
+      <style>{`
+        .sidebar-nav-link { transition: background 0.12s, color 0.12s; }
+        .sidebar-nav-link:hover:not(.active) { background: #f4f4f5 !important; }
+        .sidebar-toggle:hover { background: #f4f4f5 !important; }
+      `}</style>
 
-      {/* User / brand section */}
-      <div style={{ padding: collapsed ? '16px 12px' : '16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', minHeight: 68, gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: collapsed ? 0 : 1 }}>
-          {/* Avatar */}
-          <div style={{
-            width: 36, height: 36, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #2563eb 0%, #60a5fa 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: 14, fontWeight: 800, flexShrink: 0, letterSpacing: '-0.02em',
-          }}>
-            W
-          </div>
-          {!collapsed && (
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
-              <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 500, whiteSpace: 'nowrap' }}>Admin</div>
+      <aside style={{
+        width: collapsed ? 64 : 220,
+        transition: 'width 0.2s cubic-bezier(0.4,0,0.2,1)',
+        height: '100vh',
+        background: '#fff',
+        borderRight: '1px solid #e4e4e7',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'sticky',
+        top: 0,
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}>
+
+        {/* Brand / user section */}
+        <div style={{
+          padding: collapsed ? '14px 0' : '14px 16px',
+          borderBottom: '1px solid #f4f4f5',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          minHeight: 64,
+          gap: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: collapsed ? 0 : 1 }}>
+            {/* Avatar */}
+            <div style={{
+              width: 34, height: 34, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #006FEE 0%, #7828C8 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: 13, fontWeight: 800, flexShrink: 0,
+            }}>
+              W
             </div>
-          )}
-        </div>
-        {/* Toggle */}
-        <button
-          onClick={onToggle}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          style={{ border: 'none', background: '#f3f4f6', cursor: 'pointer', padding: '5px 6px', borderRadius: 6, color: '#6b7280', display: 'flex', alignItems: 'center', flexShrink: 0, lineHeight: 1 }}
-        >
-          {collapsed ? <ChevronRight /> : <ChevronLeft />}
-        </button>
-      </div>
+            {!collapsed && (
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
+                <div style={{ fontSize: 11, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Admin</div>
+              </div>
+            )}
+          </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, padding: '10px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
-        {NAV.map(({ href, label, icon }) => {
-          const isActive = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={collapsed ? label : undefined}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: collapsed ? '9px 0' : '9px 10px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                borderRadius: 8,
-                marginBottom: 2,
-                fontSize: 13,
-                fontWeight: isActive ? 600 : 500,
-                color: isActive ? '#2563eb' : '#374151',
-                background: isActive ? '#eff6ff' : 'transparent',
-                textDecoration: 'none',
-                transition: 'background 0.12s, color 0.12s',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-              }}
-            >
-              <span style={{ color: isActive ? '#2563eb' : '#9ca3af', flexShrink: 0, lineHeight: 1 }}>{icon}</span>
-              {!collapsed && label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Footer */}
-      {!collapsed && (
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
-          <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500, whiteSpace: 'nowrap' }}>WFS Billing v1.0</div>
+          {/* Collapse toggle */}
+          <button
+            onClick={onToggle}
+            className="sidebar-toggle"
+            title={collapsed ? 'Expand' : 'Collapse'}
+            style={{
+              border: 'none', background: 'transparent', cursor: 'pointer',
+              width: 28, height: 28, borderRadius: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#71717a', flexShrink: 0,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              {collapsed
+                ? <polyline points="9 18 15 12 9 6"/>
+                : <polyline points="15 18 9 12 15 6"/>}
+            </svg>
+          </button>
         </div>
-      )}
-    </aside>
+
+        {/* Nav items */}
+        <nav style={{ flex: 1, padding: '10px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
+          {NAV.map(({ href, label, icon }) => {
+            const isActive = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={collapsed ? label : undefined}
+                className={`sidebar-nav-link${isActive ? ' active' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 9,
+                  padding: collapsed ? '8px 0' : '8px 12px',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  borderRadius: 999,
+                  marginBottom: 2,
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 500,
+                  color: isActive ? '#fff' : '#71717a',
+                  background: isActive ? '#006FEE' : 'transparent',
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                }}
+              >
+                <span style={{ color: isActive ? '#fff' : '#71717a', flexShrink: 0, lineHeight: 1, display: 'flex' }}>{icon}</span>
+                {!collapsed && label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Footer */}
+        {!collapsed && (
+          <div style={{ padding: '12px 16px', borderTop: '1px solid #f4f4f5', flexShrink: 0 }}>
+            <div style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
+          </div>
+        )}
+      </aside>
+    </>
   );
 }

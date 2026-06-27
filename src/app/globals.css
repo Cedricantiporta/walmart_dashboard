@@ -1,16 +1,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #f9fafb;
+  /* HeroUI zinc palette */
+  --bg: #f4f4f5;
   --surface: #ffffff;
-  --border: #e5e7eb;
-  --text: #111827;
-  --text-muted: #6b7280;
-  --accent: #2563eb;
+  --border: #e4e4e7;
+  --text: #11181c;
+  --text-muted: #71717a;
+  --accent: #006FEE;
   --accent-light: #eff6ff;
-  --green: #16a34a;
-  --red: #dc2626;
-  --yellow: #d97706;
+  --green: #17c964;
+  --red: #f31260;
+  --yellow: #f5a524;
 }
 
 body {
@@ -24,9 +25,9 @@ body {
 
 a { color: inherit; text-decoration: none; }
 
-/* Always-visible slim scrollbars */
+/* Slim scrollbars */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-* { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+* { scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
