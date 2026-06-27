@@ -23,12 +23,8 @@ export async function POST(req: NextRequest) {
 
   const db = createServerClient();
 
-  // Fetch existing invoice numbers to deduplicate
-  const { data: existing } = await db.from('invoices').select('invoice_number');
-  const existingNums = new Set((existing ?? []).map((r: { invoice_number: string }) => r.invoice_number));
-
-  const toInsert = invoices
-    .filter(inv => inv.invoice_number && !existingNums.has(inv.invoice_number))
+  const rows = invoices
+    .filter(inv => inv.invoice_number)
     .map(inv => ({
       invoice_number: inv.invoice_number,
       client_name: inv.client_name,
@@ -40,19 +36,12 @@ export async function POST(req: NextRequest) {
       pdf_url: inv.pdf_url ?? '',
     }));
 
-  if (toInsert.length === 0) {
-    return NextResponse.json({ inserted: 0, skipped: invoices.length, message: 'All already exist' });
-  }
-
-  const { error } = await db.from('invoices').insert(toInsert);
+  // Upsert — updates case_ids/snapshot on existing rows, inserts new ones
+  const { error } = await db.from('invoices').upsert(rows, { onConflict: 'invoice_number' });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   clearCache('invoices:all');
   clearCache('billing:');
 
-  return NextResponse.json({
-    inserted: toInsert.length,
-    skipped: invoices.length - toInsert.length,
-    invoiceNumbers: toInsert.map(i => i.invoice_number),
-  });
+  return NextResponse.json({ upserted: rows.length });
 }
