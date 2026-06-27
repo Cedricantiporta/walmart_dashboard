@@ -440,8 +440,8 @@ export default function BillingPage() {
                 {/* Content row: left card + divider + right card */}
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-                  {/* LEFT white card — no top margin when header sits above */}
-                  <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: showHdr ? (selectedClient ? '0 0 0 12px' : '0 0 12px 12px') : (selectedClient ? '12px 0 0 12px' : 12), margin: showHdr ? '0 0 6px 6px' : '6px 0 6px 6px' }}>
+                  {/* LEFT white card */}
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: selectedClient ? '12px 0 0 12px' : 12, margin: '6px 0 6px 6px' }}>
                     {loading ? (
                       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
@@ -499,7 +499,7 @@ export default function BillingPage() {
                   {/* RIGHT sidebar panel */}
                   <div style={{ width: selectedClient ? sidebarWidth : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
                     {selectedClient && (
-                      <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: showHdr ? '0 0 12px 0' : '0 12px 12px 0', margin: showHdr ? '0 6px 6px 0' : '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                      <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: '0 12px 12px 0', margin: '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         <CaseSidebar client={selectedClient} highlight={search || undefined} />
                       </div>
                     )}

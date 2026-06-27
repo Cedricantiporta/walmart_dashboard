@@ -506,12 +506,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {dateRangeLabel && (
-          <div style={{ padding: '10px 20px 4px', flexShrink: 0, background: '#f4f4f5' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 14, fontWeight: 600, color: '#11181c', background: '#eaebec', borderRadius: 999, padding: '6px 14px' }}>{dateRangeLabel}</span>
-          </div>
-        )}
-
         <div style={{ padding: '20px', maxWidth: 1200 }}>
 
         {error && (
@@ -526,10 +520,15 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Dropdowns row — right-aligned, above cards */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+        {/* Dropdowns row — date range left, selectors right */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+          {dateRangeLabel
+            ? <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 14, fontWeight: 600, color: '#11181c', background: '#eaebec', borderRadius: 999, padding: '6px 14px' }}>{dateRangeLabel}</span>
+            : <span />}
+          <div style={{ display: 'flex', gap: 8 }}>
           <PillDropdown value={timeRange} options={timeOptions} onChange={setTimeRange} icon={<CalendarIcon />} />
           <PillDropdown value={client} options={clientOptions} onChange={setClient} icon={<UserIcon />} />
+          </div>
         </div>
 
         {/* Metric cards */}
