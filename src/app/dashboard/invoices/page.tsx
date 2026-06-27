@@ -285,9 +285,6 @@ export default function InvoicesPage() {
           {/* Toolbar: pills + search */}
           {!loading && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>
-                Invoices <span style={{ fontWeight: 400, color: '#a1a1aa' }}>{filtered.length}</span>
-              </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div ref={popupAreaRef} style={{ display: 'flex', gap: 6 }}>
 

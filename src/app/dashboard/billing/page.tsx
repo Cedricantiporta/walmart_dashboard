@@ -180,6 +180,20 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
           </div>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af', lineHeight: 1 }}>×</button>
         </div>
+        <div style={{ padding: '0 24px 20px', display: 'flex', gap: 28 }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em', marginBottom: 2 }}>RECOVERED</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(client.totalAmount)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em', marginBottom: 2 }}>FEE</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{fmtUSD(client.totalFee)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em', marginBottom: 2 }}>CASES</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{client.cases.length}</div>
+          </div>
+        </div>
         {err && <div style={{ padding: '8px 24px', background: '#fef2f2', color: '#dc2626', fontSize: 12 }}>{err}</div>}
         {confirming && (
           <div style={{ margin: '0 24px 16px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
