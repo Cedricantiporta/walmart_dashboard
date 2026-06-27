@@ -434,6 +434,7 @@ export default function DashboardPage() {
     ? (() => {
         const s = new Date(analytics.dateRange.start);
         const e = new Date(analytics.dateRange.end);
+        if (isNaN(s.getTime()) || isNaN(e.getTime())) return '';
         return `${s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} – ${e.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
       })()
     : '';
