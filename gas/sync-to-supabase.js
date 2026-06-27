@@ -96,12 +96,9 @@ function _syncRmsCases(apiUrl, secret) {
       synced_at:            now
     }));
 
-  // Full-replace sync: server deletes all then inserts fresh.
-  // case_id is NOT unique — same case can have multiple rows (diff amounts/statuses).
-  const CHUNK = 500;
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    _post(apiUrl, secret, 'rms_cases', rows.slice(i, i + CHUNK));
-  }
+  // Send all rows in ONE request so server does delete-then-insert-all atomically.
+  // (Chunking here caused DELETE to run on every chunk, leaving only the last 500 rows.)
+  _post(apiUrl, secret, 'rms_cases', rows);
   Logger.log('rms_cases synced: ' + rows.length);
 }
 
