@@ -5,25 +5,25 @@ import { usePathname } from 'next/navigation';
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
       <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
     </svg>
   )},
   { href: '/dashboard/billing', label: 'Billing', icon: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
       <line x1="1" y1="10" x2="23" y2="10"/>
     </svg>
   )},
   { href: '/dashboard/invoices', label: 'Invoices', icon: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
       <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
     </svg>
   )},
   { href: '/dashboard/summary', label: 'Summary', icon: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
       <line x1="6" y1="20" x2="6" y2="14"/>
     </svg>
@@ -74,8 +74,8 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
           }} />
           {!collapsed && (
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
-              <div style={{ fontSize: 11, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Admin</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
+              <div style={{ fontSize: 13, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Admin</div>
             </div>
           )}
         </div>
@@ -94,11 +94,11 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
                   display: 'flex',
                   alignItems: 'center',
                   gap: 9,
-                  padding: collapsed ? '8px 0' : '8px 10px',
+                  padding: collapsed ? '9px 0' : '9px 11px',
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   borderRadius: 999,
                   marginBottom: 2,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? '#11181c' : '#71717a',
                   background: isActive ? '#e4e4e7' : 'transparent',
@@ -117,9 +117,9 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
         {/* Footer */}
         {!collapsed && (
           <div style={{ padding: '10px 14px', flexShrink: 0, borderTop: '1px solid #e4e4e7' }}>
-            <div style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
+            <div style={{ fontSize: 13, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
             {syncLabel && (
-              <div style={{ fontSize: 10, color: '#a1a1aa', marginTop: 3 }}>Synced {syncLabel}</div>
+              <div style={{ fontSize: 12, color: '#a1a1aa', marginTop: 3 }}>Synced {syncLabel}</div>
             )}
           </div>
         )}

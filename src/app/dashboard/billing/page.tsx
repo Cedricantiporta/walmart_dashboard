@@ -342,11 +342,11 @@ export default function BillingPage() {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
         {/* Top bar */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', height: 60, background: '#f4f4f5' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', gap: 10, padding: '8px 20px 10px', height: 68, background: '#f4f4f5' }}>
           <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
             <PanelIcon />
           </button>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#11181c', letterSpacing: '-0.01em' }}>Billing</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>Billing</h1>
           {currentMonthLabel && <span style={{ fontSize: 13, color: '#a1a1aa', fontWeight: 400 }}>Ready to bill — {currentMonthLabel}</span>}
         </div>
 
@@ -378,7 +378,7 @@ export default function BillingPage() {
           )}
 
           {/* Two-panel: RTB table + case detail */}
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#e4e4e7', border: '1px solid #d4d4d8' }}>
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#eaebec' }}>
 
             {/* LEFT: RTB table — scroll container holds sticky header + rows */}
             <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: selectedClient ? '12px 0 0 12px' : 12, margin: '6px 0 6px 6px' }}>
@@ -395,7 +395,7 @@ export default function BillingPage() {
                 return (
                   <>
                     {/* Sticky column headers — grey bg matches outer frame */}
-                    <div style={{ position: 'sticky', top: 0, zIndex: 2, display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, background: '#e4e4e7', minWidth: 420 }}>
+                    <div style={{ position: 'sticky', top: 0, zIndex: 2, display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, background: '#eaebec', minWidth: 420 }}>
                       <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                       <ColHdr label="Rate" col="rate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                       <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />

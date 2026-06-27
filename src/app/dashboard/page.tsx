@@ -142,9 +142,9 @@ function PillDropdown({
           cursor: 'pointer', outline: 'none', whiteSpace: 'nowrap',
         }}
       >
-        {icon && <span style={{ color: '#71717a', display: 'flex' }}>{icon}</span>}
+        {icon && <span style={{ color: '#11181c', display: 'flex' }}>{icon}</span>}
         {selected?.label}
-        <span style={{ color: '#71717a', display: 'flex' }}><ChevronDownIcon /></span>
+        <span style={{ color: '#11181c', display: 'flex' }}><ChevronDownIcon /></span>
       </button>
       {open && (
         <div style={{
@@ -490,12 +490,12 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
         {/* Top bar */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 20px 0', height: 68, background: '#f4f4f5' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, padding: '8px 20px 10px', height: 68, background: '#f4f4f5' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
             <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e4e4e7', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
               <PanelIcon />
             </button>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#11181c', letterSpacing: '-0.01em' }}>{greeting}</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
           </div>
           {dateRangeLabel && <span style={{ fontSize: 12, color: '#a1a1aa', fontWeight: 400 }}>{dateRangeLabel}</span>}
         </div>
