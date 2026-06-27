@@ -78,6 +78,8 @@ function _syncRmsCases(apiUrl, secret) {
       synced_at:            now
     }));
 
+  // Full-replace sync: server deletes all then inserts fresh.
+  // case_id is NOT unique — same case can have multiple rows (diff amounts/statuses).
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
     _post(apiUrl, secret, 'rms_cases', rows.slice(i, i + CHUNK));
@@ -110,7 +112,7 @@ function _syncOnboardingTracker(apiUrl, secret) {
     status:       findCol(['status', 'client status', 'billing status', 'account status']),
     rate:         findCol(['rate', 'billing rate', 'fee rate', 'fee %', '% fee', 'commission', '% commission']),
     startDate:    findCol(['start date', 'go live', 'contract start', 'billable from', 'live date', 'start']),
-    pilotEndDate: findCol(['pilot end', 'billable start', 'end of pilot', 'pilot end date', 'post-pilot']),
+    pilotEndDate: findCol(['(pilot) end date', 'pilot end', 'billable start', 'end of pilot', 'pilot end date', 'post-pilot']),
   };
 
   Logger.log('Onboarding Tracker columns: ' + JSON.stringify(

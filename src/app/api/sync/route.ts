@@ -22,9 +22,14 @@ export async function POST(req: NextRequest) {
   const db = createServerClient();
 
   if (type === 'rms_cases') {
+    // Full-replace: case_id is NOT unique (same case can have multiple rows with diff amounts/statuses).
+    // Delete all existing rows then insert fresh batch.
+    const { error: delError } = await db.from('rms_cases').delete().gte('id', 0);
+    if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
+
     const CHUNK = 500;
     for (let i = 0; i < data.length; i += CHUNK) {
-      const { error } = await db.from('rms_cases').upsert(data.slice(i, i + CHUNK), { onConflict: 'case_id' });
+      const { error } = await db.from('rms_cases').insert(data.slice(i, i + CHUNK));
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ synced: data.length, type });

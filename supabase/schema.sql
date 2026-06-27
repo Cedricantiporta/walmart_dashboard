@@ -4,9 +4,10 @@
 -- ============================================================
 
 -- RMS Cases (synced from Google Sheets via GAS trigger every 3 min)
+-- NOTE: case_id is NOT unique — same case can have multiple rows (different amounts/statuses)
 CREATE TABLE IF NOT EXISTS rms_cases (
   id                   BIGSERIAL PRIMARY KEY,
-  case_id              TEXT UNIQUE NOT NULL,
+  case_id              TEXT NOT NULL,
   client_name          TEXT NOT NULL,
   date_filed           DATE,
   claim_type           TEXT,
