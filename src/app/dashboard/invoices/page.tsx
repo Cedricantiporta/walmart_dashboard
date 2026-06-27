@@ -147,13 +147,11 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
     <div style={{ borderBottom: '1px solid #f3f4f6' }}>
       <div
         onClick={handleToggle}
-        style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '9px 16px', alignItems: 'center', cursor: 'pointer', background: open ? '#f9fafb' : 'transparent' }}
+        style={{ display: 'grid', gridTemplateColumns: '130px 1fr 52px 110px 110px 110px 126px', gap: 12, padding: '9px 16px', alignItems: 'center', cursor: 'pointer', background: open ? '#f9fafb' : 'transparent' }}
       >
         <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700, color: '#2563eb' }}>{inv.invoice_number}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
-          <span style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', flexShrink: 0, background: '#f3f4f6', borderRadius: 4, padding: '1px 5px' }}>{snapCount}c</span>
-        </div>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
+        <span style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{snapCount}</span>
         <span style={{ fontSize: 12, color: '#6b7280' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(inv.total_reimbursed)}</span>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(inv.billed_fee)}</span>
@@ -272,9 +270,9 @@ export default function InvoicesPage() {
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <div style={{ minWidth: 700 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '8px 16px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6' }}>
-                  <span>Invoice #</span><span>Client</span><span>Date</span>
+              <div style={{ minWidth: 760 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 52px 110px 110px 110px 126px', gap: 12, padding: '8px 16px', fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #f3f4f6' }}>
+                  <span>Invoice #</span><span>Client</span><span style={{ textAlign: 'right' }}>Cases</span><span>Date</span>
                   <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span><span />
                 </div>
                 {filtered.map(inv => (
@@ -288,8 +286,8 @@ export default function InvoicesPage() {
                     })}
                   />
                 ))}
-                <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 110px 110px 110px 126px', gap: 12, padding: '12px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 52px 110px 110px 110px 126px', gap: 12, padding: '12px 16px', borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', gridColumn: '1/5' }}>
                     {search ? `Filtered total (${filtered.length})` : `Total (${invoices.length})`}
                   </span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(totalRecovered)}</span>

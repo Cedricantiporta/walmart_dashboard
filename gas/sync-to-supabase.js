@@ -218,13 +218,16 @@ function _migrateInvoiceLog(apiUrl, secret) {
   Logger.log('InvoiceLog migrated: ' + rows.length + ' invoices');
 }
 
-// Install time-driven trigger: every 5 minutes
+// Install onEdit trigger — fires syncToSupabase whenever the spreadsheet is edited
 function setupSyncTrigger() {
   ScriptApp.getProjectTriggers().forEach(t => {
     if (t.getHandlerFunction() === 'syncToSupabase') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('syncToSupabase').timeBased().everyMinutes(5).create();
-  Logger.log('Trigger created: syncToSupabase every 5 min');
+  ScriptApp.newTrigger('syncToSupabase')
+    .forSpreadsheet(SYNC_SOURCE_ID)
+    .onEdit()
+    .create();
+  Logger.log('Trigger created: syncToSupabase on edit');
 }
 
 // ---- helpers ----

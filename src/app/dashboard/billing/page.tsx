@@ -468,9 +468,9 @@ export default function BillingPage() {
 
         {error && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>{error}</div>}
 
-        {/* RTB Client table + overlay sidebar */}
-        <div style={{ position: 'relative' }}>
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+        {/* RTB Client table + sidebar */}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
+          <div style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
                 Ready to Bill {!loading && <span style={{ color: '#6b7280', fontWeight: 500 }}>({filtered.length})</span>}
@@ -517,9 +517,8 @@ export default function BillingPage() {
             )}
           </div>
 
-          {/* Case sidebar — overlays the table, aligned to table top */}
           {selectedClient && (
-            <div style={{ position: 'absolute', top: 0, right: 0, width: 480, height: '100%', minHeight: 360, maxHeight: 'calc(100vh - 160px)', zIndex: 10, display: 'flex', flexDirection: 'column', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '-8px 0 32px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <div style={{ width: 380, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <CaseSidebar
                 client={selectedClient}
                 onClose={() => setSelectedClient(null)}
