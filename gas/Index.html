@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Dynamic Logos -->
+    <link rel="icon" type="image/png" href="<?!= logos.lightLogo ?>">
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@700;800&display=swap" rel="stylesheet">
+    
+    <?!= include('CSS'); ?>
+</head>
+<body data-theme="light">
+    <!-- Loading Spinner -->
+    <div id="loading-indicator">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <div class="app-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-card">
+            <div class="sidebar-header">
+                <a href="#" class="logo-link" data-view="dashboard">
+                    <div class="app-logo-container">
+                        <div class="app-logo-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v5" />
+                                <path d="M12 17v5" />
+                                <path d="M20.5 6.5l-4.5 2.5" />
+                                <path d="M8 15l-4.5 2.5" />
+                                <path d="M20.5 17.5l-4.5-2.5" />
+                                <path d="M8 9L3.5 6.5" />
+                            </svg>
+                        </div>
+                        <div style="display:flex;flex-direction:column;line-height:1.2;">
+                            <span class="app-logo-text">WFS Analytics</span>
+                            <span style="font-size:13px;font-weight:500;color:var(--color-text-secondary);letter-spacing:0.01em;">Dashboard</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            
+            <div style="margin-bottom: 8px; position: relative; display: flex; align-items: center;">
+                <i class="icon" data-icon="search" style="position: absolute; left: 10px; color: var(--color-text-secondary); width: 14px; height: 14px; opacity: 0.6; pointer-events: none;"></i>
+                <input type="text" id="global-search" class="sidebar-search-input" placeholder="Search" style="padding-left: 32px; padding-right: 56px; width: 100%;">
+                
+                <!-- Shortcut Hints -->
+                <div id="global-search-shortcut" style="position: absolute; right: 8px; display: flex; align-items: center; gap: 2px; pointer-events: none;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 16px; padding: 0 4px; background: rgba(0,0,0,0.04); border: 1px solid var(--color-border); border-radius: 4px; font-size: 9px; color: var(--color-text-secondary); font-weight: 700; box-shadow: 0 0.5px 0 0 rgba(0,0,0,0.05);">SHIFT</span>
+                    <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; padding: 0 3px; background: rgba(0,0,0,0.04); border: 1px solid var(--color-border); border-radius: 4px; font-size: 9px; color: var(--color-text-secondary); font-weight: 700; box-shadow: 0 0.5px 0 0 rgba(0,0,0,0.05);">K</span>
+                </div>
+
+                <!-- Clear Button -->
+                <button id="global-search-clear" style="position: absolute; right: 8px; display: none; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--color-border); border: none; cursor: pointer; color: var(--color-text-secondary); opacity: 0.8; transition: opacity 0.2s;">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+
+                <div id="global-search-suggestions" class="search-suggestions-dropdown"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <!-- Navigation Items -->
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <i class="icon" data-icon="layout"></i>
+                    <span>Overview</span>
+                </a>
+                
+                <div class="nav-group">
+                    <button class="nav-item nav-has-submenu" data-view="billing">
+                        <i class="icon" data-icon="credit-card"></i>
+                        <span>Billing</span>
+                        <i class="icon nav-chevron" data-icon="chevron-right"></i>
+                    </button>
+                    <div class="nav-submenu">
+                        <a href="#" class="submenu-item active" data-billing-filter="ready"><i class="icon" data-icon="check-square"></i>Ready to Bill</a>
+                        <a href="#" class="submenu-item" data-billing-filter="pending"><i class="icon" data-icon="clock"></i>Pending</a>
+                        <a href="#" class="submenu-item" data-billing-filter="billed"><i class="icon" data-icon="file-text"></i>Billed</a>
+                        <a href="#" class="submenu-item" data-billing-filter="overdue"><i class="icon" data-icon="alert-circle"></i>Overdue</a>
+                        <a href="#" class="submenu-item" data-billing-filter="all"><i class="icon" data-icon="users"></i>All Clients</a>
+                    </div>
+                </div>
+
+                <a href="#" class="nav-item" data-view="invoices">
+                    <i class="icon" data-icon="file-text"></i>
+                    <span>Invoices</span>
+                </a>
+
+                <a href="#" class="nav-item" data-view="summary">
+                    <i class="icon" data-icon="bar-chart-2"></i>
+                    <span>Summary</span>
+                </a>
+
+                <a href="#" class="nav-item" data-view="insights">
+                    <i class="icon" data-icon="message-square"></i>
+                    <span>Chat</span>
+                </a>
+
+                <a href="#" class="nav-item" data-view="builder">
+                    <i class="icon" data-icon="plus-square"></i>
+                    <span>Invoice Builder</span>
+                </a>
+                
+
+            </nav>
+
+            <div class="sidebar-footer">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px;">
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <span style="font-size:10.5px;font-weight:600;color:var(--color-text-secondary);">Last synced</span>
+                        <span id="last-sync-display" style="font-size:12.5px;font-weight:600;color:var(--color-text-primary);">—</span>
+                    </div>
+                    <button id="sync-data-btn" class="btn btn-secondary" style="height:26px;padding:0 10px;font-size:12px;font-weight:600;flex-shrink:0;">Sync</button>
+                </div>
+                <div class="user-profile-section" id="user-profile-info" style="cursor:default;padding:6px 0;height:auto;">
+                   <div class="user-avatar" id="user-avatar-initial">?</div>
+                   <div class="user-details">
+                       <div class="user-name" id="user-display-name">Loading Profile...</div>
+                       <div class="user-email" id="user-display-email" style="font-size:11.5px; pointer-events: none;">...</div>
+                   </div>
+                   <button id="theme-toggle-btn" class="btn btn-secondary btn-icon" style="height:26px;width:26px;padding:0;margin-left:auto;flex-shrink:0;" title="Change theme">
+                       <i class="icon" data-icon="sun" style="width:13px;height:13px;"></i>
+                   </button>
+                </div>
+            </div>
+            </div><!-- /sidebar-card -->
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            
+            <!-- 1. DASHBOARD VIEW -->
+            <div class="content-wrapper" id="dashboard-container">
+                <header class="top-bar">
+                    <div class="top-bar-inner">
+                        <div class="top-bar-left">
+                            <button class="btn btn-secondary sidebar-toggle-btn btn-icon"><i class="icon" data-icon="menu"></i></button>
+                            <div class="page-header">
+                                <h1 class="page-title">Overview</h1>
+                                <span id="dashboard-date-range-display" style="font-size: 14px; color: var(--color-text-secondary); opacity: 0.8; font-weight: 500;"></span>
+                            </div>
+                        </div>
+                        <div class="top-bar-actions">
+                            <!-- Client Filter -->
+                            <div class="search-container" style="display: none;"> <!-- Hidden until needed -->
+                                <i class="icon" data-icon="search"></i>
+                                <input type="text" class="control-input" placeholder="Search clients...">
+                            </div>
+                            
+                            <div class="dropdown" id="dashboard-client-dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" id="active-client-label">
+                                    <i class="icon" data-icon="users" style="width:13px;height:13px;"></i>
+                                    <span>All Clients</span>
+                                    <i class="icon" data-icon="chevron-down"></i>
+                                </button>
+                                <div class="dropdown-menu" id="dashboard-client-filter">
+                                    <div class="dropdown-item active" data-value="all">All Clients</div>
+                                    <!-- Clients will be injected here -->
+                                </div>
+                            </div>
+
+                            <div class="dropdown" id="hidden-clients-dropdown" style="display:none;">
+                                <button class="btn btn-secondary dropdown-toggle" id="hidden-clients-label">
+                                    <i class="icon" data-icon="eye-off" style="width:13px;height:13px;"></i>
+                                    <span>Hidden: None</span>
+                                    <i class="icon" data-icon="chevron-down"></i>
+                                </button>
+                                <div class="dropdown-menu" id="hidden-clients-menu" style="min-width:200px; padding: 8px 0;">
+                                    <div style="padding: 6px 14px 4px; font-size: 11px; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Include in data</div>
+                                    <!-- Hidden clients injected here -->
+                                </div>
+                            </div>
+
+                            <div class="dropdown" id="dashboard-time-dropdown">
+                                <button class="btn btn-secondary dropdown-toggle">
+                                    <i class="icon" data-icon="calendar" style="width:13px;height:13px;"></i>
+                                    <span id="active-time-label">Current Month</span>
+                                    <i class="icon" data-icon="chevron-down"></i>
+                                </button>
+                                <div class="dropdown-menu" id="dashboard-time-filter-menu">
+                                    <!-- Populated dynamically by buildTimeDropdown() -->
+                                </div>
+                            </div>
+                            
+                            <input type="month" id="dashboard-month-picker" class="control-input" style="display: none; width: 160px;">
+                            <div id="custom-date-range-container" style="display: none; align-items: center; gap: 8px;">
+                                <input type="date" id="dashboard-start-date" class="control-input" style="width: 140px;">
+                                <span style="color: var(--color-text-secondary);">to</span>
+                                <input type="date" id="dashboard-end-date" class="control-input" style="width: 140px;">
+                                <button class="btn btn-primary btn-sm" id="apply-date-filter-btn">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="content-body">
+
+                    <!-- SKELETON LOADING STATE -->
+                    <div id="overview-skeleton">
+                        <!-- KPI cards — icon+label | value | trend badge -->
+                        <div class="metrics-grid" style="margin-bottom:24px;">
+                            <div class="skel-card" style="padding:20px 22px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div style="display:flex;align-items:center;gap:7px;"><div class="skel-line" style="width:13px;height:13px;border-radius:2px;"></div><div class="skel-line" style="width:100px;height:10px;"></div></div><div class="skel-line" style="width:16px;height:16px;border-radius:50%;"></div></div>
+                                <div class="skel-line" style="width:62%;height:34px;margin-bottom:12px;border-radius:4px;"></div>
+                                <div class="skel-line" style="width:48%;height:18px;border-radius:9px;"></div>
+                            </div>
+                            <div class="skel-card" style="padding:20px 22px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div style="display:flex;align-items:center;gap:7px;"><div class="skel-line" style="width:13px;height:13px;border-radius:2px;"></div><div class="skel-line" style="width:78px;height:10px;"></div></div><div class="skel-line" style="width:16px;height:16px;border-radius:50%;"></div></div>
+                                <div class="skel-line" style="width:56%;height:34px;margin-bottom:12px;border-radius:4px;"></div>
+                                <div class="skel-line" style="width:44%;height:18px;border-radius:9px;"></div>
+                            </div>
+                            <div class="skel-card" style="padding:20px 22px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div style="display:flex;align-items:center;gap:7px;"><div class="skel-line" style="width:13px;height:13px;border-radius:2px;"></div><div class="skel-line" style="width:110px;height:10px;"></div></div><div class="skel-line" style="width:16px;height:16px;border-radius:50%;"></div></div>
+                                <div class="skel-line" style="width:38%;height:34px;margin-bottom:12px;border-radius:4px;"></div>
+                                <div class="skel-line" style="width:42%;height:18px;border-radius:9px;"></div>
+                            </div>
+                            <div class="skel-card" style="padding:20px 22px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div style="display:flex;align-items:center;gap:7px;"><div class="skel-line" style="width:13px;height:13px;border-radius:2px;"></div><div class="skel-line" style="width:120px;height:10px;"></div></div><div class="skel-line" style="width:16px;height:16px;border-radius:50%;"></div></div>
+                                <div class="skel-line" style="width:58%;height:34px;margin-bottom:12px;border-radius:4px;"></div>
+                                <div class="skel-line" style="width:36%;height:18px;border-radius:9px;"></div>
+                            </div>
+                        </div>
+                        <!-- Row 2: Line chart (left) + Actionable Insights list (right) -->
+                        <div class="charts-grid" style="margin-bottom:24px;">
+                            <!-- Line chart skeleton -->
+                            <div class="skel-card" style="padding:20px 22px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                                    <div class="skel-line" style="width:0;"></div>
+                                    <div style="display:flex;gap:12px;"><div class="skel-line" style="width:72px;height:9px;border-radius:4px;"></div><div class="skel-line" style="width:88px;height:9px;border-radius:4px;"></div></div>
+                                </div>
+                                <div style="position:relative;height:230px;">
+                                    <!-- Y-axis labels -->
+                                    <div style="position:absolute;left:0;top:0;bottom:20px;display:flex;flex-direction:column;justify-content:space-between;">
+                                        <div class="skel-line" style="width:28px;height:8px;"></div>
+                                        <div class="skel-line" style="width:28px;height:8px;"></div>
+                                        <div class="skel-line" style="width:28px;height:8px;"></div>
+                                        <div class="skel-line" style="width:28px;height:8px;"></div>
+                                    </div>
+                                    <!-- Curved line hint (two smooth lines like real chart) -->
+                                    <div style="position:absolute;left:40px;right:0;top:0;bottom:20px;display:flex;align-items:flex-end;gap:0;">
+                                        <svg width="100%" height="100%" viewBox="0 0 300 200" preserveAspectRatio="none" style="opacity:0.18;">
+                                            <path d="M 0,150 C 15,150 25,80 45,90 C 65,100 80,40 100,55 C 120,70 135,30 155,80 C 175,130 190,100 210,110 C 230,120 245,90 265,105 C 285,120 295,110 300,115" fill="none" stroke="var(--color-text-secondary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <path d="M 0,160 C 20,160 35,120 55,140 C 75,160 90,90 110,100 C 130,110 145,60 165,80 C 185,100 200,135 220,130 C 240,125 255,100 275,115 C 290,125 295,120 300,125" fill="none" stroke="var(--color-text-secondary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+                                        </svg>
+                                    </div>
+                                    <!-- X-axis labels -->
+                                    <div style="position:absolute;left:40px;right:0;bottom:0;display:flex;justify-content:space-between;">
+                                        <div class="skel-line" style="width:14px;height:7px;"></div>
+                                        <div class="skel-line" style="width:14px;height:7px;"></div>
+                                        <div class="skel-line" style="width:14px;height:7px;"></div>
+                                        <div class="skel-line" style="width:14px;height:7px;"></div>
+                                        <div class="skel-line" style="width:14px;height:7px;"></div>
+                                        <div class="skel-line" style="width:14px;height:7px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Actionable Insights skeleton: title + 4 label/value rows -->
+                            <div class="skel-card" style="padding:20px 22px;">
+                                <div class="skel-line" style="width:52%;height:12px;margin-bottom:24px;"></div>
+                                <div style="display:flex;flex-direction:column;gap:22px;">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="skel-line" style="width:140px;height:11px;margin-bottom:6px;"></div><div class="skel-line" style="width:110px;height:9px;"></div></div><div class="skel-line" style="width:60px;height:15px;border-radius:3px;"></div></div>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="skel-line" style="width:100px;height:11px;margin-bottom:6px;"></div><div class="skel-line" style="width:128px;height:9px;"></div></div><div class="skel-line" style="width:30px;height:15px;border-radius:3px;"></div></div>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="skel-line" style="width:112px;height:11px;margin-bottom:6px;"></div><div class="skel-line" style="width:136px;height:9px;"></div></div><div class="skel-line" style="width:30px;height:15px;border-radius:3px;"></div></div>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="skel-line" style="width:124px;height:11px;margin-bottom:6px;"></div><div class="skel-line" style="width:96px;height:9px;"></div></div><div class="skel-line" style="width:30px;height:15px;border-radius:3px;"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Row 3: Monthly bar chart (left) + Category pie (right) -->
+                        <div class="insights-grid">
+                            <!-- Monthly Summary single-bar chart with amount-coded opacity -->
+                            <div class="skel-card" style="padding:20px 22px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                                    <div class="skel-line" style="width:36%;height:12px;"></div>
+                                    <div class="skel-line" style="width:54px;height:22px;border-radius:6px;"></div>
+                                </div>
+                                <div style="display:flex;align-items:flex-end;gap:14px;height:240px;padding-bottom:24px;">
+                                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div class="skel-line" style="width:30px;height:10px;border-radius:3px;"></div><div class="skel-line" style="width:100%;height:14%;border-radius:6px 6px 0 0;opacity:0.45;"></div></div>
+                                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div class="skel-line" style="width:34px;height:10px;border-radius:3px;"></div><div class="skel-line" style="width:100%;height:32%;border-radius:6px 6px 0 0;opacity:0.55;"></div></div>
+                                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div class="skel-line" style="width:34px;height:10px;border-radius:3px;"></div><div class="skel-line" style="width:100%;height:42%;border-radius:6px 6px 0 0;opacity:0.65;"></div></div>
+                                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div class="skel-line" style="width:34px;height:10px;border-radius:3px;"></div><div class="skel-line" style="width:100%;height:38%;border-radius:6px 6px 0 0;opacity:0.6;"></div></div>
+                                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div class="skel-line" style="width:34px;height:10px;border-radius:3px;"></div><div class="skel-line" style="width:100%;height:28%;border-radius:6px 6px 0 0;opacity:0.5;"></div></div>
+                                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div class="skel-line" style="width:38px;height:10px;border-radius:3px;"></div><div class="skel-line" style="width:100%;height:96%;border-radius:6px 6px 0 0;opacity:1;"></div></div>
+                                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div class="skel-line" style="width:34px;height:10px;border-radius:3px;"></div><div class="skel-line" style="width:100%;height:48%;border-radius:6px 6px 0 0;opacity:0.7;"></div></div>
+                                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div class="skel-line" style="width:36px;height:10px;border-radius:3px;"></div><div class="skel-line" style="width:100%;height:60%;border-radius:6px 6px 0 0;opacity:0.8;"></div></div>
+                                </div>
+                            </div>
+                            <!-- Category donut + legend -->
+                            <div class="skel-card" style="padding:20px 22px;">
+                                <div class="skel-line" style="width:55%;height:12px;margin-bottom:16px;"></div>
+                                <div style="display:flex;gap:20px;align-items:center;margin-top:20px;">
+                                    <div style="position:relative;width:150px;height:150px;flex-shrink:0;">
+                                        <div class="skel-line" style="width:150px;height:150px;border-radius:50%;position:absolute;top:0;left:0;"></div>
+                                        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;background:var(--color-surface);"></div>
+                                    </div>
+                                    <div style="flex:1;display:flex;flex-direction:column;gap:13px;">
+                                        <div style="display:flex;justify-content:space-between;"><div class="skel-line" style="width:46%;height:10px;"></div><div class="skel-line" style="width:22%;height:10px;"></div></div>
+                                        <div style="display:flex;justify-content:space-between;"><div class="skel-line" style="width:38%;height:10px;"></div><div class="skel-line" style="width:18%;height:10px;"></div></div>
+                                        <div style="display:flex;justify-content:space-between;"><div class="skel-line" style="width:52%;height:10px;"></div><div class="skel-line" style="width:20%;height:10px;"></div></div>
+                                        <div style="display:flex;justify-content:space-between;"><div class="skel-line" style="width:34%;height:10px;"></div><div class="skel-line" style="width:16%;height:10px;"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- REAL CONTENT (shown after analytics loads) -->
+                    <div id="overview-real-content" style="display:none;">
+
+                    <!-- Metrics Grid -->
+                    <section class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <div class="metric-header-left">
+                                    <i class="icon" data-icon="bar-chart-2"></i>
+                                    <h3>Total Recovered</h3>
+                                </div>
+                                <i class="icon metric-info-btn" data-icon="info" title="Cumulative sum of all reimbursements approved during this period."></i>
+                            </div>
+                            <div class="metric-value" id="dashboard-total-recovered">$0.00</div>
+                            <div class="metric-trend" id="dashboard-recovered-trend"></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <div class="metric-header-left">
+                                    <i class="icon" data-icon="dollar-sign"></i>
+                                    <h3>Total Fees</h3>
+                                </div>
+                                <i class="icon metric-info-btn" data-icon="info" title="Commission fees generated based on Total Recovered."></i>
+                            </div>
+                            <div class="metric-value" id="dashboard-total-fees">$0.00</div>
+                            <div class="metric-trend" id="dashboard-fees-trend"></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <div class="metric-header-left">
+                                    <i class="icon" data-icon="check-square"></i>
+                                    <h3>Approved Cases</h3>
+                                </div>
+                                <i class="icon metric-info-btn" data-icon="info" title="Total number of approved reimbursement cases."></i>
+                            </div>
+                            <div class="metric-value" id="dashboard-approved-cases">0</div>
+                            <div class="metric-trend" id="dashboard-approved-trend"></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <div class="metric-header-left">
+                                    <i class="icon" data-icon="archive-box"></i>
+                                    <h3>Total Fees Billed</h3>
+                                </div>
+                                <i class="icon metric-info-btn" data-icon="info" title="Total amount already recovered and billed in prior periods."></i>
+                            </div>
+                            <div class="metric-value" id="dashboard-previously-reimbursed">$0.00</div>
+                            <div class="metric-trend" id="dashboard-prev-reimbursed-trend"></div>
+                        </div>
+                    </section>
+
+                    <!-- Row 2: Trend Chart + Monthly History -->
+                    <div class="charts-grid">
+                        <!-- Comparison Chart -->
+                        <div class="chart-container" style="height: 320px;">
+                            <div id="weekly-chart-header" class="chart-header" style="padding-bottom: 0;"></div>
+                            <div class="chart-body" style="min-height: 0; flex: 1; padding-top: 10px;">
+                                <canvas id="weekly-chart"></canvas>
+                                <div id="weekly-chart-table-view" style="display:none;"></div>
+                            </div>
+                            <!-- Legend removed intentionally -->
+                        </div>
+                        
+                        <!-- Actionable Insights -->
+                        <div id="billing-insights-section-dashboard" style="display: flex; flex-direction: column; width: 100%;"></div>
+                    </div>
+
+                    <!-- Row 3: Insights + Category Card -->
+                    <div class="insights-grid" style="margin-top: 24px;">
+                        
+                        <!-- Monthly Summary -->
+                        <div class="insight-card" style="display: flex; flex-direction: column; height: 380px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h3 style="font-size: 16px;">Monthly Summary</h3>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <a href="#" onclick="switchView('summary'); return false;" class="btn btn-secondary" style="height: 26px; padding: 0 10px; font-size: 13px; font-weight: 600; border-radius: 6px; text-decoration: none;">See all</a>
+                                    </div>
+                            </div>
+                            <div style="flex: 1; overflow: hidden; display: flex; align-items: flex-end; justify-content: center;">
+                                <canvas id="monthly-summary-chart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Combined Category Card -->
+                        <div class="insight-card" style="display: flex; flex-direction: column; height: 380px;">
+                            <h3 style="margin-bottom: 16px;">Reimbursements by Category</h3>
+                            <div style="display: flex; flex: 1; gap: 24px; align-items: center; overflow: hidden;">
+                                <div style="flex: 1; display: flex; align-items: center; justify-content: center; height: 100%; padding: 24px;">
+                                    <canvas id="category-chart"></canvas>
+                                </div>
+                                <div id="category-totals-table" style="flex: 1; height: 100%; border-top: none; padding-top: 0; overflow-y: auto; overflow-x: visible;">
+                                    <!-- Populated via JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div><!-- end #overview-real-content -->
+                </div><!-- end content-body -->
+            </div><!-- end dashboard-container -->
+
+            <!-- 2. BILLING VIEW -->
+            <div class="content-wrapper" id="billing-container" style="display:none;">
+                <header class="top-bar">
+                    <div class="top-bar-inner">
+                        <div class="top-bar-left">
+                            <button class="btn btn-secondary sidebar-toggle-btn btn-icon"><i class="icon" data-icon="menu"></i></button>
+                            <div class="page-header"><h1 class="page-title">Billing</h1></div>
+                        </div>
+                        <div class="top-bar-actions">
+                            <div style="display:none;">
+                                <input type="date" id="vantage-cutoff-input" value="2026-05-06">
+                                <button id="vantage-cutoff-save-btn"></button>
+                            </div>
+                            <div class="search-container" style="position:relative; display: flex; align-items: center;">
+                                <i class="icon" data-icon="search" style="position: absolute; left: 10px; width:14px;height:14px; color: var(--color-text-secondary); opacity: 0.6; pointer-events: none;"></i>
+                                <input type="search" id="billing-tab-search" class="control-input" placeholder="Search by client name…" style="padding-left: 32px; padding-right: 32px; width:260px;">
+                                <button id="billing-search-clear" style="position: absolute; right: 8px; display: none; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--color-border); border: none; cursor: pointer; color: var(--color-text-secondary); opacity: 0.8; transition: opacity 0.2s;">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+                <div class="content-body">
+                    <div class="billing-seamless-metrics" style="margin-bottom: 20px;">
+                        <div class="billing-metrics-stats">
+                            <div class="metric-item">
+                                <div class="metric-label" style="opacity: 0.8 !important;">Reimbursed</div>
+                                <div class="metric-value" id="total-reimbursed-amount" style="font-weight: 700;">$0.00</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label" style="opacity: 0.8 !important;">Ready to Bill</div>
+                                <div class="metric-value text-accent" id="ready-to-bill-fee" style="color: var(--color-brand); font-weight: 700;">$0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;">
+                        <div style="flex: 1;">
+                            <h2 id="billing-view-title" style="font-size: 20px; font-weight: 800; color: var(--color-text-primary); margin-bottom: 2px;">Ready to Bill</h2>
+                            <p id="billing-view-subtitle" style="font-size: 13px; color: var(--color-text-secondary); margin: 0;">Clients with approved reimbursements that haven't been invoiced yet.</p>
+                        </div>
+                    </div>
+                    
+                    <div id="billing-bulk-actions" style="display: none; margin-bottom: 16px; padding: 12px 16px; background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); align-items: center; justify-content: space-between; gap: 12px; transition: all 0.2s;">
+                        <span id="billing-selected-count" style="font-weight: 600; color: var(--color-text-secondary);">0 selected</span>
+                        <button id="billing-bulk-mark-btn" class="btn btn-primary" style="font-size: 13px; margin-left: auto;">
+                            <i class="icon" data-icon="file" style="background-color:white;"></i> Bulk Generate Invoice
+                        </button>
+                    </div>
+
+                    <section class="billing-main-container">
+                        <div class="table-wrapper">
+                            <table class="modern-table billing-col-layout">
+                                <thead id="billing-table-head">
+                                    <tr>
+                                        <th style="width: 40px;"><input type="checkbox" id="billing-select-all-checkbox" style="cursor: pointer;"></th>
+                                        <th data-sort-key="clientName">Client Name</th>
+                                        <th data-sort-key="readyToBillCases">Cases</th>
+                                        <th data-sort-key="rate">Rate</th>
+                                        <th data-sort-key="totalReimbursed">Reimbursed</th>
+                                        <th data-sort-key="readyToBillFee">Ready to Bill</th>
+                                        <th data-sort-key="previouslyBilledFee">Previously Billed</th>
+                                        <th style="text-align: right;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="client-summary-table"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- 3. SUMMARY VIEW (Accordion) -->
+            <div class="content-wrapper" id="summary-container" style="display:none;">
+                <header class="top-bar">
+                    <div class="top-bar-inner">
+                        <div class="top-bar-left">
+                            <button class="btn btn-secondary sidebar-toggle-btn btn-icon"><i class="icon" data-icon="menu"></i></button>
+                            <div class="page-header"><h1 class="page-title">Monthly Summary</h1></div>
+                        </div>
+                        <div class="top-bar-actions">
+                            <div class="search-container" style="position:relative; display: flex; align-items: center;">
+                                <i class="icon" data-icon="search" style="position: absolute; left: 10px; width:14px;height:14px; color: var(--color-text-secondary); opacity: 0.6; pointer-events: none;"></i>
+                                <input type="search" id="summary-tab-search" class="control-input" placeholder="Search by client or month…" style="padding-left: 32px; padding-right: 32px; width:260px;">
+                                <button id="summary-search-clear" style="position: absolute; right: 8px; display: none; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--color-border); border: none; cursor: pointer; color: var(--color-text-secondary); opacity: 0.8; transition: opacity 0.2s;">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+                <div class="content-body">
+                    <!-- Monthly Summary Accordion -->
+                    <!-- Monthly Summary Table Controls -->
+                    <div class="table-controls" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <h2 style="font-size: 18px;">Monthly Billing Summary</h2>
+                            <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0;">Detailed performance metrics and historical invoice data</p>
+                        </div>
+                    </div>
+
+                    <section class="table-container" id="summary-table-container">
+                        <div class="table-wrapper">
+                            <table class="modern-table summary-col-layout" id="history-monthly-accordion-container"></table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- 4. INVOICES VIEW (All Individual Invoices) -->
+            <div class="content-wrapper" id="invoices-container" style="display:none;">
+                <header class="top-bar">
+                    <div class="top-bar-inner">
+                        <div class="top-bar-left">
+                            <button class="btn btn-secondary sidebar-toggle-btn btn-icon"><i class="icon" data-icon="menu"></i></button>
+                            <div class="page-header"><h1 class="page-title">Invoice History</h1></div>
+                        </div>
+                        <div class="top-bar-actions">
+                            <div class="search-container" style="position:relative; display: flex; align-items: center;">
+                                <i class="icon" data-icon="search" style="position: absolute; left: 10px; width:14px;height:14px; color: var(--color-text-secondary); opacity: 0.6; pointer-events: none;"></i>
+                                <input type="search" id="invoices-tab-search" class="control-input" placeholder="Search by client or invoice #…" style="padding-left: 32px; padding-right: 32px; width:260px;">
+                                <button id="invoices-search-clear" style="position: absolute; right: 8px; display: none; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--color-border); border: none; cursor: pointer; color: var(--color-text-secondary); opacity: 0.8; transition: opacity 0.2s;">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+                <div class="content-body">
+                    <!-- All Invoices Table -->
+                    <!-- All Invoices Table Controls -->
+                    <div class="table-controls" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <h2 style="font-size: 18px;">Invoice Archive</h2>
+                            <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0;">Comprehensive log of all generated invoices and billing history</p>
+                        </div>
+                        <div class="pagination-controls" id="history-pagination-controls">
+                            <select id="history-items-per-page" class="control-input small">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <button id="history-prev-page-btn" class="btn btn-secondary btn-icon"><i class="icon" data-icon="arrow-left"></i></button>
+                            <span class="pagination-info" id="history-pagination-info"></span>
+                            <button id="history-next-page-btn" class="btn btn-secondary btn-icon"><i class="icon" data-icon="arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <section class="table-container" id="invoices-table-container">
+                        <div class="table-wrapper">
+                            <table class="modern-table invoices-col-layout">
+                                <thead>
+                                    <tr>
+                                        <th>Date Billed</th>
+                                        <th>Client Name</th>
+                                        <th>Invoice #</th>
+                                        <th>Amount Billed</th>
+                                        <th style="text-align: right;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-table"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- 5. INVOICE BUILDER VIEW -->
+            <div class="content-wrapper" id="builder-container" style="display: none;">
+                <header class="top-bar">
+                    <div class="top-bar-inner">
+                        <div class="top-bar-left">
+                            <button class="btn btn-secondary sidebar-toggle-btn btn-icon"><i class="icon" data-icon="menu"></i></button>
+                            <div class="page-header"><h1 class="page-title">Invoice Builder</h1></div>
+                        </div>
+                        <div class="top-bar-actions" style="display:flex;gap:8px;">
+                            <button id="builder-add-row-btn" class="btn btn-secondary"><i class="icon" data-icon="plus" style="width:14px;height:14px;"></i> <span class="btn-text-permanent">Add Row</span></button>
+                            <button id="builder-save-btn" class="btn btn-secondary"><i class="icon" data-icon="check" style="width:14px;height:14px;"></i> <span class="btn-text-permanent">Save</span></button>
+                            <button id="builder-download-btn" class="btn btn-primary"><i class="icon" data-icon="download" style="width:14px;height:14px;background-color:white;"></i> <span class="btn-text-permanent">Download PDF</span></button>
+                        </div>
+                    </div>
+                </header>
+                <div class="content-body" style="background: var(--color-surface-secondary); min-height: calc(100vh - 80px);">
+                    <div class="builder-paper" style="background: var(--color-surface); max-width: 900px; margin: 0 auto; padding: 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--color-border); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                        
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 40px; flex-wrap: wrap; gap: 24px;">
+                            <div>
+                                <h2 style="font-size: 24px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 8px;">Threecolts</h2>
+                                <p style="color: var(--color-text-secondary); font-size: 13px; line-height: 1.5;">16192 Coastal Highway<br>Lewes, Delaware 19958<br>United States<br>support@threecolts.com</p>
+                            </div>
+                            <div style="text-align: right; min-width: 250px;">
+                                <h1 style="font-size: 36px; font-weight: 800; color: var(--color-text-primary); letter-spacing: -0.02em; margin-bottom: 16px;">INVOICE</h1>
+                                <div style="display: grid; grid-template-columns: auto auto; gap: 8px 16px; font-size: 13px; text-align: left; justify-content: flex-end; align-items: center;">
+                                    <strong style="color: var(--color-text-secondary);">Invoice #:</strong>
+                                    <input type="text" id="builder-invoice-number" class="control-input small" style="width: 140px;" placeholder="INV-0001">
+                                    <strong style="color: var(--color-text-secondary);">Date:</strong>
+                                    <input type="date" id="builder-date" class="control-input small" style="width: 140px;">
+                                    <strong style="color: var(--color-text-secondary);">Due Date:</strong>
+                                    <input type="date" id="builder-due-date" class="control-input small" style="width: 140px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 32px;">
+                            <h3 style="font-size: 12px; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">BILL TO</h3>
+                            <input type="text" id="builder-client-name" list="client-datalist" class="control-input" style="width: 100%; max-width: 400px; font-size: 16px; font-weight: 600; padding-left: 12px;" placeholder="Select or type client name">
+                            <datalist id="client-datalist"></datalist>
+                        </div>
+
+                        <div style="overflow-x: auto; margin-bottom: 24px;">
+                            <table class="modern-table" style="width: 100%; min-width: 700px; table-layout: fixed;">
+                                <thead>
+                                    <tr style="background-color: #0f172a; color: white;">
+                                        <th style="width: 18%; padding: 10px; text-align: left; font-size: 13px; color: white;">Case ID</th>
+                                        <th style="width: 20%; padding: 10px; text-align: left; font-size: 13px; color: white;">Description</th>
+                                        <th style="width: 18%; padding: 10px; text-align: left; font-size: 13px; color: white;">Date</th>
+                                        <th style="width: 14%; padding: 10px; text-align: right; font-size: 13px; color: white;">Recovered</th>
+                                        <th style="width: 10%; padding: 10px; text-align: right; font-size: 13px; color: white;">Rate</th>
+                                        <th style="width: 14%; padding: 10px; text-align: right; font-size: 13px; color: white;">Fee</th>
+                                        <th style="width: 6%; padding: 10px; text-align: center; color: white;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="builder-items-body">
+                                    <!-- Dynamic rows go here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end;">
+                            <div style="width: 100%; max-width: 320px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: var(--color-text-secondary);">
+                                    <span>Total Recovered:</span>
+                                    <span id="builder-total-recovered">$0.00</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: var(--color-text-secondary);">
+                                    <span>Subtotal:</span>
+                                    <span id="builder-subtotal">$0.00</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px; background: rgba(0,0,0,0.03); border-radius: 6px; font-size: 18px; font-weight: 700; color: var(--color-text-primary); margin-top: 12px;">
+                                    <span>Amount Due (USD):</span>
+                                    <span id="builder-amount-due">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHAT VIEW -->
+            <div class="content-wrapper" id="insights-container" style="display:none;">
+                <header class="top-bar">
+                    <div class="top-bar-inner">
+                        <div class="top-bar-left">
+                            <button class="btn btn-secondary sidebar-toggle-btn btn-icon"><i class="icon" data-icon="menu"></i></button>
+                            <div class="page-header"><h1 class="page-title">Chat</h1></div>
+                        </div>
+                        <div class="top-bar-actions">
+                            <button id="chat-clear-btn" class="btn btn-secondary" style="display:none;height:32px;font-size:13px;font-weight:600;padding:0 14px;">Clear chat</button>
+                        </div>
+                    </div>
+                </header>
+                <div class="content-body insights-chat-layout">
+
+                    <!-- Chat Interface -->
+                    <div class="wfs-chat-container chat-is-empty" id="wfs-chat-container">
+                        <!-- Messages -->
+                        <div class="wfs-chat-messages" id="chat-messages">
+                            <div class="wfs-chat-empty" id="chat-empty-state">
+                                <div class="wfs-chat-empty-heading">What can I help with?</div>
+                                <div class="wfs-chat-suggestions">
+                                    <button class="wfs-chat-chip" data-q="What is my overall approval rate and how has it trended?">Approval rate trend</button>
+                                    <button class="wfs-chat-chip" data-q="Which clients generate the most fee revenue?">Top fee clients</button>
+                                    <button class="wfs-chat-chip" data-q="Which claim categories recover the most money?">Top categories</button>
+                                    <button class="wfs-chat-chip" data-q="Give me a full business summary and key recommendations.">Full summary</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input bar -->
+                        <div class="wfs-chat-input-wrap">
+                            <div class="wfs-chat-input-bar">
+                                <input type="text" id="chat-input" class="wfs-chat-input" placeholder="Ask about your data...">
+                                <button id="chat-send-btn" class="wfs-chat-send">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-content small">
+            <div class="modal-header"><h3 id="confirm-title">Confirm Action</h3></div>
+            <div class="modal-body"><p id="confirm-body">Are you sure?</p></div>
+            <div class="modal-footer"><button class="btn btn-secondary" id="confirm-cancel-btn">Cancel</button><button class="btn btn-primary" id="confirm-ok-btn">Confirm</button></div>
+        </div>
+    </div>
+
+    <!-- Bulk Mark As Billed Modal -->
+    <div class="modal-overlay" id="bulk-mark-billed-modal">
+        <div class="modal-content" style="max-width: 760px; width: 90vw;">
+            <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;">
+                <h3 id="bulk-mark-modal-title">Bulk Invoice Generation</h3>
+                <button id="bulk-mark-close-btn" class="btn btn-secondary btn-icon" style="height:28px;width:28px;padding:0;flex-shrink:0;" title="Close">
+                    <i class="icon" data-icon="x" style="width:13px;height:13px;"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Stats bar matching billing tab SC1 -->
+                <div class="billing-seamless-metrics" style="margin-bottom: 20px; background: transparent; border: none; padding: 0;">
+                    <div class="billing-metrics-stats">
+                        <div class="metric-item">
+                            <div class="metric-label">Reimbursed</div>
+                            <div class="metric-value" id="bulk-mark-stat-reimbursed" style="font-size: 32px;">$0.00</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label" style="color: var(--color-brand);">Ready to Bill</div>
+                            <div class="metric-value" id="bulk-mark-stat-fee" style="font-size: 32px; color: var(--color-brand);">$0.00</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Total Cases</div>
+                            <div class="metric-value" id="bulk-mark-stat-cases" style="font-size: 32px;">0</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Merchants</div>
+                            <div class="metric-value" id="bulk-mark-stat-merchants" style="font-size: 32px;">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Merchant table matching SC2 style -->
+                <div style="border: 1.5px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; max-height: 340px; overflow-y: auto; margin-bottom: 20px;">
+                    <table class="modern-table" style="width: 100%; table-layout: fixed; min-width: unset;">
+                        <colgroup>
+                            <col style="width: 35%;">
+                            <col style="width: 20%;">
+                            <col style="width: 10%;">
+                            <col style="width: 10%;">
+                            <col style="width: 25%;">
+                        </colgroup>
+                        <thead style="position: sticky; top: 0; z-index: 2;">
+                            <tr>
+                                <th style="background: var(--color-surface); box-shadow: inset 0 -1.5px 0 var(--color-border); border-bottom: none;">Client</th>
+                                <th style="background: var(--color-surface); box-shadow: inset 0 -1.5px 0 var(--color-border); border-bottom: none;">Invoice #</th>
+                                <th style="background: var(--color-surface); box-shadow: inset 0 -1.5px 0 var(--color-border); border-bottom: none; text-align: right;">Cases</th>
+                                <th style="background: var(--color-surface); box-shadow: inset 0 -1.5px 0 var(--color-border); border-bottom: none; text-align: right;">Rate</th>
+                                <th style="background: var(--color-surface); box-shadow: inset 0 -1.5px 0 var(--color-border); border-bottom: none; text-align: right;">Ready to Bill</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulk-mark-clients-list"></tbody>
+                    </table>
+                </div>
+
+                <div class="download-buttons" style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" id="bulk-mark-download-pdf-btn">Bulk Download PDFs</button>
+                    <button class="btn btn-secondary" id="bulk-mark-download-csv-btn">Bulk Download CSVs</button>
+                </div>
+
+                <!-- Progress bar (hidden by default) -->
+                <div id="bulk-download-progress" style="display:none; margin-top: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span id="bulk-download-progress-label" style="font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;"></span>
+                        <span id="bulk-download-progress-counter" style="font-size: 13px; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap; margin-left: 8px;"></span>
+                    </div>
+                    <div style="background: var(--color-border); border-radius: 99px; height: 6px; overflow: hidden;">
+                        <div id="bulk-download-progress-bar" style="height: 100%; background: var(--color-brand); border-radius: 99px; width: 0%; transition: width 0.2s ease;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 20px; border-top: none; background: transparent;">
+                <button class="btn btn-secondary" id="bulk-mark-cancel-btn" style="border: 1.5px solid var(--color-border); box-shadow: var(--shadow-sm);">Cancel</button>
+                <button class="btn btn-primary" id="bulk-mark-confirm-btn">Confirm & Mark All as Billed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Email Modal -->
+    <div class="modal-overlay" id="bulk-email-modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Send Bulk Emails</h3></div>
+            <div class="modal-body">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px;">Clients</label>
+                    <div id="bulk-email-clients-list" style="max-height: 150px; overflow-y: auto; padding: 8px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px;">Email Template</label>
+                    <textarea id="bulk-email-template" class="control-input" style="min-height: 200px; font-family: monospace; font-size: 12px;"></textarea>
+                    <button id="bulk-reset-email-template-btn" class="btn btn-secondary" style="margin-top: 8px; font-size: 12px;">Reset to Default</button>
+                </div>
+                <p style="font-size: 12px; color: var(--color-text-secondary);">Template variables: {{clientName}}, {{totalReimbursed}}, {{totalFee}}, {{rate}}, {{caseIds}}</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="bulk-email-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="bulk-email-send-btn">Send to All</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="invoice-generated-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="invoice-generated-title">Invoice Generated</h3>
+            </div>
+            <div class="modal-body">
+                <p id="invoice-generated-body">Invoice has been generated. Please download the reports and then confirm to mark these cases as billed.</p>
+                
+                <div class="download-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" id="invoice-generated-edit-pdf-btn">
+                        Edit PDF
+                    </button>
+                    <button class="btn btn-secondary" id="invoice-generated-download-pdf-btn">
+                        Download PDF
+                    </button>
+                    <button class="btn btn-secondary" id="invoice-generated-download-csv-btn">
+                        Download CSV
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 20px; border-top: none; background: transparent;">
+                <button class="btn btn-secondary" id="invoice-generated-cancel-btn" style="border: 1.5px solid var(--color-border); box-shadow: var(--shadow-sm);">Cancel</button>
+                <button class="btn btn-primary" id="invoice-generated-confirm-btn">Confirm & Mark Billed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div class="modal-overlay" id="details-modal">
+        <div class="modal-content" style="width:65vw;max-width:65vw;height:82vh;display:flex;flex-direction:column;">
+            <!-- Header: title | search | close -->
+            <div class="modal-header" style="flex-shrink:0;border-bottom:none;padding:16px 20px 12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;">
+                <h3 id="details-modal-title" style="font-size:17px;font-weight:700;color:var(--color-text-primary);margin:0;"></h3>
+                <div class="search-container" style="position:relative;">
+                    <i class="icon" data-icon="search" style="width:13px;height:13px;"></i>
+                    <input type="search" id="details-case-search" class="control-input small" placeholder="Search Case ID…" style="width:200px;" oninput="filterDetailsCases(this.value)">
+                </div>
+                <div style="display:flex;justify-content:flex-end;">
+                    <button class="btn-close" id="close-details-btn"><i class="icon" data-icon="close"></i></button>
+                </div>
+            </div>
+            <!-- Two-pane body -->
+            <div style="display:flex;flex:1;overflow:hidden;">
+                <!-- Client list sidebar -->
+                <div id="details-client-list" style="width:172px;flex-shrink:0;overflow-y:auto;padding:8px;background:var(--color-surface);"></div>
+                <!-- Detail content -->
+                <div class="modal-body" id="details-modal-body" style="flex:1;overflow-y:auto;padding:20px 24px;"></div>
+            </div>
+        </div>
+    </div>
+
+
+    
+    <!-- Theme + Defaults popup (SC2 Style) -->
+    <div id="theme-popup" class="popup-menu sc2-popup" style="width:220px; padding:6px 0; bottom:80px; left:16px; top:auto; right:auto; z-index:3000; border-radius:8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 1px solid var(--color-border); background: var(--color-surface);">
+        
+        <!-- Theme -->
+        <div class="sc2-menu-item has-submenu" data-submenu="submenu-theme">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="icon" data-icon="aperture" style="width:14px; height:14px; color: var(--color-text-secondary);"></i>
+                <span>Theme</span>
+            </div>
+            <i class="icon" data-icon="chevron-right"></i>
+            <!-- Submenu -->
+            <div class="sc2-submenu" id="submenu-theme">
+                <button class="theme-popup-option" data-theme-val="light" onclick="setTheme('light');updateThemePopup();">
+                    <span style="display:flex; align-items:center;"><i class="icon" data-icon="sun" style="width:14px; height:14px; margin-right:8px;"></i> Light</span>
+                    <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+                <button class="theme-popup-option" data-theme-val="dark" onclick="setTheme('dark');updateThemePopup();">
+                    <span style="display:flex; align-items:center;"><i class="icon" data-icon="moon" style="width:14px; height:14px; margin-right:8px;"></i> Dark</span>
+                    <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+                <button class="theme-popup-option" data-theme-val="auto" onclick="setTheme('auto');updateThemePopup();">
+                    <span style="display:flex; align-items:center;"><i class="icon" data-icon="layout" style="width:14px; height:14px; margin-right:8px;"></i> System</span>
+                    <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="sc2-divider"></div>
+        
+        <!-- Timeframe -->
+        <div class="sc2-menu-item has-submenu" data-submenu="submenu-timeframe">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="icon" data-icon="calendar" style="width:14px; height:14px; color: var(--color-text-secondary);"></i>
+                <span>Default Timeframe</span>
+            </div>
+            <i class="icon" data-icon="chevron-right"></i>
+            <div class="sc2-submenu" id="submenu-timeframe">
+                <button class="theme-popup-option popup-default-time-opt" data-time-val="thisMonth" onclick="_setDefaultTime('thisMonth');">
+                    Current Month <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+                <button class="theme-popup-option popup-default-time-opt" data-time-val="lastMonth" onclick="_setDefaultTime('lastMonth');">
+                    Last Month <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+                <button class="theme-popup-option popup-default-time-opt" data-time-val="90days" onclick="_setDefaultTime('90days');">
+                    Last 90 Days <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+                <button class="theme-popup-option popup-default-time-opt" data-time-val="lifetime" onclick="_setDefaultTime('lifetime');">
+                    All Time <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Startup -->
+        <div class="sc2-menu-item has-submenu" data-submenu="submenu-startup">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="icon" data-icon="monitor" style="width:14px; height:14px; color: var(--color-text-secondary);"></i>
+                <span>Startup View</span>
+            </div>
+            <i class="icon" data-icon="chevron-right"></i>
+            <div class="sc2-submenu" id="submenu-startup">
+                <button class="theme-popup-option popup-default-startup-opt" data-startup-val="dashboard" onclick="_setDefaultStartup('dashboard');">
+                    Overview <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+                <button class="theme-popup-option popup-default-startup-opt" data-startup-val="billing" onclick="_setDefaultStartup('billing');">
+                    Billing <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+                <button class="theme-popup-option popup-default-startup-opt" data-startup-val="summary" onclick="_setDefaultStartup('summary');">
+                    Summary <span class="theme-popup-check"><span class="sc2-selection-check"></span></span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+    
+<div id="toast-container"></div>
+
+    <?!= include('JavaScript'); ?>
+</body>
+</html>
