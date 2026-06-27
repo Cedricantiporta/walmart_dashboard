@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { DashboardAnalytics, ClientSummary, Invoice, BillingInsights, MonthlyHistory } from '@/types';
+import type { DashboardAnalytics, Invoice, BillingInsights, MonthlyHistory } from '@/types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,57 +33,30 @@ function getTimeOptions() {
   return opts;
 }
 
-// Matches original GAS displayMetrics computation from billingSummary + history
-function computeDisplayMetrics(
-  billingSummary: ClientSummary[],
+// Cards 1-3 use analytics.metrics directly (same source as Monthly History).
+// Card 4 (Total Fees Billed) = invoices issued that fall in the selected period.
+function computeTotalFeesBilled(
   history: Invoice[],
   dateRange: { start: string; end: string },
-  timeRange: string,
 ) {
   const startRange = new Date(dateRange.start);
   const endRange = new Date(dateRange.end);
   startRange.setHours(0, 0, 0, 0);
   endRange.setHours(23, 59, 59, 999);
 
-  const today = new Date();
-  const todayInRange = today >= startRange && today <= endRange;
-  const isCurrentMonth = timeRange === 'thisMonth';
-
-  let displayRecovered = 0, displayFees = 0, displayCases = 0, displayTotalPrev = 0;
-
-  if (todayInRange) {
-    billingSummary.forEach(client => {
-      const fee = client.readyToBillFee || 0;
-      if (fee > 0.001) {
-        displayFees += fee;
-        displayRecovered += client.totalReimbursed || 0;
-        displayCases += client.readyToBillCases || 0;
-      }
-      displayTotalPrev += client.previouslyBilledFee || 0;
-    });
-  }
-
+  let total = 0;
   history.forEach(inv => {
     let billedDate = new Date(inv.billed_date);
-    // TheSavingsMart special case (NV-1042a)
-    if (
-      inv.client_name === 'TheSavingsMart' &&
-      inv.invoice_number === 'NV-1042a'
-    ) {
+    if (inv.client_name === 'TheSavingsMart' && inv.invoice_number === 'NV-1042a') {
       billedDate = new Date('2026-02-02T12:00:00Z');
     }
     const periodDate = new Date(billedDate);
     if (billedDate.getDate() <= 7) periodDate.setMonth(periodDate.getMonth() - 1);
-
     if (periodDate >= startRange && periodDate <= endRange) {
-      displayFees += inv.billed_fee || 0;
-      displayRecovered += inv.total_reimbursed || 0;
-      displayCases += 1;
-      if (!isCurrentMonth) displayTotalPrev += inv.billed_fee || 0;
+      total += inv.billed_fee || 0;
     }
   });
-
-  return { displayRecovered, displayFees, displayCases, displayTotalPrev };
+  return total;
 }
 
 // ── sub-components ────────────────────────────────────────────────────────────
@@ -276,7 +249,6 @@ export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState('thisMonth');
   const [client, setClient] = useState('all');
   const [clientList, setClientList] = useState<string[]>([]);
-  const [billingSummary, setBillingSummary] = useState<ClientSummary[]>([]);
   const [history, setHistory] = useState<Invoice[]>([]);
   const [billingInsights, setBillingInsights] = useState<BillingInsights | null>(null);
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
@@ -294,7 +266,6 @@ export default function DashboardPage() {
       .then(r => r.json())
       .then(d => {
         setClientList(d.clientList ?? []);
-        setBillingSummary(d.billingSummary ?? []);
         setHistory(d.history ?? []);
         setBillingInsights(d.billingInsights ?? null);
         setLastSync(d.lastSyncTime ?? '');
@@ -329,12 +300,8 @@ export default function DashboardPage() {
 
   const loading = loadingInit || loadingAnalytics;
 
-  // Compute displayed metric values
-  const displayMetrics = analytics
-    ? computeDisplayMetrics(billingSummary, history, analytics.dateRange, timeRange)
-    : null;
-
   const { metrics, trends, monthlyHistory = [], categoryData = [] } = analytics ?? {};
+  const totalFeesBilled = analytics ? computeTotalFeesBilled(history, analytics.dateRange) : 0;
 
   const chartHistory = [...monthlyHistory]
     .sort((a, b) => a.sort.localeCompare(b.sort))
@@ -426,27 +393,27 @@ export default function DashboardPage() {
                 <Skeleton h={12} w={100} />
               </div>
             ))
-          ) : displayMetrics ? (
+          ) : metrics ? (
             <>
               <MetricCard
                 label="Total Reimbursed"
-                value={displayMetrics.displayRecovered}
+                value={metrics.totalReimbursed}
                 trend={trends?.totalReimbursed}
               />
               <MetricCard
                 label="Total Fees"
-                value={displayMetrics.displayFees}
+                value={metrics.totalFees}
                 trend={trends?.totalFees}
               />
               <MetricCard
                 label="Approved Cases"
-                value={displayMetrics.displayCases}
+                value={metrics.approvedCases}
                 trend={trends?.approvedCases}
                 format="number"
               />
               <MetricCard
                 label="Total Fees Billed"
-                value={displayMetrics.displayTotalPrev}
+                value={totalFeesBilled}
                 sub={billingInsights ? `${billingInsights.clientCount} client${billingInsights.clientCount !== 1 ? 's' : ''} ready to bill` : undefined}
               />
             </>
