@@ -404,22 +404,6 @@ export default function BillingPage() {
                     )}
                   </div>
 
-                  {/* Columns popup */}
-                  <div style={{ position: 'relative' }}>
-                    <button onClick={() => setOpenPopup(p => p === 'cols' ? null : 'cols')} style={toolbarPill}>
-                      <IconCols /> Columns
-                    </button>
-                    {openPopup === 'cols' && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 160, padding: 4 }}>
-                        {OPTIONAL_COLS.map(c => (
-                          <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', cursor: 'pointer', borderRadius: 8, fontSize: 12, color: '#11181c' }}>
-                            <input type="checkbox" checked={!hiddenCols.has(c.key)} onChange={() => setHiddenCols(prev => { const n = new Set(prev); if (n.has(c.key)) n.delete(c.key); else n.add(c.key); return n; })} style={{ cursor: 'pointer', accentColor: '#006FEE' }} />
-                            {c.label}
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
                 <input
                   placeholder="Search client or case ID…"
@@ -447,7 +431,7 @@ export default function BillingPage() {
                       {visOpt.map(c => (
                         <ColHdr key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                       ))}
-                      <span />
+                      <span style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, fontWeight: 600, color: '#71717a' }}>Actions</span>
                     </div>
                     {selectedClient && <div style={{ width: sidebarWidth + 18, flexShrink: 0 }} />}
                   </div>

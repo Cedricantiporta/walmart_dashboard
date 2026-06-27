@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
@@ -102,9 +102,11 @@ function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
 
 const pillAction = (danger = false): React.CSSProperties => ({
   fontSize: 12, fontWeight: 600, padding: '5px 12px',
-  border: `1px solid ${danger ? '#fca5a5' : '#e4e4e7'}`,
-  borderRadius: 999, background: '#fff', cursor: 'pointer',
-  color: danger ? '#f31260' : '#374151',
+  border: danger ? 'none' : '1px solid #e4e4e7',
+  borderRadius: 999,
+  background: danger ? '#f31260' : '#fff',
+  cursor: 'pointer',
+  color: danger ? '#fff' : '#374151',
   whiteSpace: 'nowrap' as const,
 });
 
@@ -145,7 +147,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
 
   const snapCount = inv.case_snapshot?.length || inv.case_ids?.length || 0;
 
-  const G = '110px minmax(0,1fr) 70px 130px 120px 120px 150px';
+  const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 170px';
 
   return (
     <>
@@ -153,6 +155,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
         <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#006FEE', fontSize: 12 }}>{inv.invoice_number}</span>
         <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
         <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{snapCount}</span>
+        <span />
         <span style={{ fontSize: 12, color: '#71717a' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
         <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
         <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
@@ -208,7 +211,19 @@ export default function InvoicesPage() {
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
+  const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'>(null);
+  const [filterType, setFilterType] = useState<'all'|'thisMonth'>('all');
+  const popupAreaRef = useRef<HTMLDivElement>(null);
   const { onToggle } = useSidebar();
+
+  useEffect(() => {
+    if (!openPopup) return;
+    function handler(e: MouseEvent) {
+      if (popupAreaRef.current && !popupAreaRef.current.contains(e.target as Node)) setOpenPopup(null);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openPopup]);
 
   function handleSort(col: string) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -225,6 +240,11 @@ export default function InvoicesPage() {
   }, []);
 
   const filtered = invoices.filter(inv => {
+    if (filterType === 'thisMonth') {
+      const d = new Date(inv.billed_date);
+      const now = new Date();
+      if (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth()) return false;
+    }
     if (!search) return true;
     const q = search.toLowerCase();
     return inv.client_name?.toLowerCase().includes(q) || inv.invoice_number?.toLowerCase().includes(q) || (inv.case_ids ?? []).some(id => id.toLowerCase().includes(q)) || (inv.case_snapshot ?? []).some(cs => cs.case_id.toLowerCase().includes(q));
@@ -269,10 +289,37 @@ export default function InvoicesPage() {
                 Invoices <span style={{ fontWeight: 400, color: '#a1a1aa' }}>{filtered.length}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button style={toolbarPill}><IconFilter /> Filter</button>
-                  <button style={toolbarPill}><IconSort /> Sort</button>
-                  <button style={toolbarPill}><IconCols /> Columns</button>
+                <div ref={popupAreaRef} style={{ display: 'flex', gap: 6 }}>
+
+                  {/* Filter popup */}
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setOpenPopup(p => p === 'filter' ? null : 'filter')} style={{ ...toolbarPill, ...(filterType !== 'all' ? { background: '#dbeafe', color: '#1d4ed8' } : {}) }}>
+                      <IconFilter /> Filter{filterType !== 'all' ? ' ·' : ''}
+                    </button>
+                    {openPopup === 'filter' && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 190, padding: 4 }}>
+                        {([{ val: 'all', lbl: 'All invoices' }, { val: 'thisMonth', lbl: 'This month' }] as const).map(({ val, lbl }) => (
+                          <button key={val} onClick={() => { setFilterType(val); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 8, cursor: 'pointer', background: filterType === val ? '#f0f7ff' : 'transparent', color: filterType === val ? '#006FEE' : '#11181c', fontWeight: filterType === val ? 600 : 400 }}>{lbl}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sort popup */}
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setOpenPopup(p => p === 'sort' ? null : 'sort')} style={toolbarPill}>
+                      <IconSort /> Sort
+                    </button>
+                    {openPopup === 'sort' && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 4 }}>
+                        {([{ col: 'date', lbl: 'Date' }, { col: 'client', lbl: 'Client name' }, { col: 'fee', lbl: 'Fee' }, { col: 'recovered', lbl: 'Recovered' }, { col: 'invoice', lbl: 'Invoice #' }, { col: 'cases', lbl: 'Cases' }] as const).map(({ col, lbl }) => (
+                          <button key={col} onClick={() => { handleSort(col); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 8, cursor: 'pointer', background: sortCol === col ? '#f0f7ff' : 'transparent', color: sortCol === col ? '#006FEE' : '#11181c', fontWeight: sortCol === col ? 600 : 400 }}>
+                            {lbl}{sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <input
                   placeholder="Search invoice or client…"
@@ -288,16 +335,17 @@ export default function InvoicesPage() {
 
             {/* Column headers — sit on grey layer */}
             {!loading && sorted.length > 0 && (() => {
-              const G = '110px minmax(0,1fr) 70px 130px 120px 120px 150px';
+              const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 170px';
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 700 }}>
                   <ColHdr label="Invoice #" col="invoice" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                   <ColHdr label="Client" col="client" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                   <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <span />
                   <ColHdr label="Date" col="date" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                   <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                   <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <span />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a' }}>Actions</span>
                 </div>
               );
             })()}
@@ -313,7 +361,7 @@ export default function InvoicesPage() {
                   {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
                 </div>
               ) : (() => {
-                const G = '110px minmax(0,1fr) 70px 130px 120px 120px 150px';
+                const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 170px';
                 return (
                   <div style={{ flex: 1, overflow: 'auto' }}>
                     <div style={{ minWidth: 700 }}>
@@ -321,7 +369,7 @@ export default function InvoicesPage() {
                         <InvoiceRow key={inv.invoice_number} inv={inv} onDelete={num => setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; })} />
                       ))}
                       <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: '1/5' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: '1/6' }}>
                           {search ? `Filtered (${filtered.length})` : `Total (${invoices.length})`}
                         </span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(totalRecovered)}</span>
