@@ -330,91 +330,98 @@ function CaseSidebar({ client, highlight, view, isPendingTab, isOverdueTab }: { 
   const CG = '72px 1fr 70px 58px';
   const prevTotalAmt = (prevCases ?? []).reduce((s, c) => s + c.reimbursement_amount, 0);
 
+  const showOverdueTotal = isOverdueTab && (client.overdueCases ?? []).length > 0;
+  const showPendingTotal = isPendingTab && (client.pendingCases ?? []).length > 0;
+  const showCurrentTotal = !isOverdueTab && !isPendingTab && view === 'current' && client.cases.length > 0;
+  const showPrevTotal = !isOverdueTab && !isPendingTab && view === 'previous' && !loadingPrev && (prevCases?.length ?? 0) > 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-      {/* Body */}
+      {/* Scrollable cases — no total rows inside */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         {isOverdueTab ? (
-          <>
-            {(client.overdueCases ?? []).length === 0 ? (
-              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No overdue cases.</div>
-            ) : (client.overdueCases ?? []).map((c, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: '#fff7ed', fontSize: 11, alignItems: 'center' }}>
-                <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
-                <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
-                <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
-                <span style={{ fontWeight: 600, color: '#c2410c', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
-              </div>
-            ))}
-            <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Overdue Total</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', textAlign: 'right' }}>{fmtUSD(client.overdueAmount ?? 0)}</span>
+          (client.overdueCases ?? []).length === 0 ? (
+            <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No overdue cases.</div>
+          ) : (client.overdueCases ?? []).map((c, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: '#fff7ed', fontSize: 11, alignItems: 'center' }}>
+              <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+              <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+              <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
+              <span style={{ fontWeight: 600, color: '#c2410c', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
             </div>
-          </>
+          ))
         ) : isPendingTab ? (
-          <>
-            {(client.pendingCases ?? []).length === 0 ? (
-              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No pending cases.</div>
-            ) : (client.pendingCases ?? []).map((c, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: '#f0f7ff', fontSize: 11, alignItems: 'center' }}>
+          (client.pendingCases ?? []).length === 0 ? (
+            <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No pending cases.</div>
+          ) : (client.pendingCases ?? []).map((c, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: '#f0f7ff', fontSize: 11, alignItems: 'center' }}>
+              <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+              <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+              <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
+              <span style={{ fontWeight: 600, color: '#1d4ed8', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
+            </div>
+          ))
+        ) : view === 'current' ? (
+          client.cases.map((c, i) => {
+            const isMatch = q ? c.caseId.toLowerCase().includes(q) : false;
+            return (
+              <div key={i} ref={i === firstMatchIndex ? firstMatchRef : undefined}
+                style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: isMatch ? '#fef9c3' : (!c.isCurrentMonth ? '#fffbeb' : undefined), fontSize: 11, alignItems: 'center' }}>
                 <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
                 <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
                 <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
-                <span style={{ fontWeight: 600, color: '#1d4ed8', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
+                <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
               </div>
-            ))}
-            <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Pending Total</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textAlign: 'right' }}>{fmtUSD(client.pendingAmount ?? 0)}</span>
-            </div>
-          </>
-        ) : view === 'current' ? (
-          <>
-            {client.cases.map((c, i) => {
-              const isMatch = q ? c.caseId.toLowerCase().includes(q) : false;
-              return (
-                <div key={i} ref={i === firstMatchIndex ? firstMatchRef : undefined}
-                  style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: isMatch ? '#fef9c3' : (!c.isCurrentMonth ? '#fffbeb' : undefined), fontSize: 11, alignItems: 'center' }}>
-                  <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
-                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
-                  <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
-                  <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
-                </div>
-              );
-            })}
-            <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
-            </div>
-          </>
+            );
+          })
         ) : loadingPrev ? (
           <div style={{ padding: '20px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>Loading…</div>
         ) : prevCases?.length === 0 ? (
           <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No billing history found.</div>
         ) : (
-          <>
-            {(() => {
-              const prevMatchIndex = q ? (prevCases ?? []).findIndex(c => c.case_id.toLowerCase().includes(q)) : -1;
-              return (prevCases ?? []).map((c, i) => {
-                const isMatch = q ? c.case_id.toLowerCase().includes(q) : false;
-                return (
-                  <div key={i} ref={i === prevMatchIndex ? prevFirstMatchRef : undefined}
-                    style={{ display: 'grid', gridTemplateColumns: '72px 1fr 70px 58px', gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 11, alignItems: 'center', background: isMatch ? '#fef9c3' : undefined }}>
-                    <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
-                    <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
-                    <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.rms_posting_date.slice(0, 10))}</span>
-                    <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
-                  </div>
-                );
-              });
-            })()}
-            <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr 70px 58px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(prevTotalAmt)}</span>
-            </div>
-          </>
+          (() => {
+            const prevMatchIndex = q ? (prevCases ?? []).findIndex(c => c.case_id.toLowerCase().includes(q)) : -1;
+            return (prevCases ?? []).map((c, i) => {
+              const isMatch = q ? c.case_id.toLowerCase().includes(q) : false;
+              return (
+                <div key={i} ref={i === prevMatchIndex ? prevFirstMatchRef : undefined}
+                  style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 11, alignItems: 'center', background: isMatch ? '#fef9c3' : undefined }}>
+                  <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
+                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
+                  <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.rms_posting_date.slice(0, 10))}</span>
+                  <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+                </div>
+              );
+            });
+          })()
         )}
       </div>
+
+      {/* Sticky total — always at bottom edge */}
+      {showOverdueTotal && (
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Overdue Total</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', textAlign: 'right' }}>{fmtUSD(client.overdueAmount ?? 0)}</span>
+        </div>
+      )}
+      {showPendingTotal && (
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Pending Total</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textAlign: 'right' }}>{fmtUSD(client.pendingAmount ?? 0)}</span>
+        </div>
+      )}
+      {showCurrentTotal && (
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
+        </div>
+      )}
+      {showPrevTotal && (
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(prevTotalAmt)}</span>
+        </div>
+      )}
     </div>
   );
 }
