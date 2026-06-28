@@ -26,13 +26,20 @@ export const useSidebar = () => useContext(SidebarCtx);
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [syncTime, setSyncTime] = useState('');
+  const [syncTime, setSyncTimeState] = useState('');
   const [darkMode, setDarkModeState] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('darkMode');
-    if (saved === '1') setDarkModeState(true);
+    const savedSync = localStorage.getItem('wfs_last_sync_time');
+    if (savedSync) setSyncTimeState(savedSync);
+    const savedDark = localStorage.getItem('darkMode');
+    if (savedDark === '1') setDarkModeState(true);
   }, []);
+
+  function setSyncTime(t: string) {
+    setSyncTimeState(t);
+    if (t) localStorage.setItem('wfs_last_sync_time', t);
+  }
 
   function setDarkMode(v: boolean) {
     setDarkModeState(v);

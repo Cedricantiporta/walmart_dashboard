@@ -130,7 +130,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
 
         {/* Brand */}
         <div style={{
-          padding: collapsed ? '20px 0 10px' : '20px 10px 10px',
+          padding: collapsed ? '40px 0 10px' : '40px 10px 10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
@@ -193,20 +193,18 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, border: `1px solid ${border}`, background: pill, fontSize: 12, fontWeight: 600, color: txt, cursor: syncing ? 'not-allowed' : 'pointer', opacity: syncing ? 0.6 : 1, flexShrink: 0, outline: 'none' }}
+                title={syncing ? 'Syncing…' : 'Sync'}
+                style={{ width: 28, height: 28, borderRadius: '50%', border: `1px solid ${border}`, background: pill, cursor: syncing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: txt, flexShrink: 0, outline: 'none', opacity: syncing ? 0.6 : 1 }}
               >
                 <SyncIcon spinning={syncing} />
-                {syncing ? 'Syncing' : 'Sync'}
               </button>
             </div>
 
             {/* User + theme row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #006FEE 0%, #3b82f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                {initial}
-              </div>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #006FEE 0%, #7828C8 100%)', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? 'Admin'}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? 'Admin'}</div>
                 <div style={{ fontSize: 10, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email ?? ''}</div>
               </div>
               <button
