@@ -12,6 +12,7 @@ export async function GET() {
   const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+  const twoYearsAgo = new Date(now.getFullYear() - 2, now.getMonth(), 1).toISOString().slice(0, 10);
 
   const cacheKey = `billing:${currentMonthStart}`;
   const cached = getCached(cacheKey);
@@ -21,6 +22,7 @@ export async function GET() {
 
   const [
     { data: allData },
+    { data: overdueRaw },
     { data: clientsRaw },
     { data: invoicesRaw },
     { data: allInvoicesRaw },
@@ -31,6 +33,12 @@ export async function GET() {
     db.from('rms_cases').select(RMS_COLS)
       .gte('rms_posting_date', prevMonthStart)
       .gt('reimbursement_amount', 0),
+    db.from('rms_cases').select(RMS_COLS)
+      .gte('rms_posting_date', twoYearsAgo)
+      .lt('rms_posting_date', prevMonthStart)
+      .gt('reimbursement_amount', 0)
+      .order('rms_posting_date', { ascending: false })
+      .limit(2000),
     db.from('clients').select('*'),
     db.from('invoices').select('case_ids'),
     db.from('invoices').select('client_name, billed_fee, total_reimbursed'),
@@ -93,6 +101,9 @@ export async function GET() {
     pendingCases: BillingCase[];
     pendingAmount: number;
     pendingFee: number;
+    overdueCases: BillingCase[];
+    overdueAmount: number;
+    overdueFee: number;
   };
 
   const clientMap: Record<string, ClientBilling> = {};
@@ -131,7 +142,7 @@ export async function GET() {
     }
 
     if (!clientMap[clientName]) {
-      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, cases: [], pendingCases: [], pendingAmount: 0, pendingFee: 0 };
+      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, cases: [], pendingCases: [], pendingAmount: 0, pendingFee: 0, overdueCases: [], overdueAmount: 0, overdueFee: 0 };
     }
 
     const amount = row.reimbursement_amount;
@@ -165,6 +176,51 @@ export async function GET() {
     }
   });
 
+  // Overdue cases: unbilled cases with posting date before prevMonthStart
+  (overdueRaw ?? []).forEach(row => {
+    if (!row.rms_posting_date) return;
+    if (row.reimbursement_amount <= 0) return;
+
+    const clientName = row.client_name?.trim();
+    if (!clientName) return;
+
+    const postingDate = new Date(row.rms_posting_date);
+    if (clientName.toLowerCase() === 'vantage inc' && postingDate < vCutoff) return;
+
+    const caseId = String(row.case_id);
+    const dateKey = `${caseId}:${row.rms_posting_date}`;
+    const isBilledByDate = billedSet.has(dateKey);
+    const isBilledByCase = billedSet.has(caseId) && !caseIdsWithDateEntries.has(caseId);
+    if (isBilledByDate || isBilledByCase) return;
+
+    const info = onboardingInfo[clientName] ??
+      onboardingInfo[Object.keys(onboardingInfo).find(k => k.toLowerCase() === clientName.toLowerCase()) ?? ''];
+    const rate = info?.rate ?? DEFAULT_RATE;
+
+    if (info) {
+      const billableStart = info.pilot_end_date ?? info.start_date;
+      if (billableStart && row.date_filed) {
+        if (new Date(row.date_filed) < new Date(billableStart)) return;
+      }
+    }
+
+    if (!clientMap[clientName]) {
+      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, cases: [], pendingCases: [], pendingAmount: 0, pendingFee: 0, overdueCases: [], overdueAmount: 0, overdueFee: 0 };
+    }
+
+    const amount = row.reimbursement_amount;
+    const fee = amount * rate;
+    const caseObj: BillingCase = {
+      caseId, claimType: row.claim_type ?? 'Other', postingDate: row.rms_posting_date,
+      amount, fee, isCurrentMonth: false,
+      gtin: row.gtin ?? '', sku_id: row.sku_id ?? '',
+      unit_amount: row.unit_amount ?? amount, reimbursed_qty: row.reimbursed_qty ?? 1,
+    };
+    clientMap[clientName].overdueCases.push(caseObj);
+    clientMap[clientName].overdueAmount += amount;
+    clientMap[clientName].overdueFee += fee;
+  });
+
   // Build previouslyBilledFee map from all invoices (matches GAS's previouslyBilledFee)
   const prevBilledMap: Record<string, { fee: number; recovered: number }> = {};
   (allInvoicesRaw ?? []).forEach((inv: { client_name: string; billed_fee: number; total_reimbursed: number }) => {
@@ -175,11 +231,12 @@ export async function GET() {
 
   // Sort cases within each client by postingDate desc
   const clients = Object.values(clientMap)
-    .filter(c => c.cases.length > 0)
+    .filter(c => c.cases.length > 0 || c.overdueCases.length > 0)
     .sort((a, b) => b.totalFee - a.totalFee);
 
   clients.forEach(c => {
     c.cases.sort((a, b) => b.postingDate.localeCompare(a.postingDate));
+    c.overdueCases.sort((a, b) => b.postingDate.localeCompare(a.postingDate));
     // Attach previouslyBilledFee from invoices
     const pb = prevBilledMap[c.clientName];
     c.previouslyBilledFee = pb?.fee ?? 0;
@@ -206,6 +263,9 @@ export async function GET() {
       pendingCases: [],
       pendingAmount: 0,
       pendingFee: 0,
+      overdueCases: [],
+      overdueAmount: 0,
+      overdueFee: 0,
     });
   }
 
