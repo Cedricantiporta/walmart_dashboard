@@ -994,7 +994,13 @@ export default function BillingPage() {
                             {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{filtered.reduce((s,c)=>s+c.cases.length,0)}</span>}
                           </>
                         )}
-                        <span />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          {billingTab === 'rtb' && (data?.clients ?? []).some(c => c.totalFee > 0 && c.cases.length > 0) && (
+                            <button onClick={() => setShowBulk(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, padding: '4px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              Bulk
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

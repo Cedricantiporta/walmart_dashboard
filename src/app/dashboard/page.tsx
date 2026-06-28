@@ -342,17 +342,20 @@ function GaugeChart({ data }: { data: { category: string; amount: number }[] }) 
       <svg viewBox="0 0 280 132" width="100%" style={{ display: 'block', overflow: 'visible' }}>
         {/* grey background arc */}
         <path d={donutPath(GCX, GCY, GOR, GIR, 270, 450)} fill="#f4f4f5" />
-        {slices.map((s, i) => (
-          <path key={i}
-            d={donutPath(GCX, GCY, GOR, GIR, s.start, s.end)}
-            fill={s.color}
-            opacity={hov === null || hov === i ? 1 : 0.2}
-            onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
-            onMouseLeave={() => setHov(null)}
-            onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
-            style={{ cursor: 'pointer', transition: 'opacity 0.15s', outline: 'none', animation: `sliceIn 0.45s ease-out ${i * 0.07}s both` }}
-          />
-        ))}
+        {slices.map((s, i) => {
+          const isHov = hov === i;
+          return (
+            <path key={i}
+              d={donutPath(GCX, GCY, isHov ? GOR + 10 : GOR, GIR, s.start, s.end)}
+              fill={s.color}
+              opacity={hov === null || isHov ? 1 : 0.2}
+              onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
+              onMouseLeave={() => setHov(null)}
+              onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
+              style={{ cursor: 'pointer', transition: 'opacity 0.15s, d 0.15s', outline: 'none', animation: `sliceIn 0.45s ease-out ${i * 0.07}s both`, filter: isHov ? 'drop-shadow(0 2px 8px rgba(0,0,0,0.18))' : 'none' }}
+            />
+          );
+        })}
       </svg>
 
       {/* Category legend — 1 per row */}
