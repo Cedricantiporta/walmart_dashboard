@@ -917,7 +917,9 @@ export default function BillingPage() {
                         ) : (
                           <div style={{ minWidth: 420 }}>
                             {filtered.map((c, idx) => (
-                              <div key={c.clientName} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, borderBottom: idx < filtered.length - 1 ? '1px solid #f3f4f6' : 'none', background: '#fff', alignItems: 'center' }}>
+                              <div key={c.clientName}
+                                onClick={() => { setSelectedClient(c); setSidebarView('previous'); }}
+                                style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < filtered.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}>
                                 <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
                                 {!hiddenCols.has('rate') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>}
                                 {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.previouslyBilledReimbursed)}</span>}
