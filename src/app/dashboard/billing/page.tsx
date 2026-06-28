@@ -485,14 +485,34 @@ export default function BillingPage() {
     return sortDir === 'asc' ? av - (bv as number) : (bv as number) - av;
   });
 
+  const [prevMatchClientName, setPrevMatchClientName] = useState<string | null>(null);
+
+  // Current-case search: auto-select client when case ID matches
   useEffect(() => {
-    if (!search) return;
+    if (!search) { setPrevMatchClientName(null); return; }
     const q = search.toLowerCase();
     const byCase = (data?.clients ?? []).find(c => c.cases.some(cs => cs.caseId.toLowerCase().includes(q)) && !c.clientName.toLowerCase().includes(q));
-    if (byCase) setSelectedClient(byCase);
-  }, [search, data]);
+    if (byCase) { setSelectedClient(byCase); setSidebarView('current'); return; }
 
-  useEffect(() => { setSidebarView('current'); }, [selectedClient?.clientName]);
+    // Previous-case search: check module-level cache first, then invoices API
+    setPrevMatchClientName(null);
+    for (const [clientName, cases] of prevCasesCache.entries()) {
+      if (cases.some(c => c.case_id.toLowerCase().includes(q))) {
+        const client = (data?.clients ?? []).find(c => c.clientName === clientName);
+        if (client) { setPrevMatchClientName(clientName); setSelectedClient(client); setSidebarView('previous'); return; }
+      }
+    }
+    // Fallback: search invoices table (small dataset, client-side filter)
+    supabase.from('invoices').select('client_name, case_ids').then(({ data: invs }) => {
+      if (!invs) return;
+      const match = invs.find((inv: { client_name: string; case_ids: string[] }) =>
+        (inv.case_ids ?? []).some((id: string) => String(id).toLowerCase().includes(q))
+      );
+      if (!match) return;
+      const client = (data?.clients ?? []).find(c => c.clientName === match.client_name);
+      if (client) { setPrevMatchClientName(match.client_name); setSelectedClient(client); setSidebarView('previous'); }
+    });
+  }, [search, data]);
 
 
   const currentMonthLabel = data?.currentMonthStart
@@ -667,14 +687,16 @@ export default function BillingPage() {
                       )
                     ) : filtered.length === 0 ? (
                       <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
-                        {search ? 'No clients match.' : 'No clients ready to bill.'}
+                        {search && prevMatchClientName
+                          ? <><span style={{ color: '#006FEE', fontWeight: 600 }}>{prevMatchClientName}</span> — found in previous billing. Check the Previous tab →</>
+                          : search ? 'No clients match.' : 'No clients ready to bill.'}
                       </div>
                     ) : (
                       <div style={{ minWidth: 420 }}>
                         {sorted.map((c, idx) => {
                           return (
                           <div key={c.clientName}
-                            onClick={() => setSelectedClient(c)}
+                            onClick={() => { setSelectedClient(c); setSidebarView('current'); }}
                             style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}
                           >
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>

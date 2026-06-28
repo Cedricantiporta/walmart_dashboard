@@ -112,17 +112,43 @@ const pillAction = (danger = false): React.CSSProperties => ({
 
 // ── invoice row ───────────────────────────────────────────────────────────────
 
-function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) => void }) {
+function InvoiceRow({ inv, onDelete, searchQ }: { inv: Invoice; onDelete: (num: string) => void; searchQ?: string }) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
   const [fetchingCases, setFetchingCases] = useState(false);
+  const matchedCaseRef = useRef<HTMLDivElement | null>(null);
 
   const snapWithDate = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date);
   const hasSnapshot = snapWithDate.length > 0;
   const activeCases: CaseRow[] = hasSnapshot
     ? snapWithDate.map(c => ({ case_id: c.case_id, claim_type: c.claim_type, rms_posting_date: c.rms_posting_date, reimbursement_amount: c.reimbursement_amount, gtin: c.gtin, sku_id: c.sku_id, unit_amount: c.unit_amount, reimbursed_qty: c.reimbursed_qty }))
     : (fetchedCases ?? []).filter(c => !!c.rms_posting_date);
+
+  // Auto-open when searchQ matches a case ID in this invoice
+  useEffect(() => {
+    if (!searchQ) { setOpen(false); return; }
+    const q = searchQ.toLowerCase();
+    const matchesCase = (inv.case_ids ?? []).some(id => String(id).toLowerCase().includes(q)) ||
+      (inv.case_snapshot ?? []).some(c => c.case_id.toLowerCase().includes(q));
+    if (matchesCase) {
+      setOpen(true);
+      if (!hasSnapshot && fetchedCases === null && !fetchingCases && (inv.case_ids?.length ?? 0) > 0) {
+        setFetchingCases(true);
+        fetchCasesByIds(inv.case_ids).then(rows => { setFetchedCases(rows); setFetchingCases(false); });
+      }
+    } else {
+      setOpen(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQ]);
+
+  // Scroll to first matched case row after cases load
+  useEffect(() => {
+    if (open && searchQ && matchedCaseRef.current) {
+      matchedCaseRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [open, fetchedCases, searchQ]);
 
   function handleToggle() {
     setOpen(o => !o);
@@ -181,8 +207,11 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
                 const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
                 const unitAmt = c.unit_amount ?? c.reimbursement_amount;
                 const qty = c.reimbursed_qty ?? 1;
+                const cq = searchQ?.toLowerCase() ?? '';
+                const isMatch = cq ? c.case_id.toLowerCase().includes(cq) : false;
+                const isFirst = isMatch && activeCases.findIndex(x => x.case_id.toLowerCase().includes(cq)) === i;
                 return (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '7px 0', borderTop: '1px solid #f3f4f6', fontSize: 11, minWidth: 860 }}>
+                  <div key={i} ref={isFirst ? matchedCaseRef : undefined} style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '7px 0', borderTop: '1px solid #f3f4f6', fontSize: 11, minWidth: 860, background: isMatch ? '#fef9c3' : undefined }}>
                     <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_id}</span>
                     <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
                     <span style={{ color: '#374151' }}>{c.claim_type || '—'}</span>
@@ -366,9 +395,15 @@ export default function InvoicesPage() {
                 return (
                   <div style={{ flex: 1, overflow: 'auto' }}>
                     <div style={{ minWidth: 700 }}>
-                      {sorted.map(inv => (
-                        <InvoiceRow key={inv.invoice_number} inv={inv} onDelete={num => setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; })} />
-                      ))}
+                      {sorted.map(inv => {
+                        const caseSearch = search
+                          ? ((inv.case_ids ?? []).some(id => String(id).toLowerCase().includes(search.toLowerCase())) ||
+                             (inv.case_snapshot ?? []).some(c => c.case_id.toLowerCase().includes(search.toLowerCase())))
+                          : false;
+                        return (
+                          <InvoiceRow key={inv.invoice_number} inv={inv} onDelete={num => setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; })} searchQ={caseSearch ? search : undefined} />
+                        );
+                      })}
                       <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: '1/6' }}>
                           {search ? `Filtered (${filtered.length})` : `Total (${invoices.length})`}
