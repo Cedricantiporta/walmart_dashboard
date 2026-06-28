@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import logoSrc from './WFS_Logo.png';
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: (
@@ -67,11 +69,7 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
           minHeight: 68,
           gap: 8,
         }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #006FEE 0%, #7828C8 100%)',
-            flexShrink: 0,
-          }} />
+          <Image src={logoSrc} alt="WFS" width={32} height={32} style={{ borderRadius: 6, flexShrink: 0, objectFit: 'contain' }} />
           {!collapsed && (
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
@@ -100,14 +98,14 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
                   marginBottom: 2,
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 500,
-                  color: isActive ? '#11181c' : '#71717a',
+                  color: '#11181c',
                   background: isActive ? '#eaebec' : 'transparent',
                   textDecoration: 'none',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                 }}
               >
-                <span style={{ color: isActive ? '#11181c' : '#71717a', flexShrink: 0, lineHeight: 1, display: 'flex' }}>{icon}</span>
+                <span style={{ color: isActive ? '#11181c' : '#a1a1aa', flexShrink: 0, lineHeight: 1, display: 'flex' }}>{icon}</span>
                 {!collapsed && label}
               </Link>
             );

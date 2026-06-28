@@ -150,7 +150,7 @@ function PillDropdown({
       {open && (
         <div style={{
           position: 'absolute', top: '100%', right: 0, marginTop: 6,
-          background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12,
+          background: '#fff', border: '1px solid #e4e4e7', borderRadius: 18,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100,
           minWidth: 190, maxHeight: 240, overflowY: 'auto',
         }}>
@@ -538,9 +538,9 @@ export default function DashboardPage() {
 
         {/* Metric cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
-          {loadingAnalytics ? (
+          {(loadingAnalytics || !metrics) ? (
             [1,2,3,4].map(i => (
-              <div key={i} style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                   <Skeleton h={10} w={90} />
                   <Skeleton h={18} w={52} radius={999} />
@@ -548,14 +548,14 @@ export default function DashboardPage() {
                 <Skeleton h={28} w={110} />
               </div>
             ))
-          ) : metrics ? (
+          ) : (
             <>
               <MetricCard label="Reimbursed" value={metrics.totalReimbursed} trend={displayTrends?.totalReimbursed} />
               <MetricCard label="Fees" value={metrics.totalFees} trend={displayTrends?.totalFees} />
               <MetricCard label="Cases" value={metrics.approvedCases} trend={displayTrends?.approvedCases} format="number" />
               <MetricCard label="Billed" value={totalFeesBilled} />
             </>
-          ) : null}
+          )}
         </div>
 
         {/* Charts row */}
