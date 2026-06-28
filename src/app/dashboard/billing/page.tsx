@@ -172,51 +172,69 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-        <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 20, color: '#111827' }}>{client.clientName}</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#6b7280', marginTop: 4 }}>{invoiceNumber}</div>
+      <div style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 360, boxShadow: '0 24px 64px rgba(0,0,0,0.22)', position: 'relative' }}>
+
+        {/* Close */}
+        <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, border: 'none', background: '#f4f4f5', cursor: 'pointer', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 15, lineHeight: 1 }}>×</button>
+
+        {/* Header — centered */}
+        <div style={{ padding: '28px 24px 0', textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#006FEE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
           </div>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af', lineHeight: 1 }}>×</button>
+          <div style={{ fontWeight: 700, fontSize: 17, color: '#111827', lineHeight: 1.3, padding: '0 20px' }}>{client.clientName}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', marginTop: 5, fontFamily: 'monospace' }}>{invoiceNumber}</div>
         </div>
-        <div style={{ padding: '0 24px 20px', display: 'flex', gap: 28 }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em', marginBottom: 2 }}>RECOVERED</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(client.totalAmount)}</div>
+
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', margin: '20px 24px 0', background: '#f4f4f5', borderRadius: 14, overflow: 'hidden', gap: 1 }}>
+          <div style={{ background: '#fff', padding: '12px 8px', textAlign: 'center' }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.06em', marginBottom: 4 }}>RECOVERED</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(client.totalAmount)}</div>
           </div>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em', marginBottom: 2 }}>FEE</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{fmtUSD(client.totalFee)}</div>
+          <div style={{ background: '#fff', padding: '12px 8px', textAlign: 'center' }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.06em', marginBottom: 4 }}>FEE</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{fmtUSD(client.totalFee)}</div>
           </div>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em', marginBottom: 2 }}>CASES</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{client.cases.length}</div>
+          <div style={{ background: '#fff', padding: '12px 8px', textAlign: 'center' }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.06em', marginBottom: 4 }}>CASES</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{client.cases.length}</div>
           </div>
         </div>
-        {err && <div style={{ padding: '8px 24px', background: '#fef2f2', color: '#dc2626', fontSize: 12 }}>{err}</div>}
+
+        {err && <div style={{ margin: '12px 24px 0', background: '#fef2f2', color: '#dc2626', fontSize: 12, borderRadius: 8, padding: '8px 12px' }}>{err}</div>}
+
         {confirming && (
-          <div style={{ margin: '0 24px 16px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
-            <strong>Mark {client.clientName} as billed?</strong><br />
-            PDF downloaded, invoice {invoiceNumber} saved, client removed from Ready to Bill. Cannot be undone.
+          <div style={{ margin: '12px 24px 0', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+            <strong>Mark as billed?</strong><br />
+            PDF downloaded, invoice {invoiceNumber} saved. Cannot be undone.
           </div>
         )}
-        <div style={{ padding: '0 24px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+
+        {/* Actions */}
+        <div style={{ padding: '16px 24px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {confirming ? (
             <>
-              <button onClick={() => setConfirming(false)} style={{ fontSize: 13, fontWeight: 600, padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', cursor: 'pointer', color: '#374151' }}>Cancel</button>
-              <button onClick={handleMarkAsBilled} disabled={saving} style={{ fontSize: 13, fontWeight: 700, padding: '8px 18px', border: 'none', borderRadius: 999, background: saving ? '#86efac' : '#16a34a', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>
+              <button onClick={handleMarkAsBilled} disabled={saving} style={{ width: '100%', fontSize: 14, fontWeight: 700, padding: '13px', border: 'none', borderRadius: 14, background: saving ? '#86efac' : '#16a34a', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Saving…' : '✓ Confirm Billed'}
               </button>
+              <button onClick={() => setConfirming(false)} style={{ width: '100%', fontSize: 13, fontWeight: 600, padding: '11px', border: '1px solid #e5e7eb', borderRadius: 14, background: '#fff', cursor: 'pointer', color: '#374151' }}>Cancel</button>
             </>
           ) : (
             <>
-              <button onClick={() => downloadClientCSV(client, invoiceNumber)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ CSV</button>
-              <button onClick={async () => { await downloadInvoicePDF({ invoice_number: invoiceNumber, client_name: client.clientName, client_address: billingContact?.address ?? null, billed_date: billedDate, billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(client.cases.map(c => c.caseId))] }, client.cases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount }))); }} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ PDF</button>
-              <button onClick={() => setConfirming(true)} style={{ fontSize: 13, fontWeight: 700, padding: '8px 18px', border: 'none', borderRadius: 999, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Mark as Billed</button>
+              <button onClick={() => setConfirming(true)} style={{ width: '100%', fontSize: 14, fontWeight: 700, padding: '13px', border: 'none', borderRadius: 14, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Mark as Billed</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => downloadClientCSV(client, invoiceNumber)} style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: '10px', border: '1px solid #e5e7eb', borderRadius: 12, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ CSV</button>
+                <button onClick={async () => { await downloadInvoicePDF({ invoice_number: invoiceNumber, client_name: client.clientName, client_address: billingContact?.address ?? null, billed_date: billedDate, billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(client.cases.map(c => c.caseId))] }, client.cases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount }))); }} style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: '10px', border: '1px solid #e5e7eb', borderRadius: 12, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ PDF</button>
+              </div>
             </>
           )}
         </div>
+
       </div>
     </div>
   );

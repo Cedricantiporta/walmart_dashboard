@@ -54,9 +54,9 @@ function computeTotalFeesBilled(history: Invoice[], dateRange: { start: string; 
 // ── chart geometry ────────────────────────────────────────────────────────────
 
 function pillBarPath(x: number, y: number, w: number, h: number): string {
-  const r = Math.min(w / 2, 7);
+  const r = Math.min(w / 2, h / 2);
   if (h < 1) return '';
-  return `M ${x} ${y+h} H ${x+w} V ${y+r} Q ${x+w} ${y} ${x+w-r} ${y} H ${x+r} Q ${x} ${y} ${x} ${y+r} Z`;
+  return `M ${x+r} ${y} H ${x+w-r} Q ${x+w} ${y} ${x+w} ${y+r} V ${y+h-r} Q ${x+w} ${y+h} ${x+w-r} ${y+h} H ${x+r} Q ${x} ${y+h} ${x} ${y+h-r} V ${y+r} Q ${x} ${y} ${x+r} ${y} Z`;
 }
 
 function polarToXY(cx: number, cy: number, r: number, deg: number) {
@@ -207,7 +207,7 @@ function MetricCard({
   }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '14px 16px', minWidth: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', minWidth: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
       {/* Label + trend pill on same row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
         <div style={{ fontSize: 13, fontWeight: 500, color: '#71717a' }}>{label}</div>
@@ -218,7 +218,7 @@ function MetricCard({
           </div>
         )}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+      <div style={{ fontSize: 26, fontWeight: 700, color: '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em', marginTop: 4 }}>
         {mainDisplay}
       </div>
       {sub && <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 6 }}>{sub}</div>}
@@ -235,9 +235,9 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
   if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
 
   const maxVal = Math.max(...data.map(d => d.recovered), 1);
-  const H = 280, padTop = 24, padBot = 28;
+  const H = 200, padTop = 36, padBot = 28;
   const n = data.length;
-  const gap = 4;
+  const gap = 18;
   const barW = n > 0 ? Math.floor((600 - (n - 1) * gap) / n) : 40;
   const totalW = n * (barW + gap) - gap;
   const svgH = H + padTop + padBot;
@@ -260,6 +260,8 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
               onMouseLeave={() => setHov(null)}
               onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
             >
+              {/* recovered amount label above bar */}
+              <text x={x + barW / 2} y={recoveredY - 5} textAnchor="middle" fontSize={9} fill="#374151" fontWeight={600}>{fmtCompact(d.recovered)}</text>
               {/* recovered — blue full-height pill */}
               <path d={pillBarPath(x, recoveredY, barW, recoveredH)} fill="#006FEE" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
               {/* fee — dark blue pill from bottom */}
