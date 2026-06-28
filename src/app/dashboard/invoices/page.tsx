@@ -118,11 +118,11 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
   const [fetchingCases, setFetchingCases] = useState(false);
 
-  const hasSnapshot = (inv.case_snapshot?.length ?? 0) > 0;
-  const activeCases: CaseRow[] = (hasSnapshot
-    ? inv.case_snapshot.map(c => ({ case_id: c.case_id, claim_type: c.claim_type, rms_posting_date: c.rms_posting_date, reimbursement_amount: c.reimbursement_amount, gtin: c.gtin, sku_id: c.sku_id, unit_amount: c.unit_amount, reimbursed_qty: c.reimbursed_qty }))
-    : (fetchedCases ?? [])
-  ).filter(c => !!c.rms_posting_date);
+  const snapWithDate = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date);
+  const hasSnapshot = snapWithDate.length > 0;
+  const activeCases: CaseRow[] = hasSnapshot
+    ? snapWithDate.map(c => ({ case_id: c.case_id, claim_type: c.claim_type, rms_posting_date: c.rms_posting_date, reimbursement_amount: c.reimbursement_amount, gtin: c.gtin, sku_id: c.sku_id, unit_amount: c.unit_amount, reimbursed_qty: c.reimbursed_qty }))
+    : (fetchedCases ?? []).filter(c => !!c.rms_posting_date);
 
   function handleToggle() {
     setOpen(o => !o);
@@ -146,7 +146,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
     await downloadInvoicePDF({ invoice_number: inv.invoice_number, client_name: inv.client_name, billed_date: inv.billed_date?.slice(0, 10) ?? isoToday(), billed_fee: inv.billed_fee, total_reimbursed: inv.total_reimbursed, case_ids: inv.case_ids }, cases);
   }
 
-  const snapCount = inv.case_snapshot?.filter(c => !!c.rms_posting_date).length ?? inv.case_ids?.length ?? 0;
+  const snapCount = snapWithDate.length > 0 ? snapWithDate.length : (inv.case_ids?.length ?? 0);
 
   const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
 
