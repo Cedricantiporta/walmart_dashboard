@@ -500,7 +500,7 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
         {/* Top bar */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, padding: '8px 20px 10px', height: 68, background: '#f4f4f5' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, padding: '4px 20px 8px', height: 52, background: '#f4f4f5' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
             <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
               <PanelIcon />

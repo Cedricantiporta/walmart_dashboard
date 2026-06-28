@@ -15,7 +15,7 @@ export function PreloadTabs() {
       if (!clientGet('summary')) {
         fetch('/api/summary').then(r => r.json()).then(d => clientSet('summary', Array.isArray(d) ? d : [])).catch(() => {});
       }
-    }, 1500);
+    }, 600);
     return () => clearTimeout(t);
   }, []);
   return null;

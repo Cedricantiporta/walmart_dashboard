@@ -180,7 +180,7 @@ export function calculateDashboardAnalytics(
     let total = 0, feeTotal = 0;
     const uniqueIds = new Set<string>();
     items.forEach(i => { uniqueIds.add(i.id); total += i.amount; feeTotal += i.fee; });
-    return { total, fee: feeTotal, cases: uniqueIds.size };
+    return { total, fee: feeTotal, cases: items.length };
   };
 
   const curM = calcMetrics(currentItems);

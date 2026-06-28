@@ -130,11 +130,11 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
 
         {/* Brand */}
         <div style={{
-          padding: collapsed ? '28px 0 10px' : '28px 10px 10px',
+          padding: collapsed ? '18px 0 10px' : '18px 10px 10px',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           justifyContent: collapsed ? 'center' : 'flex-start',
-          minHeight: 68,
+          minHeight: 56,
           gap: 8,
         }}>
           <Image src={logoSrc} alt="WFS" width={32} height={32} style={{ borderRadius: 6, flexShrink: 0, objectFit: 'contain' }} />
