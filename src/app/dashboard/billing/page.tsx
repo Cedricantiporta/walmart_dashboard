@@ -352,7 +352,9 @@ export default function BillingPage() {
   const [sidebarWidth, setSidebarWidth] = useState(360);
   const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'|'cols'>(null);
   const [filterType, setFilterType] = useState<'all'|'prevMonth'>('all');
-  const [billingTab, setBillingTab] = useState<'all'|'rtb'|'pending'|'overdue'|'billed'>('all');
+  const [billingTab, setBillingTab] = useState<'all'|'rtb'|'billed'>('rtb');
+  const [billedHistory, setBilledHistory] = useState<{invoice_number: string; client_name: string; billed_date: string; billed_fee: number; total_reimbursed: number}[] | null>(null);
+  const [loadingBilled, setLoadingBilled] = useState(false);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
   const [sidebarView, setSidebarView] = useState<'current' | 'previous'>('current');
   const popupAreaRef = useRef<HTMLDivElement>(null);
@@ -401,11 +403,9 @@ export default function BillingPage() {
     setActiveClient(null); setSelectedClient(null);
   }
 
-  const filtered = (data?.clients ?? []).filter(c => {
+  const filtered = billingTab === 'billed' ? [] : (data?.clients ?? []).filter(c => {
     if (filterType === 'prevMonth' && c.prevMonthFee === 0) return false;
     if (billingTab === 'rtb' && c.currentMonthFee === 0) return false;
-    if (billingTab === 'pending' && !(c.prevMonthFee > 0 && c.currentMonthFee > 0)) return false;
-    if (billingTab === 'overdue' && !(c.prevMonthFee > 0 && c.currentMonthFee === 0)) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q));
@@ -430,6 +430,20 @@ export default function BillingPage() {
   }, [search, data]);
 
   useEffect(() => { setSidebarView('current'); }, [selectedClient?.clientName]);
+
+  useEffect(() => {
+    if (billingTab !== 'billed' || billedHistory !== null) return;
+    setLoadingBilled(true);
+    const now = new Date();
+    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+    const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+    supabase.from('invoices')
+      .select('invoice_number, client_name, billed_date, billed_fee, total_reimbursed')
+      .gte('billed_date', prevStart)
+      .lte('billed_date', prevEnd)
+      .order('client_name')
+      .then(({ data: d }) => { setBilledHistory(d ?? []); setLoadingBilled(false); });
+  }, [billingTab, billedHistory]);
 
   const currentMonthLabel = data?.currentMonthStart
     ? new Date(data.currentMonthStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -470,7 +484,7 @@ export default function BillingPage() {
           {/* Above-table toolbar */}
           {!loading && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div ref={popupAreaRef} style={{ display: 'flex', gap: 6 }}>
 
                   {/* Filter popup */}
@@ -504,38 +518,36 @@ export default function BillingPage() {
                   </div>
 
                 </div>
-                <input
-                  placeholder="Search client or case ID…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
-                />
               </div>
-              {/* Tab switcher — below filter/sort row */}
+              {/* Tab switcher + search on same row */}
               {(() => {
                 const all = data?.clients ?? [];
-                const counts = {
+                const counts: Record<string, number> = {
                   all: all.length,
                   rtb: all.filter(c => c.currentMonthFee > 0).length,
-                  pending: all.filter(c => c.prevMonthFee > 0 && c.currentMonthFee > 0).length,
-                  overdue: all.filter(c => c.prevMonthFee > 0 && c.currentMonthFee === 0).length,
-                  billed: 0,
+                  billed: billedHistory?.length ?? 0,
                 };
                 const TABS: { key: typeof billingTab; label: string }[] = [
                   { key: 'rtb', label: 'Ready to Bill' },
                   { key: 'all', label: 'All' },
-                  { key: 'pending', label: 'Pending' },
-                  { key: 'overdue', label: 'Overdue' },
                   { key: 'billed', label: 'Billed' },
                 ];
                 return (
-                  <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 4, gap: 2, alignSelf: 'flex-start' }}>
-                    {TABS.map(({ key, label }) => (
-                      <button key={key} onClick={() => setBillingTab(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 13px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: billingTab === key ? 700 : 500, cursor: 'pointer', background: billingTab === key ? '#fff' : 'transparent', color: billingTab === key ? '#11181c' : '#71717a', boxShadow: billingTab === key ? '0 1px 4px rgba(0,0,0,0.10)' : 'none', transition: 'all 0.12s', outline: 'none', whiteSpace: 'nowrap' }}>
-                        {label}
-                        {counts[key] > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: billingTab === key ? '#eaebec' : 'transparent', borderRadius: 999, padding: '1px 5px', color: billingTab === key ? '#374151' : '#a1a1aa' }}>{counts[key]}</span>}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 4, gap: 2 }}>
+                      {TABS.map(({ key, label }) => (
+                        <button key={key} onClick={() => setBillingTab(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 13px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: billingTab === key ? 700 : 500, cursor: 'pointer', background: billingTab === key ? '#fff' : 'transparent', color: billingTab === key ? '#11181c' : '#71717a', boxShadow: billingTab === key ? '0 1px 4px rgba(0,0,0,0.10)' : 'none', transition: 'all 0.12s', outline: 'none', whiteSpace: 'nowrap' }}>
+                          {label}
+                          {counts[key] > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: billingTab === key ? '#eaebec' : 'transparent', borderRadius: 999, padding: '1px 5px', color: billingTab === key ? '#374151' : '#a1a1aa' }}>{counts[key]}</span>}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      placeholder="Search client or case ID…"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
+                    />
                   </div>
                 );
               })()}
@@ -558,19 +570,7 @@ export default function BillingPage() {
                       {visOpt.map(c => (
                         <ColHdr key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                       ))}
-                      {selectedClient ? (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
-                            {(['current', 'previous'] as const).map(tab => (
-                              <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
-                                {tab === 'current' ? 'Current' : 'Previous'}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, fontWeight: 600, color: '#71717a' }}>Actions</span>
-                      )}
+                      <span style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, fontWeight: 600, color: '#71717a' }}>Actions</span>
                     </div>
                     {selectedClient && <div style={{ width: sidebarWidth + 18, flexShrink: 0 }} />}
                   </div>
@@ -585,9 +585,37 @@ export default function BillingPage() {
                       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
                       </div>
+                    ) : billingTab === 'billed' ? (
+                      loadingBilled ? (
+                        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
+                        </div>
+                      ) : !billedHistory?.length ? (
+                        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No invoices found for last month.</div>
+                      ) : (
+                        <div>
+                          {billedHistory.map((inv, idx) => (
+                            <div key={inv.invoice_number} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 100px 90px 90px', padding: '10px 16px', gap: 8, borderBottom: idx < billedHistory.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c' }}>{inv.client_name}</div>
+                                <div style={{ fontSize: 10, color: '#a1a1aa', fontFamily: 'monospace', marginTop: 2 }}>{inv.invoice_number}</div>
+                              </div>
+                              <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{new Date(inv.billed_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                              <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
+                              <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
+                            </div>
+                          ))}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 100px 90px 90px', padding: '10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
+                            <span />
+                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(billedHistory.reduce((s, i) => s + Number(i.total_reimbursed), 0))}</span>
+                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(billedHistory.reduce((s, i) => s + Number(i.billed_fee), 0))}</span>
+                          </div>
+                        </div>
+                      )
                     ) : filtered.length === 0 ? (
                       <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
-                        {search ? 'No clients match.' : billingTab === 'billed' ? 'Billed clients are in Invoices.' : billingTab === 'overdue' ? 'No overdue clients.' : billingTab === 'pending' ? 'No pending clients.' : 'No clients ready to bill.'}
+                        {search ? 'No clients match.' : 'No clients ready to bill.'}
                       </div>
                     ) : (
                       <div style={{ minWidth: 420 }}>
@@ -639,6 +667,15 @@ export default function BillingPage() {
                   <div style={{ width: selectedClient ? sidebarWidth : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
                     {selectedClient && (
                       <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: '0 12px 12px 0', margin: '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 10px', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
+                            {(['current', 'previous'] as const).map(tab => (
+                              <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
+                                {tab === 'current' ? 'Current' : 'Previous'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         <CaseSidebar client={selectedClient} highlight={search || undefined} view={sidebarView} />
                       </div>
                     )}
