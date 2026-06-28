@@ -181,29 +181,22 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
 
         {/* Header — centered */}
         <div style={{ padding: '28px 24px 0', textAlign: 'center' }}>
-          <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#006FEE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-            </svg>
-          </div>
           <div style={{ fontWeight: 700, fontSize: 17, color: '#111827', lineHeight: 1.3, padding: '0 20px' }}>{client.clientName}</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', marginTop: 5, fontFamily: 'monospace' }}>{invoiceNumber}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#9ca3af', marginTop: 6, fontFamily: 'monospace' }}>{invoiceNumber}</div>
         </div>
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', margin: '20px 24px 0', background: '#f4f4f5', borderRadius: 14, overflow: 'hidden', gap: 1 }}>
           <div style={{ background: '#fff', padding: '12px 8px', textAlign: 'center' }}>
-            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.06em', marginBottom: 4 }}>RECOVERED</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', marginBottom: 4 }}>Recovered</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(client.totalAmount)}</div>
           </div>
           <div style={{ background: '#fff', padding: '12px 8px', textAlign: 'center' }}>
-            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.06em', marginBottom: 4 }}>FEE</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', marginBottom: 4 }}>Fee</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{fmtUSD(client.totalFee)}</div>
           </div>
           <div style={{ background: '#fff', padding: '12px 8px', textAlign: 'center' }}>
-            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.06em', marginBottom: 4 }}>CASES</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', marginBottom: 4 }}>Cases</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{client.cases.length}</div>
           </div>
         </div>
@@ -221,17 +214,23 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
         <div style={{ padding: '16px 24px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {confirming ? (
             <>
-              <button onClick={handleMarkAsBilled} disabled={saving} style={{ width: '100%', fontSize: 14, fontWeight: 700, padding: '13px', border: 'none', borderRadius: 14, background: saving ? '#86efac' : '#16a34a', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>
+              <button onClick={handleMarkAsBilled} disabled={saving} style={{ width: '100%', fontSize: 14, fontWeight: 700, padding: '13px', border: 'none', borderRadius: 999, background: saving ? '#86efac' : '#16a34a', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Saving…' : '✓ Confirm Billed'}
               </button>
-              <button onClick={() => setConfirming(false)} style={{ width: '100%', fontSize: 13, fontWeight: 600, padding: '11px', border: '1px solid #e5e7eb', borderRadius: 14, background: '#fff', cursor: 'pointer', color: '#374151' }}>Cancel</button>
+              <button onClick={() => setConfirming(false)} style={{ width: '100%', fontSize: 13, fontWeight: 600, padding: '11px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', cursor: 'pointer', color: '#374151' }}>Cancel</button>
             </>
           ) : (
             <>
-              <button onClick={() => setConfirming(true)} style={{ width: '100%', fontSize: 14, fontWeight: 700, padding: '13px', border: 'none', borderRadius: 14, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Mark as Billed</button>
+              <button onClick={() => setConfirming(true)} style={{ width: '100%', fontSize: 14, fontWeight: 700, padding: '13px', border: 'none', borderRadius: 999, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Mark as Billed</button>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => downloadClientCSV(client, invoiceNumber)} style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: '10px', border: '1px solid #e5e7eb', borderRadius: 12, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ CSV</button>
-                <button onClick={async () => { await downloadInvoicePDF({ invoice_number: invoiceNumber, client_name: client.clientName, client_address: billingContact?.address ?? null, billed_date: billedDate, billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(client.cases.map(c => c.caseId))] }, client.cases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount }))); }} style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: '10px', border: '1px solid #e5e7eb', borderRadius: 12, background: '#fff', cursor: 'pointer', color: '#374151' }}>↓ PDF</button>
+                <button onClick={() => downloadClientCSV(client, invoiceNumber)} style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: '10px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13"/><polyline points="7 12 12 17 17 12"/><line x1="3" y1="21" x2="21" y2="21"/></svg>
+                  CSV
+                </button>
+                <button onClick={async () => { await downloadInvoicePDF({ invoice_number: invoiceNumber, client_name: client.clientName, client_address: billingContact?.address ?? null, billed_date: billedDate, billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(client.cases.map(c => c.caseId))] }, client.cases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount }))); }} style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: '10px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13"/><polyline points="7 12 12 17 17 12"/><line x1="3" y1="21" x2="21" y2="21"/></svg>
+                  PDF
+                </button>
               </div>
             </>
           )}

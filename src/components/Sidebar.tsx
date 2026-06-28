@@ -95,7 +95,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
     setTimeout(() => { setSyncing(false); window.location.reload(); }, 600);
   }
 
-  const initial = (user?.name?.charAt(0) ?? '?').toUpperCase();
+  const initial = (user?.name?.charAt(0) ?? 'A').toUpperCase();
 
   // Theme tokens
   const bg      = darkMode ? '#1a1a1b' : '#f4f4f5';
@@ -181,7 +181,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
 
         {/* Footer */}
         {!collapsed ? (
-          <div style={{ padding: '10px 12px 14px', flexShrink: 0, borderTop: `1px solid ${border}` }}>
+          <div style={{ padding: '10px 12px 14px', flexShrink: 0 }}>
 
             {/* Sync row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 6 }}>
@@ -201,11 +201,11 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
 
             {/* User + theme row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #006FEE 0%, #3b82f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                 {initial}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? 'Guest'}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? 'Admin'}</div>
                 <div style={{ fontSize: 10, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email ?? ''}</div>
               </div>
               <button

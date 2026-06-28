@@ -209,7 +209,7 @@ function MetricCard({
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', minWidth: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
       {/* Label + trend pill on same row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 500, color: '#71717a' }}>{label}</div>
         {trend !== undefined && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: trendUp ? '#17c964' : '#f31260', background: trendUp ? '#f0fdf4' : '#fff0f3', borderRadius: 999, padding: '2px 7px', flexShrink: 0 }}>
@@ -585,7 +585,7 @@ export default function DashboardPage() {
         {/* Charts row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 12, marginBottom: 16 }}>
           {/* Monthly bar chart */}
-          <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c' }}>Monthly Recovery</h3>
               <span style={{ fontSize: 11, color: '#a1a1aa', background: '#f4f4f5', borderRadius: 999, padding: '3px 10px' }}>Last 12 months</span>
@@ -600,7 +600,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Donut chart */}
-          <div style={{ background: '#fff', border: '1px solid #e4e4e7', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c', marginBottom: 16 }}>By Category</h3>
             {loadingAnalytics ? (
               <div>
