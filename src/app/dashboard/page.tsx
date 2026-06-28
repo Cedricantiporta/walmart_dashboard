@@ -285,7 +285,16 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
 
 // ── gauge chart (semicircle + legend below) ───────────────────────────────────
 
-const CHART_COLORS = ['#006FEE','#17c964','#f5a524','#7828C8','#f31260','#00b7eb','#a1a1aa','#e4e4e7'];
+const CHART_COLORS = [
+  '#0071CE', // Walmart blue
+  '#F5A524', // Walmart orange
+  '#6BB8F5', // light blue
+  '#FFCA7A', // light orange
+  '#004B9A', // darker blue
+  '#C97A00', // darker orange
+  '#A8D4F7', // very light blue
+  '#FFE0A0', // very light orange
+];
 
 function GaugeChart({ data }: { data: { category: string; amount: number }[] }) {
   const [hov, setHov] = useState<number | null>(null);
