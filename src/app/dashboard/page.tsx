@@ -182,6 +182,28 @@ function PillDropdown({
   );
 }
 
+// ── count-up animation ────────────────────────────────────────────────────────
+
+function useCountUp(target: number, duration = 1100): number {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    if (target === 0) { setDisplay(0); return; }
+    let startTs: number | null = null;
+    let raf: number;
+    function step(ts: number) {
+      if (!startTs) startTs = ts;
+      const progress = Math.min((ts - startTs) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(target * eased);
+      if (progress < 1) raf = requestAnimationFrame(step);
+      else setDisplay(target);
+    }
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return display;
+}
+
 // ── metric card ───────────────────────────────────────────────────────────────
 
 function MetricCard({
@@ -189,11 +211,12 @@ function MetricCard({
 }: {
   label: string; value: number; sub?: string; trend?: number; format?: 'currency' | 'number';
 }) {
+  const animated = useCountUp(value);
   const trendUp = trend !== undefined && trend >= 0;
 
   let mainDisplay: React.ReactNode;
   if (format === 'currency') {
-    const full = fmtFull(value);
+    const full = fmtFull(animated);
     const dotIdx = full.lastIndexOf('.');
     const main = dotIdx >= 0 ? full.slice(0, dotIdx) : full;
     const cents = dotIdx >= 0 ? full.slice(dotIdx) : '';
@@ -204,11 +227,11 @@ function MetricCard({
       </>
     );
   } else {
-    mainDisplay = String(Math.round(value));
+    mainDisplay = String(Math.round(animated));
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', minWidth: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
+    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', minWidth: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', animation: 'cardIn 0.4s ease-out both' }}>
       {/* Label + trend pill on same row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 500, color: '#71717a' }}>{label}</div>
@@ -254,7 +277,7 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
           const dimmed = hov !== null && hov !== i;
 
           return (
-            <g key={i} style={{ cursor: 'pointer' }}
+            <g key={i} style={{ cursor: 'pointer', animation: `barIn 0.55s cubic-bezier(0.34,1.4,0.64,1) ${i * 0.045}s both` }}
               onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
               onMouseLeave={() => setHov(null)}
               onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
@@ -327,7 +350,7 @@ function GaugeChart({ data }: { data: { category: string; amount: number }[] }) 
             onMouseEnter={e => { setHov(i); setTip({ x: e.clientX, y: e.clientY }); }}
             onMouseLeave={() => setHov(null)}
             onMouseMove={e => setTip({ x: e.clientX, y: e.clientY })}
-            style={{ cursor: 'pointer', transition: 'opacity 0.15s', outline: 'none' }}
+            style={{ cursor: 'pointer', transition: 'opacity 0.15s', outline: 'none', animation: `sliceIn 0.45s ease-out ${i * 0.07}s both` }}
           />
         ))}
       </svg>
@@ -532,6 +555,9 @@ export default function DashboardPage() {
     <>
       <style>{`
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        @keyframes barIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+        @keyframes sliceIn { from { opacity:0; transform-box:fill-box; transform-origin:center; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
+        @keyframes cardIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
         button:hover { opacity: .88; }
       `}</style>
 
