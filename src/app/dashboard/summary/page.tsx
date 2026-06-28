@@ -29,10 +29,24 @@ function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSummaryRow(r: any): MonthlyHistory {
+  return {
+    label: r.label,
+    sort: r.sort ?? r.month_key ?? '',
+    recovered: Number(r.recovered) || 0,
+    fee: Number(r.fee) || 0,
+    approvedCount: Number(r.approvedCount ?? r.approved_count) || 0,
+    declinedCount: Number(r.declinedCount ?? r.declined_count) || 0,
+    growth: Number(r.growth) || 0,
+  };
+}
+
 export default function SummaryPage() {
   const [history, setHistory] = useState<MonthlyHistory[]>(() => {
-    const c = clientGet<MonthlyHistory[]>('summary');
-    return Array.isArray(c) ? c : [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const c = clientGet<any[]>('summary');
+    return Array.isArray(c) ? c.map(mapSummaryRow) : [];
   });
   const [loading, setLoading] = useState(() => {
     const c = clientGet('summary');
@@ -49,14 +63,16 @@ export default function SummaryPage() {
   }
 
   useEffect(() => {
-    const cached = clientGet<MonthlyHistory[]>('summary');
-    if (cached) { setHistory(cached); setLoading(false); return; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cached = clientGet<any[]>('summary');
+    if (cached) { setHistory(cached.map(mapSummaryRow)); setLoading(false); return; }
     fetch('/api/summary')
       .then(r => r.json())
-      .then((d: MonthlyHistory[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((d: any[]) => {
         const arr = Array.isArray(d) ? d : [];
         clientSet('summary', arr);
-        setHistory(arr);
+        setHistory(arr.map(mapSummaryRow));
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -68,6 +84,8 @@ export default function SummaryPage() {
     else if (sortCol === 'recovered') { av = a.recovered; bv = b.recovered; }
     else if (sortCol === 'fee') { av = a.fee; bv = b.fee; }
     else if (sortCol === 'cases') { av = a.approvedCount; bv = b.approvedCount; }
+    else if (sortCol === 'declined') { av = a.declinedCount; bv = b.declinedCount; }
+    else if (sortCol === 'apprRate') { const ta = a.approvedCount + a.declinedCount; const tb = b.approvedCount + b.declinedCount; av = ta > 0 ? a.approvedCount / ta : 0; bv = tb > 0 ? b.approvedCount / tb : 0; }
     else if (sortCol === 'growth') { av = a.growth; bv = b.growth; }
     else { av = a.sort; bv = b.sort; }
     if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av);
@@ -99,13 +117,15 @@ export default function SummaryPage() {
 
             {/* Column headers — sit on grey layer */}
             {!loading && sorted.length > 0 && (() => {
-              const G = 'minmax(0,1fr) 150px 130px 80px 110px';
+              const G = 'minmax(0,1fr) 140px 120px 80px 80px 90px 110px';
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 500 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 640 }}>
                   <ColHdr label="Month" col="label" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                   <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                   <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Approved" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Declined" col="declined" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <ColHdr label="Appr. Rate" col="apprRate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                   <ColHdr label="Growth" col="growth" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                 </div>
               );
@@ -118,16 +138,23 @@ export default function SummaryPage() {
                   {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} h={36} />)}
                 </div>
               ) : (() => {
-                const G = 'minmax(0,1fr) 150px 130px 80px 110px';
+                const G = 'minmax(0,1fr) 140px 120px 80px 80px 90px 110px';
                 return (
                   <div style={{ flex: 1, overflow: 'auto' }}>
-                    <div style={{ minWidth: 500 }}>
-                      {sorted.map((row, idx) => (
+                    <div style={{ minWidth: 640 }}>
+                      {sorted.map((row, idx) => {
+                        const total = row.approvedCount + row.declinedCount;
+                        const apprRate = total > 0 ? row.approvedCount / total : null;
+                        return (
                         <div key={row.sort || String(idx)} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
                           <span style={{ fontWeight: 600, color: '#11181c', fontSize: 13 }}>{row.label}</span>
                           <span style={{ textAlign: 'right', fontWeight: 700, color: '#006FEE', fontSize: 13 }}>{fmtFull(row.recovered)}</span>
                           <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmtFull(row.fee)}</span>
-                          <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{row.approvedCount}</span>
+                          <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{row.approvedCount || '—'}</span>
+                          <span style={{ textAlign: 'right', color: row.declinedCount > 0 ? '#f31260' : '#a1a1aa', fontSize: 13 }}>{row.declinedCount > 0 ? row.declinedCount : '—'}</span>
+                          <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: apprRate !== null ? (apprRate >= 0.9 ? '#17c964' : apprRate >= 0.7 ? '#f5a524' : '#f31260') : '#a1a1aa' }}>
+                            {apprRate !== null ? `${(apprRate * 100).toFixed(1)}%` : '—'}
+                          </span>
                           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 600, color: row.growth >= 0 ? '#17c964' : '#f31260', background: row.growth >= 0 ? '#f0fdf4' : '#fff0f3', borderRadius: 999, padding: '3px 8px' }}>
                               <span style={{ fontSize: 9 }}>{row.growth >= 0 ? '▲' : '▼'}</span>
@@ -135,7 +162,8 @@ export default function SummaryPage() {
                             </span>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );

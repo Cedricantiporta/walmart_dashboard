@@ -25,6 +25,7 @@ export async function GET() {
     { data: invoicesRaw },
     { data: hardcodedRaw },
     { data: config },
+    { data: declinedRaw },
   ] = await Promise.all([
     // All invoices for historical months — same source GAS uses
     db.from('invoices').select('client_name, billed_fee, total_reimbursed, billed_date, case_ids').order('billed_date', { ascending: false }),
@@ -35,6 +36,8 @@ export async function GET() {
     db.from('invoices').select('case_ids'),
     db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('app_config').select('*'),
+    // All-time declined cases for historical month counts
+    db.from('rms_cases').select('rms_posting_date').ilike('reimbursement_status', 'declined'),
   ]);
 
   const settings: Record<string, string> = {};
@@ -100,25 +103,33 @@ export async function GET() {
     growth: 0,
   };
 
-  // Group invoices by billing period — 7-day grace: if billed_date day <= 7, attribute to previous month (matches GAS renderMonthlyHistorySummary)
+  // Group invoices by billing period — 7-day grace (matches GAS renderMonthlyHistorySummary)
   type InvoiceRow = { client_name: string; billed_fee: number; total_reimbursed: number; billed_date: string; case_ids: string[] };
-  const monthGroups: Record<string, { recovered: number; fee: number; count: number; label: string }> = {};
+  const monthGroups: Record<string, { recovered: number; fee: number; approvedCases: number; declinedCases: number; label: string }> = {};
   (allInvoices ?? []).forEach((inv: InvoiceRow) => {
     if (!inv.billed_date) return;
     const billedDate = new Date(inv.billed_date);
     const periodDate = new Date(billedDate);
     if (billedDate.getDate() <= 7) periodDate.setMonth(periodDate.getMonth() - 1);
     const mk = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
-    if (mk === currentMonthKey) return; // current month computed live from rms_cases
+    if (mk === currentMonthKey) return;
     if (!monthGroups[mk]) {
       monthGroups[mk] = {
-        recovered: 0, fee: 0, count: 0,
+        recovered: 0, fee: 0, approvedCases: 0, declinedCases: 0,
         label: periodDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       };
     }
     monthGroups[mk].recovered += Number(inv.total_reimbursed) || 0;
     monthGroups[mk].fee += Number(inv.billed_fee) || 0;
-    monthGroups[mk].count++;
+    monthGroups[mk].approvedCases += (inv.case_ids ?? []).length;
+  });
+
+  // Tally all-time declined cases by posting month
+  (declinedRaw ?? []).forEach((r: { rms_posting_date: string | null }) => {
+    if (!r.rms_posting_date) return;
+    const mk = r.rms_posting_date.slice(0, 7);
+    if (mk === currentMonthKey) return; // current month already counted
+    if (monthGroups[mk]) monthGroups[mk].declinedCases++;
   });
 
   const pastMonths = Object.entries(monthGroups)
@@ -128,8 +139,8 @@ export async function GET() {
       label: g.label,
       recovered: g.recovered,
       fee: g.fee,
-      approved_count: g.count,
-      declined_count: 0,
+      approved_count: g.approvedCases,
+      declined_count: g.declinedCases,
       growth: 0,
     }));
 

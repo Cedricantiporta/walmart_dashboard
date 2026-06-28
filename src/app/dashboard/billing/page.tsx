@@ -271,30 +271,43 @@ type HistoricalCase = {
   gtin?: string; sku_id?: string; unit_amount?: number; reimbursed_qty?: number; rate?: number;
 };
 
+// Module-level cache persists across drawer open/close without refetching
+const prevCasesCache = new Map<string, HistoricalCase[]>();
+
 function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highlight?: string; view: 'current' | 'previous' }) {
   const q = highlight?.toLowerCase() ?? '';
   const firstMatchIndex = q ? client.cases.findIndex(c => c.caseId.toLowerCase().includes(q)) : -1;
   const firstMatchRef = useRef<HTMLDivElement | null>(null);
-  const [prevCases, setPrevCases] = useState<HistoricalCase[] | null>(null);
+  const [prevCases, setPrevCases] = useState<HistoricalCase[] | null>(() => prevCasesCache.get(client.clientName) ?? null);
   const [loadingPrev, setLoadingPrev] = useState(false);
 
   useEffect(() => {
-    if (firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [highlight, client.clientName]);
 
-  useEffect(() => { setPrevCases(null); }, [client.clientName]);
+  // On client change: reset from cache or null, then preload in background
+  useEffect(() => {
+    const cached = prevCasesCache.get(client.clientName);
+    if (cached) { setPrevCases(cached); return; }
+    setPrevCases(null);
+    // Start preloading immediately so Previous tab is instant when clicked
+    doFetchPrevious(client.clientName);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client.clientName]);
 
-  const fetchPrevious = useCallback(async () => {
-    if (prevCases !== null) return;
+  const doFetchPrevious = useCallback(async (clientName: string) => {
+    if (prevCasesCache.has(clientName)) { setPrevCases(prevCasesCache.get(clientName)!); return; }
     setLoadingPrev(true);
     // Step 1: get all invoices for this client (for case_ids + rate)
     const { data: invs } = await supabase
       .from('invoices')
       .select('invoice_number, billed_date, total_reimbursed, billed_fee, case_ids')
-      .eq('client_name', client.clientName)
+      .eq('client_name', clientName)
       .order('billed_date', { ascending: false });
-    if (!invs?.length) { setPrevCases([]); setLoadingPrev(false); return; }
-    // Step 2: map each case_id to its invoice context
+    if (!invs?.length) {
+      prevCasesCache.set(clientName, []);
+      setPrevCases([]); setLoadingPrev(false); return;
+    }
     const invMap: Record<string, { invoice_number: string; billed_date: string; rate: number }> = {};
     const allIds: string[] = [];
     for (const inv of invs) {
@@ -304,7 +317,6 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
         allIds.push(String(id));
       }
     }
-    // Step 3: fetch real rms_cases data via server route
     const caseRows: { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number; gtin?: string; sku_id?: string; unit_amount?: number; reimbursed_qty?: number }[] =
       allIds.length > 0
         ? await fetch('/api/cases/by-ids', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...new Set(allIds)] }) })
@@ -318,13 +330,11 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
         billed_date: invMap[c.case_id]?.billed_date ?? '',
         rate: invMap[c.case_id]?.rate ?? 0,
       })).sort((a, b) => (b.billed_date ?? '').localeCompare(a.billed_date ?? ''));
+    prevCasesCache.set(clientName, cases);
     setPrevCases(cases);
     setLoadingPrev(false);
-  }, [client.clientName, prevCases]);
-
-  useEffect(() => {
-    if (view === 'previous') fetchPrevious();
-  }, [view, fetchPrevious]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const CG = '72px 1fr 70px 58px';
   const prevTotalAmt = (prevCases ?? []).reduce((s, c) => s + c.reimbursement_amount, 0);
@@ -574,12 +584,17 @@ export default function BillingPage() {
                         </button>
                       ))}
                     </div>
-                    <input
-                      placeholder="Search client or case ID…"
-                      value={search}
-                      onChange={e => setSearch(e.target.value)}
-                      style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
-                    />
+                    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                      <input
+                        placeholder="Search client or case ID…"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{ fontSize: 13, padding: '7px 32px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
+                      />
+                      {search && (
+                        <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 12, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none', flexShrink: 0 }}>×</button>
+                      )}
+                    </div>
                   </div>
                 );
               })()}
@@ -628,9 +643,7 @@ export default function BillingPage() {
                               {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.previouslyBilledReimbursed)}</span>}
                               {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.previouslyBilledFee)}</span>}
                               {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>—</span>}
-                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <span style={{ fontSize: 10, fontWeight: 600, background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '2px 8px' }}>Billed</span>
-                              </div>
+                              <div />
                             </div>
                           ))}
                           <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
@@ -690,18 +703,15 @@ export default function BillingPage() {
                     <div style={{ position: 'absolute', top: 6, right: 6, bottom: 6, width: sidebarWidth, background: '#fff', borderRadius: 12, boxShadow: '-6px 0 32px rgba(0,0,0,0.13)', zIndex: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInDrawer 0.18s cubic-bezier(0.4,0,0.2,1)' }}>
                       {/* Resize handle on left edge */}
                       <div onMouseDown={handleDragStart} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 1 }} />
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 16px', flexShrink: 0, borderBottom: '1px solid #f3f4f6' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, paddingRight: 8 }}>{selectedClient.clientName}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                          <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
-                            {(['current', 'previous'] as const).map(tab => (
-                              <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
-                                {tab === 'current' ? 'Current' : 'Previous'}
-                              </button>
-                            ))}
-                          </div>
-                          <button onClick={() => setSelectedClient(null)} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 10px', flexShrink: 0, borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
+                          {(['current', 'previous'] as const).map(tab => (
+                            <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
+                              {tab === 'current' ? 'Current' : 'Previous'}
+                            </button>
+                          ))}
                         </div>
+                        <button onClick={() => setSelectedClient(null)} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
                       </div>
                       <CaseSidebar client={selectedClient} highlight={search || undefined} view={sidebarView} />
                     </div>
