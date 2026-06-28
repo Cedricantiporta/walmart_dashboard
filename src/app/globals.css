@@ -27,6 +27,16 @@ body {
 
 a { color: inherit; text-decoration: none; }
 
+/* Dark mode: CSS-filter on main content area */
+[data-theme="dark"] main {
+  filter: invert(1) hue-rotate(180deg);
+}
+[data-theme="dark"] main img,
+[data-theme="dark"] main canvas,
+[data-theme="dark"] main video {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 /* Slim scrollbars */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

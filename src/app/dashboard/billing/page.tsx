@@ -59,7 +59,7 @@ function gasRow(clientName: string, rate: number, cs: BillingCase) {
 }
 
 function buildGasCSV(invNum: string, clients: { clientName: string; rate: number; cases: BillingCase[] }[]) {
-  const dataRows = clients.flatMap(c => c.cases.map(cs => gasRow(c.clientName, c.rate, cs)));
+  const dataRows = clients.flatMap(c => c.cases.filter(cs => !!cs.postingDate).map(cs => gasRow(c.clientName, c.rate, cs)));
   return [`${invNum},,,,,,,,,,,,,,`, GAS_HEADERS, ...dataRows].join('\n');
 }
 
@@ -119,10 +119,10 @@ const toolbarPill: React.CSSProperties = {
 };
 
 const OPTIONAL_COLS = [
-  { key: 'rate',      label: 'Rate',      width: '80px'  },
-  { key: 'recovered', label: 'Recovered', width: '130px' },
-  { key: 'fee',       label: 'Fee',       width: '120px' },
-  { key: 'cases',     label: 'Cases',     width: '70px'  },
+  { key: 'rate',      label: 'Rate',      width: '80px',  compactWidth: '58px'  },
+  { key: 'recovered', label: 'Recovered', width: '130px', compactWidth: '88px' },
+  { key: 'fee',       label: 'Fee',       width: '120px', compactWidth: '88px' },
+  { key: 'cases',     label: 'Cases',     width: '70px',  compactWidth: '52px'  },
 ] as const;
 
 function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
@@ -152,16 +152,17 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
 
   async function handleMarkAsBilled() {
     setSaving(true); setErr('');
+    const billedCases = client.cases.filter(c => !!c.postingDate);
     await downloadInvoicePDF(
-      { invoice_number: invoiceNumber, client_name: client.clientName, client_address: billingContact?.address ?? null, billed_date: billedDate, billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(client.cases.map(c => c.caseId))] },
-      client.cases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount }))
+      { invoice_number: invoiceNumber, client_name: client.clientName, client_address: billingContact?.address ?? null, billed_date: billedDate, billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(billedCases.map(c => c.caseId))] },
+      billedCases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount }))
     );
     const inv = {
       invoice_number: invoiceNumber, client_name: client.clientName,
       billed_date: new Date(billedDate + 'T12:00:00').toISOString(),
       billed_fee: client.totalFee, total_reimbursed: client.totalAmount,
-      case_ids: [...new Set(client.cases.map(c => c.caseId))],
-      case_snapshot: client.cases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount, gtin: c.gtin ?? '', sku_id: c.sku_id ?? '', unit_amount: c.unit_amount ?? c.amount, reimbursed_qty: c.reimbursed_qty ?? 1 })),
+      case_ids: [...new Set(billedCases.map(c => c.caseId))],
+      case_snapshot: billedCases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount, gtin: c.gtin ?? '', sku_id: c.sku_id ?? '', unit_amount: c.unit_amount ?? c.amount, reimbursed_qty: c.reimbursed_qty ?? 1 })),
       pdf_url: '',
     };
     const res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(inv) });
@@ -453,7 +454,7 @@ export default function BillingPage() {
           {(() => {
             const showHdr = !loading && filtered.length > 0;
             const visOpt = OPTIONAL_COLS.filter(c => !hiddenCols.has(c.key));
-            const G = `minmax(0,1fr) ${visOpt.map(c => c.width).join(' ')} 120px`;
+            const G = `minmax(0,1fr) ${visOpt.map(c => selectedClient ? c.compactWidth : c.width).join(' ')} 120px`;
             return (
               <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#eaebec', flexDirection: 'column' }}>
 

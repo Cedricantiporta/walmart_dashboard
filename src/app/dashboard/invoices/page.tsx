@@ -133,7 +133,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
   }
 
   async function deleteInvoice() {
-    if (!confirm(`Delete invoice ${inv.invoice_number}?`)) return;
+    if (!confirm(`Unbill invoice ${inv.invoice_number}? This will remove it from history.`)) return;
     setDeleting(true);
     await fetch(`/api/invoices/${inv.invoice_number}`, { method: 'DELETE' });
     onDelete(inv.invoice_number);
@@ -141,13 +141,14 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
 
   async function downloadPDF() {
     if (inv.pdf_url) { window.open(inv.pdf_url, '_blank'); return; }
-    const cases = activeCases.length > 0 ? activeCases : await fetchCasesByIds(inv.case_ids ?? []);
+    const raw = activeCases.length > 0 ? activeCases : await fetchCasesByIds(inv.case_ids ?? []);
+    const cases = raw.filter(c => !!c.rms_posting_date);
     await downloadInvoicePDF({ invoice_number: inv.invoice_number, client_name: inv.client_name, billed_date: inv.billed_date?.slice(0, 10) ?? isoToday(), billed_fee: inv.billed_fee, total_reimbursed: inv.total_reimbursed, case_ids: inv.case_ids }, cases);
   }
 
   const snapCount = inv.case_snapshot?.length || inv.case_ids?.length || 0;
 
-  const G = '110px minmax(0,120px) 50px 20px 120px 90px 110px 200px';
+  const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
 
   return (
     <>
@@ -160,9 +161,9 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
         <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
         <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-          <button onClick={async e => { e.stopPropagation(); const cases = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, cases); }} style={pillAction()}>CSV</button>
+          <button onClick={async e => { e.stopPropagation(); const raw = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, raw.filter(c => !!c.rms_posting_date)); }} style={pillAction()}>CSV</button>
           <button onClick={async e => { e.stopPropagation(); await downloadPDF(); }} style={pillAction()}>PDF</button>
-          <button onClick={async e => { e.stopPropagation(); await deleteInvoice(); }} disabled={deleting} style={pillAction(true)}>Delete</button>
+          <button onClick={async e => { e.stopPropagation(); await deleteInvoice(); }} disabled={deleting} style={pillAction(true)}>Unbill</button>
         </div>
       </div>
       {open && snapCount > 0 && (
@@ -332,7 +333,7 @@ export default function InvoicesPage() {
 
             {/* Column headers — sit on grey layer */}
             {!loading && sorted.length > 0 && (() => {
-              const G = '110px minmax(0,120px) 50px 20px 120px 90px 110px 200px';
+              const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 700 }}>
                   <ColHdr label="Invoice #" col="invoice" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -358,7 +359,7 @@ export default function InvoicesPage() {
                   {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
                 </div>
               ) : (() => {
-                const G = '110px minmax(0,120px) 50px 20px 120px 90px 110px 200px';
+                const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
                 return (
                   <div style={{ flex: 1, overflow: 'auto' }}>
                     <div style={{ minWidth: 700 }}>

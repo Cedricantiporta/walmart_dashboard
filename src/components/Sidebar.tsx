@@ -1,9 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import logoSrc from './WFS_Logo.png';
+import { supabase } from '@/lib/supabase';
+import { useSidebar } from './DashboardShell';
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: (
@@ -32,26 +35,90 @@ const NAV = [
   )},
 ];
 
-export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; syncTime?: string }) {
+const SyncIcon = ({ spinning }: { spinning?: boolean }) => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={{ animation: spinning ? 'spin 1s linear infinite' : 'none' }}>
+    <polyline points="23 4 23 10 17 10"/>
+    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+);
+
+const SunIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="5"/>
+    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+);
+
+export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }: {
+  collapsed: boolean;
+  syncTime?: string;
+  darkMode?: boolean;
+  onThemeToggle?: () => void;
+}) {
   const pathname = usePathname();
+  const { setSyncTime } = useSidebar();
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const u = session.user;
+        const name = u.user_metadata?.full_name ?? u.user_metadata?.name ?? u.email?.split('@')[0] ?? 'User';
+        setUser({ name, email: u.email ?? '' });
+      }
+    });
+  }, []);
 
   const syncLabel = syncTime
-    ? new Date(syncTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : '';
+    ? (() => {
+        const d = new Date(syncTime);
+        const isToday = d.toDateString() === new Date().toDateString();
+        const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return isToday ? `Today ${time}` : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + time;
+      })()
+    : null;
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncTime(new Date().toISOString());
+    setTimeout(() => { setSyncing(false); window.location.reload(); }, 600);
+  }
+
+  const initial = (user?.name?.charAt(0) ?? '?').toUpperCase();
+
+  // Theme tokens
+  const bg      = darkMode ? '#1a1a1b' : '#f4f4f5';
+  const border  = darkMode ? '#27272a' : '#e4e4e7';
+  const txt     = darkMode ? '#f4f4f5' : '#11181c';
+  const muted   = darkMode ? '#71717a' : '#71717a';
+  const pill    = darkMode ? '#27272a' : '#eaebec';
+  const pillHov = darkMode ? '#3f3f46' : '#dcdcdd';
 
   return (
     <>
       <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
         .sidebar-nav-link { transition: background 0.12s, color 0.12s; }
-        .sidebar-nav-link:hover:not(.active) { background: #eaebec !important; }
+        .sidebar-nav-link:hover:not(.active) { background: ${darkMode ? pillHov : '#eaebec'} !important; }
       `}</style>
 
       <aside style={{
         width: collapsed ? 56 : 210,
         transition: 'width 0.2s cubic-bezier(0.4,0,0.2,1)',
         height: '100vh',
-        background: '#f4f4f5',
-        borderRight: '1px solid #e4e4e7',
+        background: bg,
+        borderRight: `1px solid ${border}`,
         display: 'flex',
         flexDirection: 'column',
         position: 'sticky',
@@ -60,9 +127,9 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
         overflow: 'hidden',
       }}>
 
-        {/* Brand / user section */}
+        {/* Brand */}
         <div style={{
-          padding: collapsed ? '8px 0 10px' : '8px 10px 10px',
+          padding: collapsed ? '20px 0 10px' : '20px 10px 10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
@@ -72,13 +139,13 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
           <Image src={logoSrc} alt="WFS" width={32} height={32} style={{ borderRadius: 6, flexShrink: 0, objectFit: 'contain' }} />
           {!collapsed && (
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
-              <div style={{ fontSize: 12, color: '#71717a', fontWeight: 400, whiteSpace: 'nowrap' }}>Dashboard</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: txt, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>
+              <div style={{ fontSize: 12, color: muted, fontWeight: 400, whiteSpace: 'nowrap' }}>Dashboard</div>
             </div>
           )}
         </div>
 
-        {/* Nav items */}
+        {/* Nav */}
         <nav style={{ flex: 1, padding: '4px 6px', overflowY: 'auto', overflowX: 'hidden' }}>
           {NAV.map(({ href, label, icon }) => {
             const isActive = pathname === href;
@@ -98,14 +165,14 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
                   marginBottom: 2,
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 500,
-                  color: '#11181c',
-                  background: isActive ? '#eaebec' : 'transparent',
+                  color: txt,
+                  background: isActive ? pill : 'transparent',
                   textDecoration: 'none',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                 }}
               >
-                <span style={{ color: isActive ? '#11181c' : '#a1a1aa', flexShrink: 0, lineHeight: 1, display: 'flex' }}>{icon}</span>
+                <span style={{ color: isActive ? txt : muted, flexShrink: 0, lineHeight: 1, display: 'flex' }}>{icon}</span>
                 {!collapsed && label}
               </Link>
             );
@@ -113,14 +180,55 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
         </nav>
 
         {/* Footer */}
-        {!collapsed && (
-          <div style={{ padding: '10px 14px', flexShrink: 0, borderTop: '1px solid #e4e4e7' }}>
-            <div style={{ fontSize: 12, color: '#a1a1aa', fontWeight: 400 }}>WFS Billing v1.0</div>
-            {syncLabel && (
-              <div style={{ fontSize: 12, color: '#a1a1aa', marginTop: 3 }}>Synced {syncLabel}</div>
-            )}
+        {!collapsed ? (
+          <div style={{ padding: '10px 12px 14px', flexShrink: 0, borderTop: `1px solid ${border}` }}>
+
+            {/* Sync row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 6 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: muted, fontWeight: 500, letterSpacing: '0.02em' }}>Last synced</div>
+                <div style={{ fontSize: 11, color: muted, marginTop: 1 }}>{syncLabel ?? '—'}</div>
+              </div>
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, border: `1px solid ${border}`, background: pill, fontSize: 12, fontWeight: 600, color: txt, cursor: syncing ? 'not-allowed' : 'pointer', opacity: syncing ? 0.6 : 1, flexShrink: 0, outline: 'none' }}
+              >
+                <SyncIcon spinning={syncing} />
+                {syncing ? 'Syncing' : 'Sync'}
+              </button>
+            </div>
+
+            {/* User + theme row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                {initial}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? 'Guest'}</div>
+                <div style={{ fontSize: 10, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email ?? ''}</div>
+              </div>
+              <button
+                onClick={onThemeToggle}
+                title={darkMode ? 'Light mode' : 'Dark mode'}
+                style={{ width: 28, height: 28, borderRadius: '50%', border: `1px solid ${border}`, background: pill, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: muted, flexShrink: 0, outline: 'none' }}
+              >
+                {darkMode ? <SunIcon /> : <MoonIcon />}
+              </button>
+            </div>
+
+          </div>
+        ) : (
+          <div style={{ padding: '10px 0 14px', flexShrink: 0, borderTop: `1px solid ${border}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <button onClick={handleSync} disabled={syncing} title="Sync" style={{ width: 32, height: 32, borderRadius: '50%', border: `1px solid ${border}`, background: pill, cursor: syncing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: txt, outline: 'none', opacity: syncing ? 0.6 : 1 }}>
+              <SyncIcon spinning={syncing} />
+            </button>
+            <button onClick={onThemeToggle} title={darkMode ? 'Light mode' : 'Dark mode'} style={{ width: 32, height: 32, borderRadius: '50%', border: `1px solid ${border}`, background: pill, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: muted, outline: 'none' }}>
+              {darkMode ? <SunIcon /> : <MoonIcon />}
+            </button>
           </div>
         )}
+
       </aside>
     </>
   );
