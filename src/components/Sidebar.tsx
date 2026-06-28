@@ -64,7 +64,7 @@ export default function Sidebar({ collapsed, syncTime }: { collapsed: boolean; s
         <div style={{
           padding: collapsed ? '8px 0 10px' : '8px 10px 10px',
           display: 'flex',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
           minHeight: 68,
           gap: 8,

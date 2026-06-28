@@ -164,9 +164,9 @@ function PillDropdown({
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '7px 12px', fontSize: 12, border: 'none', cursor: 'pointer',
-                borderRadius: 8,
-                color: opt.value === value ? '#006FEE' : '#11181c',
-                background: hovered === opt.value ? '#e4e4e7' : (opt.value === value ? '#f0f7ff' : 'transparent'),
+                borderRadius: 999,
+                color: '#11181c',
+                background: hovered === opt.value ? '#e4e4e7' : (opt.value === value ? '#eaebec' : 'transparent'),
                 fontWeight: opt.value === value ? 600 : 400,
                 transition: 'background 0.1s',
               }}
@@ -247,10 +247,8 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
       <svg viewBox={`0 0 ${totalW + 2} ${svgH}`} width="100%" height={svgH} style={{ display: 'block', overflow: 'visible' }}>
         {data.map((d, i) => {
           const recoveredH = Math.max((d.recovered / maxVal) * H, 3);
-          const feeH = d.fee > 0 ? Math.max((d.fee / maxVal) * H, 2) : 0;
           const x = i * (barW + gap);
           const recoveredY = padTop + (H - recoveredH);
-          const feeY = padTop + (H - feeH);
           const month = d.label.split(' ')[0].slice(0, 3);
           const dimmed = hov !== null && hov !== i;
 
@@ -264,10 +262,6 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
               <text x={x + barW / 2} y={recoveredY - 5} textAnchor="middle" fontSize={9} fill="#374151" fontWeight={600}>{fmtCompact(d.recovered)}</text>
               {/* recovered — blue full-height pill */}
               <path d={pillBarPath(x, recoveredY, barW, recoveredH)} fill="#006FEE" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
-              {/* fee — dark blue pill from bottom */}
-              {feeH > 0 && (
-                <path d={pillBarPath(x, feeY, barW, feeH)} fill="#1d4ed8" opacity={dimmed ? 0.35 : 1} style={{ transition: 'opacity 0.15s' }} />
-              )}
               <text x={x + barW / 2} y={padTop + H + 18} textAnchor="middle" fontSize={11} fill="#71717a" fontWeight={500}>{month}</text>
             </g>
           );
@@ -281,11 +275,6 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#006FEE', flexShrink: 0 }} />
             <span style={{ color: '#71717a', flex: 1 }}>Recovered</span>
             <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].recovered)}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1d4ed8', flexShrink: 0 }} />
-            <span style={{ color: '#71717a', flex: 1 }}>Fee</span>
-            <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].fee)}</span>
           </div>
         </div>
       )}

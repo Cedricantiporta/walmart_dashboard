@@ -251,7 +251,7 @@ function CaseSidebar({ client, highlight }: { client: ClientBilling; highlight?:
     if (firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [highlight, client.clientName]);
 
-  const CG = '100px 1fr 90px 70px 60px';
+  const CG = '72px 1fr 70px 58px 46px';
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>
       {client.cases.map((c, i) => {
@@ -475,7 +475,7 @@ export default function BillingPage() {
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
                   {/* LEFT white card */}
-                  <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: selectedClient ? '12px 0 0 12px' : 12, margin: '6px 0 6px 6px' }}>
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: selectedClient ? '12px 0 0 12px' : 12, margin: selectedClient ? '6px 0 6px 6px' : '6px 6px 6px 6px' }}>
                     {loading ? (
                       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}

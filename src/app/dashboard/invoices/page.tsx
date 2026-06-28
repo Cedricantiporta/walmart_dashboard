@@ -147,7 +147,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
 
   const snapCount = inv.case_snapshot?.length || inv.case_ids?.length || 0;
 
-  const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 170px';
+  const G = '110px minmax(0,120px) 50px 20px 120px 90px 110px 200px';
 
   return (
     <>
@@ -319,7 +319,7 @@ export default function InvoicesPage() {
                   </div>
                 </div>
                 <input
-                  placeholder="Search invoice or client…"
+                  placeholder="Search invoice, client or case ID…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   style={{ fontSize: 13, padding: '7px 12px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 230, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
@@ -332,7 +332,7 @@ export default function InvoicesPage() {
 
             {/* Column headers — sit on grey layer */}
             {!loading && sorted.length > 0 && (() => {
-              const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 170px';
+              const G = '110px minmax(0,120px) 50px 20px 120px 90px 110px 200px';
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 700 }}>
                   <ColHdr label="Invoice #" col="invoice" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -342,7 +342,7 @@ export default function InvoicesPage() {
                   <ColHdr label="Date" col="date" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                   <ColHdr label="Recovered" col="recovered" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                   <ColHdr label="Fee" col="fee" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a' }}>Actions</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Actions</span>
                 </div>
               );
             })()}
@@ -358,7 +358,7 @@ export default function InvoicesPage() {
                   {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
                 </div>
               ) : (() => {
-                const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 170px';
+                const G = '110px minmax(0,120px) 50px 20px 120px 90px 110px 200px';
                 return (
                   <div style={{ flex: 1, overflow: 'auto' }}>
                     <div style={{ minWidth: 700 }}>
