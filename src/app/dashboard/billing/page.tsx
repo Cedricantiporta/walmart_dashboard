@@ -194,18 +194,20 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, boxShadow: '0 32px 80px rgba(0,0,0,0.28)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 48px)' }}>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 720, boxShadow: '0 32px 80px rgba(0,0,0,0.28)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 48px)' }}>
 
         {/* Toolbar */}
-        <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
-          {/* Row 1: identity + fee */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{client.clientName}</div>
-            <div style={{ fontSize: 12, color: '#111827', fontFamily: 'monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>{invoiceNumber}</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', flexShrink: 0 }}>{fmtUSD(client.totalFee)}</div>
+        <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+          {/* Row 1: client name | invoice# | X */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#111827', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.clientName}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', fontFamily: 'monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>{invoiceNumber}</div>
+            <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 15, lineHeight: 1, flexShrink: 0, outline: 'none', marginLeft: 4 }}>×</button>
           </div>
-          {/* Row 2: action buttons */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {/* Row 2: fee | buttons far right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>{fmtUSD(client.totalFee)}</div>
+            <div style={{ flex: 1 }} />
             <button onClick={() => downloadClientCSV(client, invoiceNumber)} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
               <DlIcon /> CSV
             </button>
@@ -217,8 +219,6 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
                 Mark Billed
               </button>
             )}
-            <div style={{ flex: 1 }} />
-            <button onClick={onClose} style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, flexShrink: 0, outline: 'none' }}>×</button>
           </div>
         </div>
 
@@ -614,12 +614,12 @@ export default function BillingPage() {
                   billed: billedClients.length,
                   all: all.length,
                 };
-                const TABS: { key: typeof billingTab; label: string; onlyGrace?: boolean }[] = [
+                const TABS: { key: typeof billingTab; label: string }[] = [
                   { key: 'rtb', label: 'Ready to Bill' },
-                  { key: 'pending', label: 'Pending', onlyGrace: true },
+                  { key: 'pending', label: 'Pending' },
                   { key: 'billed', label: 'Billed' },
                   { key: 'all', label: 'All' },
-                ].filter(t => !t.onlyGrace || isGracePeriod) as { key: typeof billingTab; label: string }[];
+                ];
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 4, gap: 2 }}>
