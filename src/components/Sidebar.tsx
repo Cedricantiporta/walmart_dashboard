@@ -130,7 +130,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
 
         {/* Brand */}
         <div style={{
-          padding: collapsed ? '40px 0 10px' : '40px 10px 10px',
+          padding: collapsed ? '28px 0 10px' : '28px 10px 10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
