@@ -483,7 +483,10 @@ function BulkModal({ rtbClients, startInvoiceNum, billingSummaryInfo, onClose, o
         {/* Header */}
         <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontWeight: 800, fontSize: 17, color: '#11181c' }}>Bulk Actions</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, fontSize: 17, color: '#11181c' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Bulk Invoice
+            </div>
             <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 15, lineHeight: 1, outline: 'none' }}>×</button>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -513,7 +516,7 @@ function BulkModal({ rtbClients, startInvoiceNum, billingSummaryInfo, onClose, o
         {/* Confirm strip */}
         {confirming && !progress && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: '#fffbeb', borderTop: '1px solid #fcd34d' }}>
-            <span style={{ flex: 1, fontSize: 12, color: '#92400e' }}><strong>Confirm?</strong> PDFs download for each client. All marked billed. Cannot undo.</span>
+            <span style={{ flex: 1, fontSize: 12, color: '#92400e' }}><strong>Mark all {clientsWithNums.length} clients as billed?</strong> A PDF will download for each one.</span>
             <button onClick={handleMarkAllBilled} style={{ padding: '6px 14px', border: 'none', borderRadius: 999, background: '#16a34a', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', outline: 'none' }}>✓ Confirm</button>
             <button onClick={() => setConfirming(false)} style={{ padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#fff', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>Cancel</button>
           </div>
@@ -745,13 +748,6 @@ export default function BillingPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div ref={popupAreaRef} style={{ display: 'flex', gap: 6 }}>
-
-                  {/* Bulk button — rtb tab only */}
-                  {billingTab === 'rtb' && (data?.clients ?? []).some(c => c.totalFee > 0 && c.cases.length > 0) && (
-                    <button onClick={() => setShowBulk(true)} style={{ ...toolbarPill, background: '#006FEE', color: '#fff' }}>
-                      Bulk
-                    </button>
-                  )}
 
                   {/* Filter popup */}
                   <div style={{ position: 'relative' }}>
@@ -997,7 +993,8 @@ export default function BillingPage() {
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                           {billingTab === 'rtb' && (data?.clients ?? []).some(c => c.totalFee > 0 && c.cases.length > 0) && (
                             <button onClick={() => setShowBulk(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, padding: '4px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              Bulk
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                              Bulk Invoice
                             </button>
                           )}
                         </div>
