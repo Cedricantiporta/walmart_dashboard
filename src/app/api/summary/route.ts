@@ -6,14 +6,6 @@ import { RmsCase, ClientInfo } from '@/types';
 
 export const revalidate = 0;
 
-type MonthRow = {
-  month_key: string;
-  label: string;
-  recovered: number;
-  fee: number;
-  approved_count: number;
-  declined_count: number;
-};
 
 export async function GET() {
   const now = new Date();
@@ -27,14 +19,15 @@ export async function GET() {
   const db = createServerClient();
 
   const [
-    { data: pastRows },
+    { data: allInvoices },
     currentCases,
     { data: clientsRaw },
     { data: invoicesRaw },
     { data: hardcodedRaw },
     { data: config },
   ] = await Promise.all([
-    db.from('monthly_history').select('*').order('month_key', { ascending: false }),
+    // All invoices for historical months — same source GAS uses
+    db.from('invoices').select('client_name, billed_fee, total_reimbursed, billed_date, case_ids').order('billed_date', { ascending: false }),
     // Current month only — small query, always fresh
     db.from('rms_cases').select('reimbursement_status, reimbursement_amount, rms_posting_date, client_name, case_id, date_filed')
       .gte('rms_posting_date', currentMonthStart),
@@ -107,16 +100,36 @@ export async function GET() {
     growth: 0,
   };
 
-  // Past months from pre-computed table (exclude current month if it sneaked in)
-  const pastMonths = (pastRows ?? [])
-    .filter((r: MonthRow) => r.month_key !== currentMonthKey)
-    .map((r: MonthRow) => ({
-      month_key: r.month_key,
-      label: r.label,
-      recovered: Number(r.recovered),
-      fee: Number(r.fee),
-      approved_count: Number(r.approved_count),
-      declined_count: Number(r.declined_count),
+  // Group invoices by billing period — 7-day grace: if billed_date day <= 7, attribute to previous month (matches GAS renderMonthlyHistorySummary)
+  type InvoiceRow = { client_name: string; billed_fee: number; total_reimbursed: number; billed_date: string; case_ids: string[] };
+  const monthGroups: Record<string, { recovered: number; fee: number; count: number; label: string }> = {};
+  (allInvoices ?? []).forEach((inv: InvoiceRow) => {
+    if (!inv.billed_date) return;
+    const billedDate = new Date(inv.billed_date);
+    const periodDate = new Date(billedDate);
+    if (billedDate.getDate() <= 7) periodDate.setMonth(periodDate.getMonth() - 1);
+    const mk = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
+    if (mk === currentMonthKey) return; // current month computed live from rms_cases
+    if (!monthGroups[mk]) {
+      monthGroups[mk] = {
+        recovered: 0, fee: 0, count: 0,
+        label: periodDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      };
+    }
+    monthGroups[mk].recovered += Number(inv.total_reimbursed) || 0;
+    monthGroups[mk].fee += Number(inv.billed_fee) || 0;
+    monthGroups[mk].count++;
+  });
+
+  const pastMonths = Object.entries(monthGroups)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([mk, g]) => ({
+      month_key: mk,
+      label: g.label,
+      recovered: g.recovered,
+      fee: g.fee,
+      approved_count: g.count,
+      declined_count: 0,
       growth: 0,
     }));
 

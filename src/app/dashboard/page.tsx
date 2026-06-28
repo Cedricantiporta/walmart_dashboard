@@ -359,6 +359,13 @@ function Skeleton({ h = 20, w = '100%', radius = 6 }: { h?: number; w?: string |
 
 // ── main page ─────────────────────────────────────────────────────────────────
 
+function parseSummaryCache(d: unknown[]): MonthlyHistory[] {
+  return d.map((r: unknown) => {
+    const row = r as { month_key: string; label: string; recovered: number; fee: number; approved_count: number; declined_count: number; growth: number };
+    return { label: row.label, sort: row.month_key, recovered: row.recovered, fee: row.fee, approvedCount: row.approved_count, declinedCount: row.declined_count, growth: row.growth };
+  });
+}
+
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState('thisMonth');
   const [client, setClient] = useState('all');
@@ -366,16 +373,31 @@ export default function DashboardPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerStart, setPickerStart] = useState('');
   const [pickerEnd, setPickerEnd] = useState('');
-  const [clientList, setClientList] = useState<string[]>([]);
-  const [history, setHistory] = useState<Invoice[]>([]);
-  const [billingInsights, setBillingInsights] = useState<BillingInsights | null>(null);
-  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [fullMonthlyHistory, setFullMonthlyHistory] = useState<MonthlyHistory[]>([]);
-  const [lastSync, setLastSync] = useState('');
-  const [rmsCasesCount, setRmsCasesCount] = useState<number | null>(null);
-  const [loadingInit, setLoadingInit] = useState(true);
+
+  // Initialize state from cache so tab-switching never shows skeletons when data exists
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [clientList, setClientList] = useState<string[]>(() => clientGet<any>('initial-payload')?.clientList ?? []);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [history, setHistory] = useState<Invoice[]>(() => clientGet<any>('initial-payload')?.history ?? []);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [billingInsights, setBillingInsights] = useState<BillingInsights | null>(() => clientGet<any>('initial-payload')?.billingInsights ?? null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(() => clientGet<any>('initial-payload')?.dashboardAnalytics ?? null);
+  const [fullMonthlyHistory, setFullMonthlyHistory] = useState<MonthlyHistory[]>(() => {
+    const c = clientGet<unknown[]>('summary');
+    return Array.isArray(c) && c.length ? parseSummaryCache(c) : [];
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [lastSync, setLastSync] = useState<string>(() => clientGet<any>('initial-payload')?.lastSyncTime ?? '');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [rmsCasesCount, setRmsCasesCount] = useState<number | null>(() => clientGet<any>('initial-payload')?.rmsCasesCount ?? null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [loadingInit, setLoadingInit] = useState(() => !clientGet<any>('initial-payload'));
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(() => {
+    const c = clientGet<unknown[]>('summary');
+    return !Array.isArray(c) || c.length === 0;
+  });
   const [error, setError] = useState('');
 
   const { onToggle, setSyncTime } = useSidebar();
@@ -426,7 +448,6 @@ export default function DashboardPage() {
 
   const fetchAnalytics = useCallback(() => {
     if (loadingInit) return;
-    setLoadingAnalytics(true);
     const isYYYYMM = /^\d{4}-\d{2}$/.test(timeRange);
     const effectiveRange = timeRange === 'custom' && customRange ? 'custom' : (isYYYYMM ? 'specificMonth' : timeRange);
     const params = new URLSearchParams({ timeRange: effectiveRange, client });
@@ -435,9 +456,13 @@ export default function DashboardPage() {
       params.set('startDate', customRange.start);
       params.set('endDate', customRange.end);
     }
+    const analyticsKey = `analytics:${timeRange}:${client}`;
+    const cachedAnalytics = clientGet<DashboardAnalytics>(analyticsKey);
+    if (cachedAnalytics) { setAnalytics(cachedAnalytics); return; }
+    setLoadingAnalytics(true);
     fetch(`/api/dashboard/analytics?${params}`)
       .then(r => r.json())
-      .then(d => { setAnalytics(d); setLoadingAnalytics(false); })
+      .then(d => { clientSet(analyticsKey, d); setAnalytics(d); setLoadingAnalytics(false); })
       .catch(() => setLoadingAnalytics(false));
   }, [timeRange, client, loadingInit, customRange]);
 
@@ -562,7 +587,7 @@ export default function DashboardPage() {
 
         {/* Metric cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
-          {(loadingAnalytics || !metrics) ? (
+          {!metrics ? (
             [1,2,3,4].map(i => (
               <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -590,7 +615,7 @@ export default function DashboardPage() {
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c' }}>Monthly Recovery</h3>
               <span style={{ fontSize: 11, color: '#a1a1aa', background: '#f4f4f5', borderRadius: 999, padding: '3px 10px' }}>Last 12 months</span>
             </div>
-            {loadingHistory ? (
+            {loadingHistory && !chartHistory.length ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 200 }}>
                 {[60,80,45,100,70,90,55,85,65,95,75,110].map((h, i) => <Skeleton key={i} h={h} w={26} radius={7} />)}
               </div>
@@ -602,7 +627,7 @@ export default function DashboardPage() {
           {/* Donut chart */}
           <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c', marginBottom: 16 }}>By Category</h3>
-            {loadingAnalytics ? (
+            {loadingAnalytics && !categoryData?.length ? (
               <div>
                 <Skeleton h={110} w="100%" radius={10} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 8px', marginTop: 14 }}>

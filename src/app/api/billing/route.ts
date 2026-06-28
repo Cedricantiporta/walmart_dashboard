@@ -21,6 +21,7 @@ export async function GET() {
     allData,
     { data: clientsRaw },
     { data: invoicesRaw },
+    { data: allInvoicesRaw },
     { data: hardcodedRaw },
     { data: config },
     { data: billingContactsRaw },
@@ -28,6 +29,7 @@ export async function GET() {
     fetchRowsFrom<RmsCase>(db, 'rms_cases', prevMonthStart),
     db.from('clients').select('*'),
     db.from('invoices').select('case_ids'),
+    db.from('invoices').select('client_name, billed_fee, total_reimbursed'),
     db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('app_config').select('*'),
     db.from('billing_contacts').select('*'),
@@ -79,6 +81,8 @@ export async function GET() {
     totalFee: number;
     currentMonthFee: number;
     prevMonthFee: number;
+    previouslyBilledFee: number;
+    previouslyBilledReimbursed: number;
     cases: BillingCase[];
   };
 
@@ -119,7 +123,7 @@ export async function GET() {
     }
 
     if (!clientMap[clientName]) {
-      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, cases: [] };
+      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, cases: [] };
     }
 
     const amount = row.reimbursement_amount;
@@ -145,6 +149,14 @@ export async function GET() {
     });
   });
 
+  // Build previouslyBilledFee map from all invoices (matches GAS's previouslyBilledFee)
+  const prevBilledMap: Record<string, { fee: number; recovered: number }> = {};
+  (allInvoicesRaw ?? []).forEach((inv: { client_name: string; billed_fee: number; total_reimbursed: number }) => {
+    if (!prevBilledMap[inv.client_name]) prevBilledMap[inv.client_name] = { fee: 0, recovered: 0 };
+    prevBilledMap[inv.client_name].fee += Number(inv.billed_fee) || 0;
+    prevBilledMap[inv.client_name].recovered += Number(inv.total_reimbursed) || 0;
+  });
+
   // Sort cases within each client by postingDate desc
   const clients = Object.values(clientMap)
     .filter(c => c.cases.length > 0)
@@ -152,7 +164,31 @@ export async function GET() {
 
   clients.forEach(c => {
     c.cases.sort((a, b) => b.postingDate.localeCompare(a.postingDate));
+    // Attach previouslyBilledFee from invoices
+    const pb = prevBilledMap[c.clientName];
+    c.previouslyBilledFee = pb?.fee ?? 0;
+    c.previouslyBilledReimbursed = pb?.recovered ?? 0;
   });
+
+  // Add billed-only clients (have invoices but no current RTB cases) — matches GAS's billingSummaryData
+  const rtbNames = new Set(clients.map(c => c.clientName));
+  for (const [clientName, pb] of Object.entries(prevBilledMap)) {
+    if (rtbNames.has(clientName)) continue;
+    const infoKey = Object.keys(onboardingInfo).find(k => k.toLowerCase() === clientName.toLowerCase());
+    const info = onboardingInfo[clientName] ?? (infoKey ? onboardingInfo[infoKey] : undefined);
+    if (!info || info.status !== 'Client') continue;
+    clients.push({
+      clientName,
+      rate: info.rate ?? DEFAULT_RATE,
+      totalAmount: 0,
+      totalFee: 0,
+      currentMonthFee: 0,
+      prevMonthFee: 0,
+      previouslyBilledFee: pb.fee,
+      previouslyBilledReimbursed: pb.recovered,
+      cases: [],
+    });
+  }
 
   const totalFee = clients.reduce((s, c) => s + c.totalFee, 0);
   const totalAmount = clients.reduce((s, c) => s + c.totalAmount, 0);

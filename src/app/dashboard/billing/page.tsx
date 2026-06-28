@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
-import { supabase } from '@/lib/supabase';
 
 // ── formatters ────────────────────────────────────────────────────────────────
 
@@ -25,6 +24,7 @@ type BillingCase = {
 type ClientBilling = {
   clientName: string; rate: number; totalAmount: number; totalFee: number;
   currentMonthFee: number; prevMonthFee: number; cases: BillingCase[];
+  previouslyBilledFee: number; previouslyBilledReimbursed: number;
 };
 type BillingContactInfo = {
   client_name: string; invoice_date: string | null;
@@ -34,9 +34,6 @@ type BillingData = {
   clients: ClientBilling[]; totalFee: number; totalAmount: number;
   totalCases: number; currentMonthStart: string;
   billingSummaryInfo: Record<string, BillingContactInfo>;
-};
-type BilledClientRow = {
-  clientName: string; rate: number; totalAmount: number; totalFee: number; caseCount: number;
 };
 type Invoice = {
   id?: number; invoice_number: string; client_name: string;
@@ -395,8 +392,6 @@ export default function BillingPage() {
   const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'|'cols'>(null);
   const [filterType, setFilterType] = useState<'all'|'prevMonth'>('all');
   const [billingTab, setBillingTab] = useState<'rtb'|'billed'|'all'>('rtb');
-  const [billedClients, setBilledClients] = useState<BilledClientRow[] | null>(null);
-  const [loadingBilled, setLoadingBilled] = useState(false);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
   const [sidebarView, setSidebarView] = useState<'current' | 'previous'>('current');
   const popupAreaRef = useRef<HTMLDivElement>(null);
@@ -445,9 +440,15 @@ export default function BillingPage() {
     setActiveClient(null); setSelectedClient(null);
   }
 
-  const filtered = billingTab === 'billed' ? [] : (data?.clients ?? []).filter(c => {
+  // Matches GAS: billed = previouslyBilledFee > 0 && readyToBillFee === 0
+  const billedClients = (data?.clients ?? []).filter(c => c.previouslyBilledFee > 0 && c.totalFee === 0);
+
+  const filtered = billingTab === 'billed' ? billedClients.filter(c => {
+    if (!search) return true;
+    return c.clientName.toLowerCase().includes(search.toLowerCase());
+  }) : (data?.clients ?? []).filter(c => {
+    if (billingTab === 'rtb' && c.totalFee === 0) return false;
     if (filterType === 'prevMonth' && c.prevMonthFee === 0) return false;
-    if (billingTab === 'rtb' && c.currentMonthFee === 0) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q));
@@ -473,29 +474,6 @@ export default function BillingPage() {
 
   useEffect(() => { setSidebarView('current'); }, [selectedClient?.clientName]);
 
-  useEffect(() => {
-    if ((billingTab !== 'billed' && billingTab !== 'all') || billedClients !== null) return;
-    setLoadingBilled(true);
-    const now = new Date();
-    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
-    const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString().slice(0, 10);
-    supabase.from('invoices')
-      .select('client_name, billed_fee, total_reimbursed, case_ids')
-      .gte('billed_date', prevStart)
-      .lte('billed_date', prevEnd + 'T23:59:59')
-      .then(({ data: d }) => {
-        const map: Record<string, BilledClientRow> = {};
-        for (const inv of d ?? []) {
-          const rate = Number(inv.total_reimbursed) > 0 ? Number(inv.billed_fee) / Number(inv.total_reimbursed) : 0;
-          if (!map[inv.client_name]) map[inv.client_name] = { clientName: inv.client_name, rate, totalAmount: 0, totalFee: 0, caseCount: 0 };
-          map[inv.client_name].totalAmount += Number(inv.total_reimbursed);
-          map[inv.client_name].totalFee += Number(inv.billed_fee);
-          map[inv.client_name].caseCount += (inv.case_ids ?? []).length;
-        }
-        setBilledClients(Object.values(map).sort((a, b) => b.totalFee - a.totalFee));
-        setLoadingBilled(false);
-      });
-  }, [billingTab, billedClients]);
 
   const currentMonthLabel = data?.currentMonthStart
     ? new Date(data.currentMonthStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -575,8 +553,8 @@ export default function BillingPage() {
               {(() => {
                 const all = data?.clients ?? [];
                 const counts: Record<string, number> = {
-                  rtb: all.filter(c => c.currentMonthFee > 0).length,
-                  billed: billedClients?.length ?? 0,
+                  rtb: all.filter(c => c.totalFee > 0).length,
+                  billed: billedClients.length,
                   all: all.length,
                 };
                 const TABS: { key: typeof billingTab; label: string }[] = [
@@ -608,11 +586,7 @@ export default function BillingPage() {
 
           {/* Two-panel: RTB/Billed/All table + case detail */}
           {(() => {
-            const billedSet = new Set((billedClients ?? []).map(b => b.clientName));
-            const showHdr = !loading && (
-              filtered.length > 0 ||
-              (billingTab === 'billed' && (billedClients?.length ?? 0) > 0)
-            );
+            const showHdr = !loading && filtered.length > 0;
             const visOpt = OPTIONAL_COLS.filter(c => !hiddenCols.has(c.key));
             const G = `minmax(0,1fr) ${visOpt.map(c => selectedClient ? c.compactWidth : c.width).join(' ')} 120px`;
             return (
@@ -642,21 +616,17 @@ export default function BillingPage() {
                         {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
                       </div>
                     ) : billingTab === 'billed' ? (
-                      loadingBilled ? (
-                        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
-                        </div>
-                      ) : !billedClients?.length ? (
-                        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No billed clients for last month.</div>
+                      !filtered.length ? (
+                        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No billed clients.</div>
                       ) : (
                         <div style={{ minWidth: 420 }}>
-                          {billedClients.map((c, idx) => (
-                            <div key={c.clientName} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, borderBottom: idx < billedClients.length - 1 ? '1px solid #f3f4f6' : 'none', background: '#fff', alignItems: 'center' }}>
+                          {filtered.map((c, idx) => (
+                            <div key={c.clientName} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, borderBottom: idx < filtered.length - 1 ? '1px solid #f3f4f6' : 'none', background: '#fff', alignItems: 'center' }}>
                               <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
                               {!hiddenCols.has('rate') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>}
-                              {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.totalAmount)}</span>}
-                              {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>}
-                              {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.caseCount}</span>}
+                              {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.previouslyBilledReimbursed)}</span>}
+                              {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.previouslyBilledFee)}</span>}
+                              {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>—</span>}
                               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                 <span style={{ fontSize: 10, fontWeight: 600, background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '2px 8px' }}>Billed</span>
                               </div>
@@ -665,9 +635,9 @@ export default function BillingPage() {
                           <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
                             {!hiddenCols.has('rate') && <span />}
-                            {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(billedClients.reduce((s,c)=>s+c.totalAmount,0))}</span>}
-                            {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(billedClients.reduce((s,c)=>s+c.totalFee,0))}</span>}
-                            {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{billedClients.reduce((s,c)=>s+c.caseCount,0)}</span>}
+                            {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.previouslyBilledReimbursed,0))}</span>}
+                            {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(filtered.reduce((s,c)=>s+c.previouslyBilledFee,0))}</span>}
+                            {!hiddenCols.has('cases') && <span />}
                             <span />
                           </div>
                         </div>
@@ -679,7 +649,6 @@ export default function BillingPage() {
                     ) : (
                       <div style={{ minWidth: 420 }}>
                         {sorted.map((c, idx) => {
-                          const isBilled = billingTab === 'all' && billedSet.has(c.clientName);
                           return (
                           <div key={c.clientName}
                             onClick={() => setSelectedClient(c)}
@@ -694,12 +663,9 @@ export default function BillingPage() {
                             {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>}
                             {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.cases.length}</span>}
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-                              {isBilled
-                                ? <span style={{ fontSize: 10, fontWeight: 600, background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '2px 8px' }}>Billed</span>
-                                : <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                    <IconInvoice /> Invoice
-                                  </button>
-                              }
+                              <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                <IconInvoice /> Invoice
+                              </button>
                             </div>
                           </div>
                           );
