@@ -30,7 +30,7 @@ export async function GET() {
   ] = await Promise.all([
     db.from('rms_cases').select(RMS_COLS)
       .gte('rms_posting_date', prevMonthStart)
-      .eq('reimbursement_status', 'approved')
+      .eq('reimbursement_status', 'Approved')
       .gt('reimbursement_amount', 0),
     db.from('clients').select('*'),
     db.from('invoices').select('case_ids'),
