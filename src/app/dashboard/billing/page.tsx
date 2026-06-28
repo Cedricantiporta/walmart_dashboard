@@ -485,6 +485,8 @@ export default function BillingPage() {
     return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q));
   });
 
+  const [prevMatchedClient, setPrevMatchedClient] = useState<ClientBilling | null>(null);
+
   const sortedBase = [...filtered].sort((a, b) => {
     let av: number | string, bv: number | string;
     if (sortCol === 'name') { av = a.clientName; bv = b.clientName; }
@@ -499,8 +501,6 @@ export default function BillingPage() {
   const sorted = prevMatchedClient && !sortedBase.find(c => c.clientName === prevMatchedClient.clientName)
     ? [prevMatchedClient, ...sortedBase]
     : sortedBase;
-
-  const [prevMatchedClient, setPrevMatchedClient] = useState<ClientBilling | null>(null);
 
   // Current-case search: auto-select client when case ID matches
   useEffect(() => {
