@@ -9,12 +9,6 @@ interface Message {
 
 const GRADIENT = 'linear-gradient(135deg, #006FEE 0%, #7828C8 55%, #F5A524 100%)';
 
-const ChatIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/>
-  </svg>
-);
-
 const SendIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="22" y1="2" x2="11" y2="13"/>
@@ -30,9 +24,9 @@ const CloseIcon = () => (
 
 function TypingDots() {
   return (
-    <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '8px 12px' }}>
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '8px 14px' }}>
       {[0, 1, 2].map(i => (
-        <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: GRADIENT, display: 'inline-block', animation: `aichatBounce 1.2s ${i * 0.18}s infinite` }} />
+        <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#006FEE', display: 'inline-block', animation: `aichatBounce 1.2s ${i * 0.18}s infinite` }} />
       ))}
     </div>
   );
@@ -106,24 +100,24 @@ export default function AiChat() {
     <>
       <style>{`
         @keyframes aichatBounce {
-          0%,60%,100% { transform: translateY(0); opacity:0.4; }
-          30% { transform: translateY(-5px); opacity:1; }
+          0%,60%,100% { transform:translateY(0); opacity:0.4; }
+          30% { transform:translateY(-5px); opacity:1; }
         }
         @keyframes aichatUp {
-          from { opacity:0; transform:translateY(18px) scale(0.97); }
+          from { opacity:0; transform:translateY(16px) scale(0.97); }
           to   { opacity:1; transform:translateY(0)    scale(1);    }
         }
         .ai-fab { transition: transform 0.15s, box-shadow 0.15s; }
-        .ai-fab:hover { transform: scale(1.08) !important; box-shadow: 0 6px 28px rgba(120,40,200,0.38) !important; }
+        .ai-fab:hover { transform: scale(1.08) !important; box-shadow: 0 6px 28px rgba(120,40,200,0.35) !important; }
         .ai-send:hover:not(:disabled) { opacity: 0.82; }
         .ai-send:disabled { opacity: 0.35; cursor: not-allowed; }
       `}</style>
 
-      {/* Floating button */}
+      {/* Floating button — gradient only, no icon */}
       <button
         className="ai-fab"
         onClick={() => setOpen(o => !o)}
-        title="AI Assistant"
+        title="WFS AI"
         style={{
           position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
           width: 48, height: 48, borderRadius: '50%', border: 'none',
@@ -134,7 +128,7 @@ export default function AiChat() {
           outline: 'none',
         }}
       >
-        {open ? <CloseIcon /> : <ChatIcon />}
+        {open && <CloseIcon />}
       </button>
 
       {/* Panel */}
@@ -142,24 +136,21 @@ export default function AiChat() {
         <div style={{
           position: 'fixed', bottom: 88, right: 28, zIndex: 999,
           width: 360, height: 500, borderRadius: 20,
-          background: '#fafafa',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.14)',
+          background: '#fff',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.13)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           animation: 'aichatUp 0.18s cubic-bezier(0.16,1,0.3,1)',
         }}>
 
-          {/* Header — gradient bar */}
-          <div style={{ background: GRADIENT, padding: '12px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#fff', lineHeight: 1.2 }}>AI Assistant</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>Gemini 2.5 Flash · Live data</div>
-            </div>
+          {/* Header — white */}
+          <div style={{ background: '#fff', padding: '14px 18px 12px', flexShrink: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#11181c' }}>WFS AI</div>
           </div>
 
           {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {messages.length === 0 && !loading && (
-              <div style={{ textAlign: 'center', color: '#a1a1aa', fontSize: 12, marginTop: 36, lineHeight: 1.7 }}>
+              <div style={{ textAlign: 'center', color: '#a1a1aa', fontSize: 12, marginTop: 40, lineHeight: 1.7 }}>
                 Ask me anything about your<br />recovery data, clients, or billing.
               </div>
             )}
@@ -168,13 +159,13 @@ export default function AiChat() {
               <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 <div style={{
                   maxWidth: '80%',
-                  padding: '8px 13px',
+                  padding: '8px 14px',
                   borderRadius: 999,
-                  background: msg.role === 'user' ? GRADIENT : '#ebebeb',
+                  background: msg.role === 'user' ? '#006FEE' : '#f0f0f0',
                   color: msg.role === 'user' ? '#fff' : '#18181b',
                   fontSize: 12.5, lineHeight: 1.55,
-                  borderBottomRightRadius: msg.role === 'user' ? 6 : 999,
-                  borderBottomLeftRadius: msg.role === 'assistant' ? 6 : 999,
+                  borderBottomRightRadius: msg.role === 'user' ? 4 : 999,
+                  borderBottomLeftRadius: msg.role === 'assistant' ? 4 : 999,
                 }}>
                   {renderText(msg.content)}
                 </div>
@@ -183,7 +174,7 @@ export default function AiChat() {
 
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                <div style={{ background: '#ebebeb', borderRadius: 999, borderBottomLeftRadius: 6 }}>
+                <div style={{ background: '#f0f0f0', borderRadius: 999, borderBottomLeftRadius: 4 }}>
                   <TypingDots />
                 </div>
               </div>
@@ -198,8 +189,8 @@ export default function AiChat() {
           </div>
 
           {/* Input */}
-          <div style={{ padding: '8px 12px 12px', flexShrink: 0 }}>
-            <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', background: '#ebebeb', borderRadius: 999, padding: '5px 5px 5px 14px' }}>
+          <div style={{ padding: '8px 12px 14px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', background: '#f0f0f0', borderRadius: 999, padding: '5px 5px 5px 14px' }}>
               <textarea
                 ref={inputRef}
                 value={input}
@@ -219,7 +210,7 @@ export default function AiChat() {
                 disabled={!input.trim() || loading}
                 style={{
                   width: 30, height: 30, borderRadius: '50%', border: 'none',
-                  background: GRADIENT, color: '#fff', cursor: 'pointer',
+                  background: '#006FEE', color: '#fff', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0, outline: 'none', transition: 'opacity 0.15s',
                 }}
@@ -227,7 +218,7 @@ export default function AiChat() {
                 <SendIcon />
               </button>
             </div>
-            <div style={{ fontSize: 9.5, color: '#c4c4c8', textAlign: 'center', marginTop: 5 }}>Enter · Shift+Enter for newline</div>
+            <div style={{ fontSize: 9.5, color: '#c4c4c8', textAlign: 'center', marginTop: 5 }}>Enter to send · Shift+Enter for newline</div>
           </div>
         </div>
       )}
