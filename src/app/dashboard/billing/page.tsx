@@ -484,6 +484,7 @@ export default function BillingPage() {
     <>
       <style>{`
         @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        @keyframes slideInDrawer{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
         button:hover{opacity:.88}
         input:focus{outline:none;box-shadow:0 0 0 2px rgba(37,99,235,0.2);}
 
@@ -603,15 +604,14 @@ export default function BillingPage() {
                       ))}
                       <span style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, fontWeight: 600, color: '#71717a' }}>{billingTab !== 'billed' ? 'Actions' : ''}</span>
                     </div>
-                    {selectedClient && <div style={{ width: sidebarWidth + 6, flexShrink: 0 }} />}
                   </div>
                 )}
 
-                {/* Content row: left card + divider + right card */}
-                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                {/* Content row — client list always full width; drawer overlays */}
+                <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
 
-                  {/* LEFT white card */}
-                  <div style={{ flex: 1, minWidth: 0, overflow: 'auto', background: '#fff', borderRadius: selectedClient ? '12px 0 0 12px' : 12, margin: selectedClient ? '6px 0 6px 6px' : '6px 6px 6px 6px' }}>
+                  {/* Client list card — always full width */}
+                  <div style={{ position: 'absolute', inset: '6px', overflow: 'auto', background: '#fff', borderRadius: 12 }}>
                     {loading ? (
                       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
@@ -685,39 +685,27 @@ export default function BillingPage() {
                     )}
                   </div>
 
-                  {/* Draggable divider */}
+                  {/* Overlay drawer — slides in from right, does not affect client list width */}
                   {selectedClient && (
-                    <div
-                      onMouseDown={handleDragStart}
-                      style={{ width: 12, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', zIndex: 3 }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        {[0,1,2,3].map(i => <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: '#a1a1aa' }} />)}
+                    <div style={{ position: 'absolute', top: 6, right: 6, bottom: 6, width: sidebarWidth, background: '#fff', borderRadius: 12, boxShadow: '-6px 0 32px rgba(0,0,0,0.13)', zIndex: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInDrawer 0.18s cubic-bezier(0.4,0,0.2,1)' }}>
+                      {/* Resize handle on left edge */}
+                      <div onMouseDown={handleDragStart} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 1 }} />
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 16px', flexShrink: 0, borderBottom: '1px solid #f3f4f6' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, paddingRight: 8 }}>{selectedClient.clientName}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
+                            {(['current', 'previous'] as const).map(tab => (
+                              <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
+                                {tab === 'current' ? 'Current' : 'Previous'}
+                              </button>
+                            ))}
+                          </div>
+                          <button onClick={() => setSelectedClient(null)} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
+                        </div>
                       </div>
+                      <CaseSidebar client={selectedClient} highlight={search || undefined} view={sidebarView} />
                     </div>
                   )}
-
-                  {/* RIGHT sidebar panel */}
-                  <div style={{ width: selectedClient ? sidebarWidth + 6 : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
-                    {selectedClient && (
-                      <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: '0 12px 12px 0', margin: '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 12px', flexShrink: 0, borderBottom: '1px solid #f3f4f6' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, paddingRight: 8 }}>{selectedClient.clientName}</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                            <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
-                              {(['current', 'previous'] as const).map(tab => (
-                                <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
-                                  {tab === 'current' ? 'Current' : 'Previous'}
-                                </button>
-                              ))}
-                            </div>
-                            <button onClick={() => setSelectedClient(null)} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
-                          </div>
-                        </div>
-                        <CaseSidebar client={selectedClient} highlight={search || undefined} view={sidebarView} />
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             );
