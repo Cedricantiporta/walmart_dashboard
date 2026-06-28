@@ -3,6 +3,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import Sidebar from './Sidebar';
 import { PreloadTabs } from './PreloadTabs';
+import AiChat from './AiChat';
 
 interface SidebarCtxType {
   collapsed: boolean;
@@ -59,6 +60,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <PreloadTabs />
+        <AiChat />
       </div>
     </SidebarCtx.Provider>
   );
