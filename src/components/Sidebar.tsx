@@ -92,6 +92,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
   async function handleSync() {
     setSyncing(true);
     setSyncTime(new Date().toISOString());
+    await fetch('/api/cache-clear', { method: 'POST' }).catch(() => {});
     setTimeout(() => { setSyncing(false); window.location.reload(); }, 600);
   }
 
