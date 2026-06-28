@@ -35,6 +35,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     if (savedSync) setSyncTimeState(savedSync);
     const savedDark = localStorage.getItem('darkMode');
     if (savedDark === '1') setDarkModeState(true);
+    const savedCollapsed = localStorage.getItem('sidebar_collapsed');
+    if (savedCollapsed === '1') setCollapsed(true);
   }, []);
 
   function setSyncTime(t: string) {
@@ -53,7 +55,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [darkMode]);
 
   return (
-    <SidebarCtx.Provider value={{ collapsed, onToggle: () => setCollapsed(c => !c), syncTime, setSyncTime, darkMode, setDarkMode }}>
+    <SidebarCtx.Provider value={{ collapsed, onToggle: () => setCollapsed(c => { const next = !c; localStorage.setItem('sidebar_collapsed', next ? '1' : '0'); return next; }), syncTime, setSyncTime, darkMode, setDarkMode }}>
       <div style={{ display: 'flex', minHeight: '100vh', background: darkMode ? '#18181b' : '#f4f4f5' }}>
         <Sidebar collapsed={collapsed} syncTime={syncTime} darkMode={darkMode} onThemeToggle={() => setDarkMode(!darkMode)} />
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>

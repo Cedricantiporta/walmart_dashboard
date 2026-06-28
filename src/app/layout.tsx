@@ -12,6 +12,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.className}>
+      <head>
+        {/* Prevent dark mode flash — runs before React hydrates */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem('darkMode')==='1'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}` }} />
+      </head>
       <body>{children}</body>
     </html>
   );

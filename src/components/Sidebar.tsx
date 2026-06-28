@@ -67,6 +67,10 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
 }) {
   const pathname = usePathname();
   const { setSyncTime } = useSidebar();
+
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard')) localStorage.setItem('wfs_last_page', pathname);
+  }, [pathname]);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
 
