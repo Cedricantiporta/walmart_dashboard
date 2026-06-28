@@ -157,24 +157,28 @@ export default function AiChat() {
 
             {messages.map((msg, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                <div style={{
-                  maxWidth: '80%',
-                  padding: '8px 14px',
-                  borderRadius: 999,
-                  background: msg.role === 'user' ? '#006FEE' : '#f0f0f0',
-                  color: msg.role === 'user' ? '#fff' : '#18181b',
-                  fontSize: 12.5, lineHeight: 1.55,
-                  borderBottomRightRadius: msg.role === 'user' ? 4 : 999,
-                  borderBottomLeftRadius: msg.role === 'assistant' ? 4 : 999,
-                }}>
-                  {renderText(msg.content)}
-                </div>
+                {msg.role === 'user' ? (
+                  <div style={{
+                    maxWidth: '80%',
+                    padding: '8px 16px',
+                    borderRadius: 999,
+                    background: '#ebebeb',
+                    color: '#18181b',
+                    fontSize: 12.5, lineHeight: 1.55,
+                  }}>
+                    {renderText(msg.content)}
+                  </div>
+                ) : (
+                  <div style={{ maxWidth: '90%', fontSize: 12.5, lineHeight: 1.65, color: '#18181b', padding: '2px 4px' }}>
+                    {renderText(msg.content)}
+                  </div>
+                )}
               </div>
             ))}
 
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                <div style={{ background: '#f0f0f0', borderRadius: 999, borderBottomLeftRadius: 4 }}>
+                <div style={{ background: '#f0f0f0', borderRadius: 999 }}>
                   <TypingDots />
                 </div>
               </div>
