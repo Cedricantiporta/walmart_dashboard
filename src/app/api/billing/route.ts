@@ -74,6 +74,8 @@ export async function GET() {
     reimbursed_qty: number;
   };
 
+  const isGracePeriod = now.getDate() <= 7;
+
   type ClientBilling = {
     clientName: string;
     rate: number;
@@ -84,6 +86,9 @@ export async function GET() {
     previouslyBilledFee: number;
     previouslyBilledReimbursed: number;
     cases: BillingCase[];
+    pendingCases: BillingCase[];
+    pendingAmount: number;
+    pendingFee: number;
   };
 
   const clientMap: Record<string, ClientBilling> = {};
@@ -123,19 +128,15 @@ export async function GET() {
     }
 
     if (!clientMap[clientName]) {
-      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, cases: [] };
+      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, cases: [], pendingCases: [], pendingAmount: 0, pendingFee: 0 };
     }
 
     const amount = row.reimbursement_amount;
     const fee = amount * rate;
     const isCurrentMonth = row.rms_posting_date >= currentMonthStart;
+    const isPending = isGracePeriod && isCurrentMonth;
 
-    clientMap[clientName].totalAmount += amount;
-    clientMap[clientName].totalFee += fee;
-    if (isCurrentMonth) clientMap[clientName].currentMonthFee += fee;
-    else clientMap[clientName].prevMonthFee += fee;
-
-    clientMap[clientName].cases.push({
+    const caseObj: BillingCase = {
       caseId,
       claimType: row.claim_type ?? 'Other',
       postingDate: row.rms_posting_date,
@@ -146,7 +147,19 @@ export async function GET() {
       sku_id: row.sku_id ?? '',
       unit_amount: row.unit_amount ?? amount,
       reimbursed_qty: row.reimbursed_qty ?? 1,
-    });
+    };
+
+    if (isPending) {
+      clientMap[clientName].pendingCases.push(caseObj);
+      clientMap[clientName].pendingAmount += amount;
+      clientMap[clientName].pendingFee += fee;
+    } else {
+      clientMap[clientName].totalAmount += amount;
+      clientMap[clientName].totalFee += fee;
+      if (isCurrentMonth) clientMap[clientName].currentMonthFee += fee;
+      else clientMap[clientName].prevMonthFee += fee;
+      clientMap[clientName].cases.push(caseObj);
+    }
   });
 
   // Build previouslyBilledFee map from all invoices (matches GAS's previouslyBilledFee)
@@ -187,6 +200,9 @@ export async function GET() {
       previouslyBilledFee: pb.fee,
       previouslyBilledReimbursed: pb.recovered,
       cases: [],
+      pendingCases: [],
+      pendingAmount: 0,
+      pendingFee: 0,
     });
   }
 
@@ -194,7 +210,7 @@ export async function GET() {
   const totalAmount = clients.reduce((s, c) => s + c.totalAmount, 0);
   const totalCases = clients.reduce((s, c) => s + c.cases.length, 0);
 
-  const result = { clients, totalFee, totalAmount, totalCases, currentMonthStart, billingSummaryInfo };
+  const result = { clients, totalFee, totalAmount, totalCases, currentMonthStart, billingSummaryInfo, isGracePeriod };
   setCached(cacheKey, result, 5 * 60 * 1000);
   return NextResponse.json(result);
 }

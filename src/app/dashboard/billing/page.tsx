@@ -26,6 +26,7 @@ type ClientBilling = {
   clientName: string; rate: number; totalAmount: number; totalFee: number;
   currentMonthFee: number; prevMonthFee: number; cases: BillingCase[];
   previouslyBilledFee: number; previouslyBilledReimbursed: number;
+  pendingCases: BillingCase[]; pendingAmount: number; pendingFee: number;
 };
 type BillingContactInfo = {
   client_name: string; invoice_date: string | null;
@@ -33,7 +34,7 @@ type BillingContactInfo = {
 };
 type BillingData = {
   clients: ClientBilling[]; totalFee: number; totalAmount: number;
-  totalCases: number; currentMonthStart: string;
+  totalCases: number; currentMonthStart: string; isGracePeriod: boolean;
   billingSummaryInfo: Record<string, BillingContactInfo>;
 };
 type Invoice = {
@@ -193,44 +194,31 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 780, boxShadow: '0 32px 80px rgba(0,0,0,0.28)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 48px)' }}>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, boxShadow: '0 32px 80px rgba(0,0,0,0.28)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 48px)' }}>
 
         {/* Toolbar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #e5e7eb', flexShrink: 0, flexWrap: 'wrap' }}>
-          {/* Identity */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.clientName}</div>
-            <div style={{ fontSize: 12, color: '#9ca3af', fontFamily: 'monospace', marginTop: 1 }}>{invoiceNumber}</div>
+        <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+          {/* Row 1: identity + fee */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{client.clientName}</div>
+            <div style={{ fontSize: 12, color: '#111827', fontFamily: 'monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>{invoiceNumber}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', flexShrink: 0 }}>{fmtUSD(client.totalFee)}</div>
           </div>
-          {/* Totals */}
-          <div style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em' }}>RECOVERED</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(client.totalAmount)}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em' }}>FEE</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{fmtUSD(client.totalFee)}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: '#a1a1aa', letterSpacing: '0.04em' }}>CASES</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{client.cases.length}</div>
-            </div>
-          </div>
-          {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button onClick={() => downloadClientCSV(client, invoiceNumber)} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+          {/* Row 2: action buttons */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button onClick={() => downloadClientCSV(client, invoiceNumber)} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
               <DlIcon /> CSV
             </button>
-            <button onClick={() => downloadInvoicePDF(pdfData, pdfCases)} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+            <button onClick={() => downloadInvoicePDF(pdfData, pdfCases)} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
               <DlIcon /> PDF
             </button>
             {!confirming && (
-              <button onClick={() => setConfirming(true)} style={{ padding: '6px 14px', border: 'none', borderRadius: 999, background: '#2563eb', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', outline: 'none' }}>
+              <button onClick={() => setConfirming(true)} style={{ padding: '5px 14px', border: 'none', borderRadius: 999, background: '#2563eb', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', outline: 'none' }}>
                 Mark Billed
               </button>
             )}
-            <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 15, lineHeight: 1, flexShrink: 0, outline: 'none' }}>×</button>
+            <div style={{ flex: 1 }} />
+            <button onClick={onClose} style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, flexShrink: 0, outline: 'none' }}>×</button>
           </div>
         </div>
 
@@ -250,7 +238,7 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
         {/* PDF preview */}
         <div style={{ flex: 1, background: '#e5e7eb', minHeight: 480, position: 'relative', overflow: 'hidden' }}>
           {pdfUrl ? (
-            <iframe src={pdfUrl} style={{ width: '100%', height: '100%', minHeight: 480, border: 'none', display: 'block' }} title="Invoice Preview" />
+            <iframe src={pdfUrl + '#toolbar=0&navpanes=0&scrollbar=1'} style={{ width: '100%', height: '100%', minHeight: 480, border: 'none', display: 'block' }} title="Invoice Preview" />
           ) : (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>
               Generating preview…
@@ -274,7 +262,7 @@ type HistoricalCase = {
 // Module-level cache persists across drawer open/close without refetching
 const prevCasesCache = new Map<string, HistoricalCase[]>();
 
-function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highlight?: string; view: 'current' | 'previous' }) {
+function CaseSidebar({ client, highlight, view, isPendingTab }: { client: ClientBilling; highlight?: string; view: 'current' | 'previous'; isPendingTab?: boolean }) {
   const q = highlight?.toLowerCase() ?? '';
   const firstMatchIndex = q ? client.cases.findIndex(c => c.caseId.toLowerCase().includes(q)) : -1;
   const firstMatchRef = useRef<HTMLDivElement | null>(null);
@@ -345,7 +333,24 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
       {/* Body */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {view === 'current' ? (
+        {isPendingTab ? (
+          <>
+            {(client.pendingCases ?? []).length === 0 ? (
+              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No pending cases.</div>
+            ) : (client.pendingCases ?? []).map((c, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: '#f0f7ff', fontSize: 11, alignItems: 'center' }}>
+                <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+                <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+                <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
+                <span style={{ fontWeight: 600, color: '#1d4ed8', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
+              </div>
+            ))}
+            <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Pending Total</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textAlign: 'right' }}>{fmtUSD(client.pendingAmount ?? 0)}</span>
+            </div>
+          </>
+        ) : view === 'current' ? (
           <>
             {client.cases.map((c, i) => {
               const isMatch = q ? c.caseId.toLowerCase().includes(q) : false;
@@ -411,7 +416,7 @@ export default function BillingPage() {
   const [sidebarWidth, setSidebarWidth] = useState(360);
   const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'|'cols'>(null);
   const [filterType, setFilterType] = useState<'all'|'prevMonth'>('all');
-  const [billingTab, setBillingTab] = useState<'rtb'|'billed'|'all'>('rtb');
+  const [billingTab, setBillingTab] = useState<'rtb'|'pending'|'billed'|'all'>('rtb');
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
   const [sidebarView, setSidebarView] = useState<'current' | 'previous'>('current');
   const popupAreaRef = useRef<HTMLDivElement>(null);
@@ -460,12 +465,18 @@ export default function BillingPage() {
     setActiveClient(null); setSelectedClient(null);
   }
 
+  const isGracePeriod = data?.isGracePeriod ?? false;
   // Matches GAS: billed = previouslyBilledFee > 0 && readyToBillFee === 0
   const billedClients = (data?.clients ?? []).filter(c => c.previouslyBilledFee > 0 && c.totalFee === 0);
+  const pendingClients = (data?.clients ?? []).filter(c => (c.pendingFee ?? 0) > 0);
 
   const filtered = billingTab === 'billed' ? billedClients.filter(c => {
     if (!search) return true;
     return c.clientName.toLowerCase().includes(search.toLowerCase());
+  }) : billingTab === 'pending' ? pendingClients.filter(c => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return c.clientName.toLowerCase().includes(q) || (c.pendingCases ?? []).some(cs => cs.caseId.toLowerCase().includes(q));
   }) : (data?.clients ?? []).filter(c => {
     if (billingTab === 'rtb' && c.totalFee === 0) return false;
     if (filterType === 'prevMonth' && c.prevMonthFee === 0) return false;
@@ -474,7 +485,7 @@ export default function BillingPage() {
     return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q));
   });
 
-  const sorted = [...filtered].sort((a, b) => {
+  const sortedBase = [...filtered].sort((a, b) => {
     let av: number | string, bv: number | string;
     if (sortCol === 'name') { av = a.clientName; bv = b.clientName; }
     else if (sortCol === 'rate') { av = a.rate; bv = b.rate; }
@@ -484,22 +495,26 @@ export default function BillingPage() {
     if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av);
     return sortDir === 'asc' ? av - (bv as number) : (bv as number) - av;
   });
+  // Pin prev-match client at top when not already in filtered list
+  const sorted = prevMatchedClient && !sortedBase.find(c => c.clientName === prevMatchedClient.clientName)
+    ? [prevMatchedClient, ...sortedBase]
+    : sortedBase;
 
-  const [prevMatchClientName, setPrevMatchClientName] = useState<string | null>(null);
+  const [prevMatchedClient, setPrevMatchedClient] = useState<ClientBilling | null>(null);
 
   // Current-case search: auto-select client when case ID matches
   useEffect(() => {
-    if (!search) { setPrevMatchClientName(null); return; }
+    if (!search) { setPrevMatchedClient(null); return; }
     const q = search.toLowerCase();
     const byCase = (data?.clients ?? []).find(c => c.cases.some(cs => cs.caseId.toLowerCase().includes(q)) && !c.clientName.toLowerCase().includes(q));
-    if (byCase) { setSelectedClient(byCase); setSidebarView('current'); return; }
+    if (byCase) { setPrevMatchedClient(null); setSelectedClient(byCase); setSidebarView('current'); return; }
 
     // Previous-case search: check module-level cache first, then invoices API
-    setPrevMatchClientName(null);
+    setPrevMatchedClient(null);
     for (const [clientName, cases] of prevCasesCache.entries()) {
       if (cases.some(c => c.case_id.toLowerCase().includes(q))) {
         const client = (data?.clients ?? []).find(c => c.clientName === clientName);
-        if (client) { setPrevMatchClientName(clientName); setSelectedClient(client); setSidebarView('previous'); return; }
+        if (client) { setPrevMatchedClient(client); setSelectedClient(client); setSidebarView('previous'); return; }
       }
     }
     // Fallback: search invoices table (small dataset, client-side filter)
@@ -510,7 +525,7 @@ export default function BillingPage() {
       );
       if (!match) return;
       const client = (data?.clients ?? []).find(c => c.clientName === match.client_name);
-      if (client) { setPrevMatchClientName(match.client_name); setSelectedClient(client); setSidebarView('previous'); }
+      if (client) { setPrevMatchedClient(client); setSelectedClient(client); setSidebarView('previous'); }
     });
   }, [search, data]);
 
@@ -595,14 +610,16 @@ export default function BillingPage() {
                 const all = data?.clients ?? [];
                 const counts: Record<string, number> = {
                   rtb: all.filter(c => c.totalFee > 0).length,
+                  pending: pendingClients.length,
                   billed: billedClients.length,
                   all: all.length,
                 };
-                const TABS: { key: typeof billingTab; label: string }[] = [
+                const TABS: { key: typeof billingTab; label: string; onlyGrace?: boolean }[] = [
                   { key: 'rtb', label: 'Ready to Bill' },
+                  { key: 'pending', label: 'Pending', onlyGrace: true },
                   { key: 'billed', label: 'Billed' },
                   { key: 'all', label: 'All' },
-                ];
+                ].filter(t => !t.onlyGrace || isGracePeriod) as { key: typeof billingTab; label: string }[];
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 4, gap: 2 }}>
@@ -660,6 +677,36 @@ export default function BillingPage() {
                       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
                       </div>
+                    ) : billingTab === 'pending' ? (
+                      !filtered.length ? (
+                        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No pending cases this month.</div>
+                      ) : (
+                        <div style={{ minWidth: 420 }}>
+                          {filtered.map((c, idx) => (
+                            <div key={c.clientName}
+                              onClick={() => { setSelectedClient(c); setSidebarView('current'); }}
+                              style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < filtered.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, background: '#f0f7ff', color: '#1d4ed8', borderRadius: 999, padding: '1px 6px', alignSelf: 'flex-start' }}>pending this month</span>
+                              </div>
+                              {!hiddenCols.has('rate') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>}
+                              {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.pendingAmount ?? 0)}</span>}
+                              {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#71717a' }}>{fmtUSD(c.pendingFee ?? 0)}</span>}
+                              {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{(c.pendingCases ?? []).length}</span>}
+                              <div />
+                            </div>
+                          ))}
+                          <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
+                            {!hiddenCols.has('rate') && <span />}
+                            {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(filtered.reduce((s,c)=>s+(c.pendingAmount??0),0))}</span>}
+                            {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#71717a' }}>{fmtUSD(filtered.reduce((s,c)=>s+(c.pendingFee??0),0))}</span>}
+                            {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{filtered.reduce((s,c)=>s+(c.pendingCases??[]).length,0)}</span>}
+                            <span />
+                          </div>
+                        </div>
+                      )
                     ) : billingTab === 'billed' ? (
                       !filtered.length ? (
                         <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No billed clients.</div>
@@ -685,11 +732,9 @@ export default function BillingPage() {
                           </div>
                         </div>
                       )
-                    ) : filtered.length === 0 ? (
+                    ) : sorted.length === 0 ? (
                       <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
-                        {search && prevMatchClientName
-                          ? <><span style={{ color: '#006FEE', fontWeight: 600 }}>{prevMatchClientName}</span> — found in previous billing. Check the Previous tab →</>
-                          : search ? 'No clients match.' : 'No clients ready to bill.'}
+                        {search ? 'No clients match.' : 'No clients ready to bill.'}
                       </div>
                     ) : (
                       <div style={{ minWidth: 420 }}>
@@ -744,7 +789,7 @@ export default function BillingPage() {
                         </div>
                         <button onClick={() => setSelectedClient(null)} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
                       </div>
-                      <CaseSidebar client={selectedClient} highlight={search || undefined} view={sidebarView} />
+                      <CaseSidebar client={selectedClient} highlight={search || undefined} view={sidebarView} isPendingTab={billingTab === 'pending'} />
                     </div>
                   )}
                 </div>
