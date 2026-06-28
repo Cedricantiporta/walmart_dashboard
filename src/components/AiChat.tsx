@@ -7,49 +7,48 @@ interface Message {
   content: string;
 }
 
-const SparkleIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2l2.4 7.2H22l-6.2 4.5 2.4 7.3L12 16.5l-6.2 4.5 2.4-7.3L2 9.2h7.6z"/>
+const GRADIENT = 'linear-gradient(135deg, #006FEE 0%, #7828C8 55%, #F5A524 100%)';
+
+const ChatIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/>
   </svg>
 );
 
 const SendIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="22" y1="2" x2="11" y2="13"/>
     <polygon points="22 2 15 22 11 13 2 9 22 2"/>
   </svg>
 );
 
 const CloseIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
   </svg>
 );
 
 function TypingDots() {
   return (
-    <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '10px 14px' }}>
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '8px 12px' }}>
       {[0, 1, 2].map(i => (
-        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: '#006FEE', display: 'inline-block', animation: `aichatBounce 1.2s ${i * 0.2}s infinite` }} />
+        <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: GRADIENT, display: 'inline-block', animation: `aichatBounce 1.2s ${i * 0.18}s infinite` }} />
       ))}
     </div>
   );
 }
 
 function renderText(text: string) {
-  // Simple markdown: bold, code, line breaks
   const lines = text.split('\n');
   return lines.map((line, li) => {
     const parts = line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
     return (
       <span key={li}>
         {parts.map((part, pi) => {
-          if (part.startsWith('**') && part.endsWith('**')) {
+          if (part.startsWith('**') && part.endsWith('**'))
             return <strong key={pi}>{part.slice(2, -2)}</strong>;
-          }
-          if (part.startsWith('`') && part.endsWith('`')) {
-            return <code key={pi} style={{ background: '#f3f4f6', borderRadius: 4, padding: '1px 5px', fontFamily: 'monospace', fontSize: 12 }}>{part.slice(1, -1)}</code>;
-          }
+          if (part.startsWith('`') && part.endsWith('`'))
+            return <code key={pi} style={{ background: 'rgba(0,0,0,0.08)', borderRadius: 4, padding: '1px 4px', fontFamily: 'monospace', fontSize: 11 }}>{part.slice(1, -1)}</code>;
           return <span key={pi}>{part}</span>;
         })}
         {li < lines.length - 1 && <br />}
@@ -68,10 +67,7 @@ export default function AiChat() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 80);
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (open) setTimeout(() => inputRef.current?.focus(), 80);
   }, [open]);
 
   useEffect(() => {
@@ -103,102 +99,98 @@ export default function AiChat() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   }
 
   return (
     <>
       <style>{`
         @keyframes aichatBounce {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
-          30% { transform: translateY(-6px); opacity: 1; }
+          0%,60%,100% { transform: translateY(0); opacity:0.4; }
+          30% { transform: translateY(-5px); opacity:1; }
         }
-        @keyframes aichatSlideUp {
-          from { opacity: 0; transform: translateY(24px) scale(0.97); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes aichatUp {
+          from { opacity:0; transform:translateY(18px) scale(0.97); }
+          to   { opacity:1; transform:translateY(0)    scale(1);    }
         }
-        .aichat-btn:hover { transform: scale(1.07); box-shadow: 0 8px 32px rgba(0,111,238,0.38) !important; }
-        .aichat-send:hover:not(:disabled) { background: #0055cc !important; }
-        .aichat-send:disabled { opacity: 0.45; cursor: not-allowed; }
+        .ai-fab { transition: transform 0.15s, box-shadow 0.15s; }
+        .ai-fab:hover { transform: scale(1.08) !important; box-shadow: 0 6px 28px rgba(120,40,200,0.38) !important; }
+        .ai-send:hover:not(:disabled) { opacity: 0.82; }
+        .ai-send:disabled { opacity: 0.35; cursor: not-allowed; }
       `}</style>
 
       {/* Floating button */}
       <button
-        className="aichat-btn"
+        className="ai-fab"
         onClick={() => setOpen(o => !o)}
         title="AI Assistant"
         style={{
           position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
-          width: 52, height: 52, borderRadius: '50%', border: 'none',
-          background: 'linear-gradient(135deg, #006FEE 0%, #0055cc 100%)',
-          color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 20px rgba(0,111,238,0.28)',
-          transition: 'transform 0.15s, box-shadow 0.15s',
+          width: 48, height: 48, borderRadius: '50%', border: 'none',
+          background: open ? '#18181b' : GRADIENT,
+          color: '#fff', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 18px rgba(120,40,200,0.28)',
           outline: 'none',
         }}
       >
-        {open ? <CloseIcon /> : <SparkleIcon />}
+        {open ? <CloseIcon /> : <ChatIcon />}
       </button>
 
-      {/* Chat panel */}
+      {/* Panel */}
       {open && (
         <div style={{
-          position: 'fixed', bottom: 92, right: 28, zIndex: 999,
-          width: 380, height: 520, borderRadius: 18,
-          background: '#fff', boxShadow: '0 8px 48px rgba(0,0,0,0.18)',
+          position: 'fixed', bottom: 88, right: 28, zIndex: 999,
+          width: 360, height: 500, borderRadius: 20,
+          background: '#fafafa',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.14)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          animation: 'aichatSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+          animation: 'aichatUp 0.18s cubic-bezier(0.16,1,0.3,1)',
         }}>
-          {/* Header */}
-          <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, #006FEE, #0055cc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
-              <SparkleIcon />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#11181c', lineHeight: 1.2 }}>AI Assistant</div>
-              <div style={{ fontSize: 11, color: '#71717a' }}>Powered by Gemini · Live data</div>
+
+          {/* Header — gradient bar */}
+          <div style={{ background: GRADIENT, padding: '12px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#fff', lineHeight: 1.2 }}>AI Assistant</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>Gemini 2.5 Flash · Live data</div>
             </div>
           </div>
 
           {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {messages.length === 0 && !loading && (
-              <div style={{ textAlign: 'center', color: '#a1a1aa', fontSize: 13, marginTop: 40, lineHeight: 1.6 }}>
+              <div style={{ textAlign: 'center', color: '#a1a1aa', fontSize: 12, marginTop: 36, lineHeight: 1.7 }}>
                 Ask me anything about your<br />recovery data, clients, or billing.
               </div>
             )}
+
             {messages.map((msg, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', gap: 8, alignItems: 'flex-end' }}>
-                {msg.role === 'assistant' && (
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg, #006FEE, #0055cc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0, marginBottom: 2 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6.2 4.5 2.4 7.3L12 16.5l-6.2 4.5 2.4-7.3L2 9.2h7.6z"/></svg>
-                  </div>
-                )}
+              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 <div style={{
-                  maxWidth: '78%', padding: '9px 13px', borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                  background: msg.role === 'user' ? '#006FEE' : '#f4f4f5',
-                  color: msg.role === 'user' ? '#fff' : '#11181c',
-                  fontSize: 13, lineHeight: 1.55,
+                  maxWidth: '80%',
+                  padding: '8px 13px',
+                  borderRadius: 999,
+                  background: msg.role === 'user' ? GRADIENT : '#ebebeb',
+                  color: msg.role === 'user' ? '#fff' : '#18181b',
+                  fontSize: 12.5, lineHeight: 1.55,
+                  borderBottomRightRadius: msg.role === 'user' ? 6 : 999,
+                  borderBottomLeftRadius: msg.role === 'assistant' ? 6 : 999,
                 }}>
                   {renderText(msg.content)}
                 </div>
               </div>
             ))}
+
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-                <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg, #006FEE, #0055cc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2H22l-6.2 4.5 2.4 7.3L12 16.5l-6.2 4.5 2.4-7.3L2 9.2h7.6z"/></svg>
-                </div>
-                <div style={{ background: '#f4f4f5', borderRadius: '14px 14px 14px 4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{ background: '#ebebeb', borderRadius: 999, borderBottomLeftRadius: 6 }}>
                   <TypingDots />
                 </div>
               </div>
             )}
+
             {error && (
-              <div style={{ background: '#fff0f3', border: '1px solid #fca5a5', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#f31260' }}>
+              <div style={{ background: '#fff0f3', borderRadius: 12, padding: '7px 12px', fontSize: 11.5, color: '#f31260' }}>
                 {error}
               </div>
             )}
@@ -206,36 +198,36 @@ export default function AiChat() {
           </div>
 
           {/* Input */}
-          <div style={{ padding: '10px 14px 14px', borderTop: '1px solid #f3f4f6', flexShrink: 0 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', background: '#f4f4f5', borderRadius: 12, padding: '6px 6px 6px 12px' }}>
+          <div style={{ padding: '8px 12px 12px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', background: '#ebebeb', borderRadius: 999, padding: '5px 5px 5px 14px' }}>
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about your data..."
+                placeholder="Ask about your data…"
                 rows={1}
                 style={{
                   flex: 1, border: 'none', background: 'transparent', resize: 'none', outline: 'none',
-                  fontSize: 13, color: '#11181c', lineHeight: 1.5, maxHeight: 100, overflowY: 'auto',
-                  fontFamily: 'inherit', padding: '4px 0',
+                  fontSize: 12.5, color: '#18181b', lineHeight: 1.5, maxHeight: 90, overflowY: 'auto',
+                  fontFamily: 'inherit', padding: '3px 0',
                 }}
               />
               <button
-                className="aichat-send"
+                className="ai-send"
                 onClick={send}
                 disabled={!input.trim() || loading}
                 style={{
-                  width: 34, height: 34, borderRadius: 9, border: 'none',
-                  background: '#006FEE', color: '#fff', cursor: 'pointer',
+                  width: 30, height: 30, borderRadius: '50%', border: 'none',
+                  background: GRADIENT, color: '#fff', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'background 0.15s', outline: 'none',
+                  flexShrink: 0, outline: 'none', transition: 'opacity 0.15s',
                 }}
               >
                 <SendIcon />
               </button>
             </div>
-            <div style={{ fontSize: 10, color: '#a1a1aa', textAlign: 'center', marginTop: 6 }}>Enter to send · Shift+Enter for newline</div>
+            <div style={{ fontSize: 9.5, color: '#c4c4c8', textAlign: 'center', marginTop: 5 }}>Enter · Shift+Enter for newline</div>
           </div>
         </div>
       )}
