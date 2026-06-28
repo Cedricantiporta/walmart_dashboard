@@ -328,7 +328,7 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
     if (view === 'previous') fetchPrevious();
   }, [view, fetchPrevious]);
 
-  const CG = '72px 1fr 70px 58px 46px';
+  const CG = '72px 1fr 70px 58px';
   const prevTotalAmt = (prevCases ?? []).reduce((s, c) => s + c.reimbursement_amount, 0);
 
   return (
@@ -346,14 +346,12 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
                   <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
                   <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
                   <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
-                  <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{fmtUSD(c.fee)}</span>
                 </div>
               );
             })}
             <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{fmtUSD(client.totalFee)}</span>
             </div>
           </>
         ) : loadingPrev ? (
@@ -623,7 +621,7 @@ export default function BillingPage() {
                 {/* Shared header row */}
                 {showHdr && (
                   <div style={{ display: 'flex', flexShrink: 0 }}>
-                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '6px 10px 6px 22px', gap: 8, minWidth: 420, alignItems: 'center' }}>
+                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 22px', gap: 8, minWidth: 420, alignItems: 'center' }}>
                       <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                       {visOpt.map(c => (
                         <ColHdr key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
