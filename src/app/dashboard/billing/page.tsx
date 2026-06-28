@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
+import { supabase } from '@/lib/supabase';
 
 // ── formatters ────────────────────────────────────────────────────────────────
 
