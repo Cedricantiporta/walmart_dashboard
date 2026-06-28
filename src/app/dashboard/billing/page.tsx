@@ -226,7 +226,7 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
         {/* Confirm strip */}
         {confirming && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: '#fffbeb', borderBottom: '1px solid #fcd34d', flexShrink: 0 }}>
-            <span style={{ flex: 1, fontSize: 12, color: '#92400e' }}><strong>Confirm?</strong> PDF will download and invoice saved. Cannot undo.</span>
+            <span style={{ flex: 1, fontSize: 12, color: '#92400e' }}><strong>Mark {client.clientName} as billed?</strong> PDF will download and invoice saved.</span>
             <button onClick={handleMarkAsBilled} disabled={saving} style={{ padding: '6px 14px', border: 'none', borderRadius: 999, background: saving ? '#86efac' : '#16a34a', fontSize: 12, fontWeight: 700, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', outline: 'none' }}>
               {saving ? 'Saving…' : '✓ Confirm'}
             </button>
