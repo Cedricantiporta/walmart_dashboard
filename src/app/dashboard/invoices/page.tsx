@@ -207,8 +207,11 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
 }
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    const c = clientGet<Invoice[]>('invoices');
+    return Array.isArray(c) ? c : [];
+  });
+  const [loading, setLoading] = useState(() => !clientGet('invoices'));
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');

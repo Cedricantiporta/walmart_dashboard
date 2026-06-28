@@ -380,8 +380,8 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
-  const [data, setData] = useState<BillingData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<BillingData | null>(() => clientGet<BillingData>('billing') ?? null);
+  const [loading, setLoading] = useState(() => !clientGet('billing'));
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [activeClient, setActiveClient] = useState<ClientBilling | null>(null);
@@ -664,9 +664,11 @@ export default function BillingPage() {
                             {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>}
                             {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.cases.length}</span>}
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-                              <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                <IconInvoice /> Invoice
-                              </button>
+                              {c.cases.length > 0 && (
+                                <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                  <IconInvoice /> Invoice
+                                </button>
+                              )}
                             </div>
                           </div>
                           );

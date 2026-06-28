@@ -30,8 +30,14 @@ function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
 }
 
 export default function SummaryPage() {
-  const [history, setHistory] = useState<MonthlyHistory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<MonthlyHistory[]>(() => {
+    const c = clientGet<MonthlyHistory[]>('summary');
+    return Array.isArray(c) ? c : [];
+  });
+  const [loading, setLoading] = useState(() => {
+    const c = clientGet('summary');
+    return !c;
+  });
   const [error, setError] = useState('');
   const [sortCol, setSortCol] = useState('sort');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
