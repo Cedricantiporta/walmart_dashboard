@@ -401,6 +401,8 @@ export default function DashboardPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [rmsCasesCount, setRmsCasesCount] = useState<number | null>(() => clientGet<any>('initial-payload')?.rmsCasesCount ?? null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [pendingAmount, setPendingAmount] = useState<number>(() => clientGet<any>('initial-payload')?.pendingAmount ?? 0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [loadingInit, setLoadingInit] = useState(() => !clientGet<any>('initial-payload'));
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(() => {
@@ -421,6 +423,7 @@ export default function DashboardPage() {
       setBillingInsights(cached.billingInsights ?? null);
       setLastSync(cached.lastSyncTime ?? '');
       setRmsCasesCount(cached.rmsCasesCount ?? 0);
+      setPendingAmount(cached.pendingAmount ?? 0);
       if (cached.dashboardAnalytics) setAnalytics(cached.dashboardAnalytics);
       setLoadingInit(false);
     } else {
@@ -434,6 +437,7 @@ export default function DashboardPage() {
           setLastSync(d.lastSyncTime ?? '');
           if (d.lastSyncTime) setSyncTime(d.lastSyncTime);
           setRmsCasesCount(d.rmsCasesCount ?? 0);
+          setPendingAmount(d.pendingAmount ?? 0);
           if (d.dashboardAnalytics) setAnalytics(d.dashboardAnalytics);
           setLoadingInit(false);
         })
@@ -611,7 +615,7 @@ export default function DashboardPage() {
               <MetricCard label="Reimbursed" value={metrics.totalReimbursed} trend={displayTrends?.totalReimbursed} />
               <MetricCard label="Fees" value={metrics.totalFees} trend={displayTrends?.totalFees} />
               <MetricCard label="Cases" value={metrics.approvedCases} trend={displayTrends?.approvedCases} format="number" />
-              <MetricCard label="Billed" value={totalFeesBilled} />
+              <MetricCard label="Pending" value={pendingAmount} />
             </>
           )}
         </div>

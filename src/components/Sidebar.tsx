@@ -160,7 +160,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
           minHeight: 56,
           gap: 8,
         }}>
-          <Image src={logoSrc} alt="WFS" width={32} height={32} style={{ borderRadius: 6, flexShrink: 0, objectFit: 'contain' }} />
+          <Image src={logoSrc} alt="WFS" width={32} height={32} style={{ borderRadius: 6, flexShrink: 0, objectFit: 'contain', marginBottom: 4 }} />
           {!collapsed && (
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: txt, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>WFS Analytics</div>

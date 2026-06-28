@@ -104,6 +104,9 @@ export async function GET() {
 
   const { data: lastSync } = await db.from('rms_cases').select('synced_at').order('synced_at', { ascending: false }).limit(1).single();
 
+  const isGracePeriod = now.getDate() <= 7;
+  const pendingAmount = isGracePeriod ? allData.reduce((s, r) => s + (r.reimbursement_amount ?? 0), 0) : 0;
+
   const payload = {
     billingSummary,
     history,
@@ -125,6 +128,8 @@ export async function GET() {
     lastSyncTime:  lastSync?.synced_at ?? new Date().toISOString(),
     vantageCutoff,
     rmsCasesCount: totalRmsCount ?? allData.length,
+    pendingAmount,
+    isGracePeriod,
   };
 
   setCached(cacheKey, payload, 2 * 60 * 1000);
