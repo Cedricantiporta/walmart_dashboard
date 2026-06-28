@@ -287,14 +287,24 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
     setLoadingPrev(true);
     const { data } = await supabase
       .from('invoices')
-      .select('invoice_number, billed_date, case_snapshot')
+      .select('invoice_number, billed_date, total_reimbursed, case_snapshot')
       .eq('client_name', client.clientName)
       .order('billed_date', { ascending: false });
-    const cases: HistoricalCase[] = (data ?? []).flatMap((inv: { invoice_number: string; billed_date: string; case_snapshot: { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number }[] }) =>
-      (inv.case_snapshot ?? [])
-        .filter(c => !!c.rms_posting_date)
-        .map(c => ({ ...c, invoice_number: inv.invoice_number, billed_date: inv.billed_date }))
-    );
+    const cases: HistoricalCase[] = (data ?? []).flatMap((inv: { invoice_number: string; billed_date: string; total_reimbursed: number; case_snapshot: { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number }[] }) => {
+      const snapshot = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date);
+      if (snapshot.length > 0) {
+        return snapshot.map(c => ({ ...c, invoice_number: inv.invoice_number, billed_date: inv.billed_date }));
+      }
+      // GAS-imported invoices have no case_snapshot — show invoice-level summary row
+      return [{
+        case_id: inv.invoice_number,
+        claim_type: 'Invoice',
+        rms_posting_date: (inv.billed_date ?? '').slice(0, 10),
+        reimbursement_amount: Number(inv.total_reimbursed ?? 0),
+        invoice_number: inv.invoice_number,
+        billed_date: inv.billed_date,
+      }];
+    });
     setPrevCases(cases);
     setLoadingPrev(false);
   }, [client.clientName, prevCases]);
@@ -455,14 +465,9 @@ export default function BillingPage() {
   useEffect(() => {
     if (billingTab !== 'billed' || billedHistory !== null) return;
     setLoadingBilled(true);
-    const now = new Date();
-    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
-    const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
     supabase.from('invoices')
       .select('invoice_number, client_name, billed_date, billed_fee, total_reimbursed')
-      .gte('billed_date', prevStart)
-      .lte('billed_date', prevEnd)
-      .order('client_name')
+      .order('billed_date', { ascending: false })
       .then(({ data: d }) => { setBilledHistory(d ?? []); setLoadingBilled(false); });
   }, [billingTab, billedHistory]);
 
@@ -612,28 +617,48 @@ export default function BillingPage() {
                           {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
                         </div>
                       ) : !billedHistory?.length ? (
-                        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No invoices found for last month.</div>
-                      ) : (
-                        <div>
-                          {billedHistory.map((inv, idx) => (
-                            <div key={inv.invoice_number} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 100px 90px 90px', padding: '10px 16px', gap: 8, borderBottom: idx < billedHistory.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c' }}>{inv.client_name}</div>
-                                <div style={{ fontSize: 10, color: '#a1a1aa', fontFamily: 'monospace', marginTop: 2 }}>{inv.invoice_number}</div>
+                        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No invoice history found.</div>
+                      ) : (() => {
+                        // Group by month
+                        const groups: { label: string; rows: typeof billedHistory }[] = [];
+                        for (const inv of billedHistory) {
+                          const label = new Date(inv.billed_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                          const last = groups[groups.length - 1];
+                          if (last && last.label === label) last.rows.push(inv);
+                          else groups.push({ label, rows: [inv] });
+                        }
+                        return (
+                          <div>
+                            {groups.map(grp => (
+                              <div key={grp.label}>
+                                <div style={{ padding: '8px 16px 4px', fontSize: 10, fontWeight: 700, color: '#a1a1aa', letterSpacing: '0.06em', background: '#fafafa', borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, zIndex: 2 }}>
+                                  {grp.label.toUpperCase()} · {grp.rows.length} invoices
+                                </div>
+                                {grp.rows.map((inv, idx) => (
+                                  <div key={inv.invoice_number} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 90px 90px', padding: '9px 16px', gap: 8, borderBottom: idx < grp.rows.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
+                                    <div>
+                                      <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c' }}>{inv.client_name}</div>
+                                      <div style={{ fontSize: 10, color: '#a1a1aa', fontFamily: 'monospace', marginTop: 1 }}>{inv.invoice_number}</div>
+                                    </div>
+                                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
+                                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
+                                  </div>
+                                ))}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 90px 90px', padding: '7px 16px', gap: 8, background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280' }}>Subtotal</span>
+                                  <span style={{ textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(grp.rows.reduce((s, i) => s + Number(i.total_reimbursed), 0))}</span>
+                                  <span style={{ textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#11181c' }}>{fmtUSD(grp.rows.reduce((s, i) => s + Number(i.billed_fee), 0))}</span>
+                                </div>
                               </div>
-                              <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{new Date(inv.billed_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                              <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
-                              <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
+                            ))}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 90px 90px', padding: '10px 16px', gap: 8, background: '#f0f0f0', position: 'sticky', bottom: 0 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>All-time Total</span>
+                              <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(billedHistory.reduce((s, i) => s + Number(i.total_reimbursed), 0))}</span>
+                              <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(billedHistory.reduce((s, i) => s + Number(i.billed_fee), 0))}</span>
                             </div>
-                          ))}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 100px 90px 90px', padding: '10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
-                            <span />
-                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(billedHistory.reduce((s, i) => s + Number(i.total_reimbursed), 0))}</span>
-                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(billedHistory.reduce((s, i) => s + Number(i.billed_fee), 0))}</span>
                           </div>
-                        </div>
-                      )
+                        );
+                      })()
                     ) : filtered.length === 0 ? (
                       <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
                         {search ? 'No clients match.' : 'No clients ready to bill.'}
