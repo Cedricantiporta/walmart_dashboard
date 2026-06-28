@@ -235,5 +235,5 @@ export async function generateInvoicePDFBlob(inv: PDFInvoiceData, cases: PDFCase
     doc.text(`${p}/${totalPages}`, W - M, 287, { align: 'right' });
   }
 
-  return doc.output('bloburl') as string;
+  return doc.output('bloburl') as unknown as string;
 }
