@@ -362,6 +362,10 @@ function Skeleton({ h = 20, w = '100%', radius = 6 }: { h?: number; w?: string |
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState('thisMonth');
   const [client, setClient] = useState('all');
+  const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerStart, setPickerStart] = useState('');
+  const [pickerEnd, setPickerEnd] = useState('');
   const [clientList, setClientList] = useState<string[]>([]);
   const [history, setHistory] = useState<Invoice[]>([]);
   const [billingInsights, setBillingInsights] = useState<BillingInsights | null>(null);
@@ -424,13 +428,18 @@ export default function DashboardPage() {
     if (loadingInit) return;
     setLoadingAnalytics(true);
     const isYYYYMM = /^\d{4}-\d{2}$/.test(timeRange);
-    const params = new URLSearchParams({ timeRange: isYYYYMM ? 'specificMonth' : timeRange, client });
+    const effectiveRange = timeRange === 'custom' && customRange ? 'custom' : (isYYYYMM ? 'specificMonth' : timeRange);
+    const params = new URLSearchParams({ timeRange: effectiveRange, client });
     if (isYYYYMM) params.set('startDate', `${timeRange}-01`);
+    if (timeRange === 'custom' && customRange) {
+      params.set('startDate', customRange.start);
+      params.set('endDate', customRange.end);
+    }
     fetch(`/api/dashboard/analytics?${params}`)
       .then(r => r.json())
       .then(d => { setAnalytics(d); setLoadingAnalytics(false); })
       .catch(() => setLoadingAnalytics(false));
-  }, [timeRange, client, loadingInit]);
+  }, [timeRange, client, loadingInit, customRange]);
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
@@ -516,11 +525,37 @@ export default function DashboardPage() {
 
         {/* Dropdowns row — date range left, selectors right */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
-          {dateRangeLabel
-            ? <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 14, fontWeight: 600, color: '#11181c', background: '#eaebec', borderRadius: 999, padding: '6px 14px' }}>{dateRangeLabel}</span>
-            : <span />}
+          <div style={{ position: 'relative' }}>
+            {dateRangeLabel ? (
+              <button
+                onClick={() => { setPickerStart(customRange?.start ?? ''); setPickerEnd(customRange?.end ?? ''); setShowDatePicker(p => !p); }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600, color: '#11181c', background: '#eaebec', borderRadius: 999, padding: '6px 14px', border: 'none', cursor: 'pointer', outline: 'none' }}
+              >
+                <CalendarIcon /> {dateRangeLabel}
+              </button>
+            ) : <span />}
+            {showDatePicker && (
+              <div style={{ position: 'absolute', top: '110%', left: 0, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 18, boxShadow: '0 8px 32px rgba(0,0,0,0.13)', zIndex: 300, padding: '16px 18px', minWidth: 280 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#71717a', marginBottom: 10 }}>Custom date range</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#a1a1aa', marginBottom: 3 }}>Start</div>
+                    <input type="date" value={pickerStart} onChange={e => setPickerStart(e.target.value)} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e4e4e7', borderRadius: 10, fontSize: 13, outline: 'none', color: '#11181c' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#a1a1aa', marginBottom: 3 }}>End</div>
+                    <input type="date" value={pickerEnd} onChange={e => setPickerEnd(e.target.value)} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e4e4e7', borderRadius: 10, fontSize: 13, outline: 'none', color: '#11181c' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                  <button onClick={() => { if (pickerStart && pickerEnd) { setCustomRange({ start: pickerStart, end: pickerEnd }); setTimeRange('custom'); } setShowDatePicker(false); }} disabled={!pickerStart || !pickerEnd} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#006FEE', color: '#fff', fontSize: 12, fontWeight: 700, cursor: !pickerStart || !pickerEnd ? 'not-allowed' : 'pointer', opacity: !pickerStart || !pickerEnd ? 0.5 : 1 }}>Apply</button>
+                  <button onClick={() => { setCustomRange(null); setTimeRange('thisMonth'); setShowDatePicker(false); }} style={{ flex: 1, padding: '8px', borderRadius: 10, border: '1px solid #e4e4e7', background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>Reset</button>
+                </div>
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
-          <PillDropdown value={timeRange} options={timeOptions} onChange={setTimeRange} icon={<CalendarIcon />} />
+          <PillDropdown value={timeRange === 'custom' ? 'thisMonth' : timeRange} options={timeOptions} onChange={v => { setTimeRange(v); setCustomRange(null); setShowDatePicker(false); }} icon={<CalendarIcon />} />
           <PillDropdown value={client} options={clientOptions} onChange={setClient} icon={<UserIcon />} />
           </div>
         </div>
