@@ -11,6 +11,7 @@ interface SidebarCtxType {
   setSyncTime: (t: string) => void;
   darkMode: boolean;
   setDarkMode: (v: boolean) => void;
+  isMobile: boolean;
 }
 
 export const SidebarCtx = createContext<SidebarCtxType>({
@@ -20,6 +21,7 @@ export const SidebarCtx = createContext<SidebarCtxType>({
   setSyncTime: () => {},
   darkMode: false,
   setDarkMode: () => {},
+  isMobile: false,
 });
 
 export const useSidebar = () => useContext(SidebarCtx);
@@ -28,6 +30,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [syncTime, setSyncTimeState] = useState('');
   const [darkMode, setDarkModeState] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const savedSync = localStorage.getItem('wfs_last_sync_time');
@@ -36,6 +40,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     if (savedDark === '1') setDarkModeState(true);
     const savedCollapsed = localStorage.getItem('sidebar_collapsed');
     if (savedCollapsed === '1') setCollapsed(true);
+  }, []);
+
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobileOpen(false);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   function setSyncTime(t: string) {
@@ -49,14 +64,41 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute('data-theme', v ? 'dark' : 'light');
   }
 
+  function onToggle() {
+    if (isMobile) {
+      setMobileOpen(m => !m);
+    } else {
+      setCollapsed(c => {
+        const next = !c;
+        localStorage.setItem('sidebar_collapsed', next ? '1' : '0');
+        return next;
+      });
+    }
+  }
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
   return (
-    <SidebarCtx.Provider value={{ collapsed, onToggle: () => setCollapsed(c => { const next = !c; localStorage.setItem('sidebar_collapsed', next ? '1' : '0'); return next; }), syncTime, setSyncTime, darkMode, setDarkMode }}>
+    <SidebarCtx.Provider value={{ collapsed, onToggle, syncTime, setSyncTime, darkMode, setDarkMode, isMobile }}>
       <div style={{ display: 'flex', minHeight: '100vh', background: darkMode ? '#18181b' : '#f4f4f5' }}>
-        <Sidebar collapsed={collapsed} syncTime={syncTime} darkMode={darkMode} onThemeToggle={() => setDarkMode(!darkMode)} />
+        {/* Mobile backdrop */}
+        {isMobile && mobileOpen && (
+          <div
+            onClick={() => setMobileOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 199, touchAction: 'none' }}
+          />
+        )}
+        <Sidebar
+          collapsed={collapsed}
+          syncTime={syncTime}
+          darkMode={darkMode}
+          onThemeToggle={() => setDarkMode(!darkMode)}
+          isMobile={isMobile}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+        />
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
           {children}
         </main>

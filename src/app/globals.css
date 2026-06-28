@@ -37,6 +37,19 @@ a { color: inherit; text-decoration: none; }
   filter: invert(1) hue-rotate(180deg);
 }
 
+/* Responsive */
+@media (max-width: 767px) {
+  /* Pages: tighter padding on mobile */
+  .page-pad { padding-left: 12px !important; padding-right: 12px !important; }
+  /* Stat card grids wrap */
+  .stat-grid { flex-wrap: wrap !important; }
+  /* Tables: ensure horizontal scroll works */
+  .table-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  /* Modals: full-screen on mobile */
+  .modal-inner { max-width: 100% !important; border-radius: 12px 12px 0 0 !important; }
+  .modal-outer { align-items: flex-end !important; padding: 0 !important; }
+}
+
 /* Slim scrollbars */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

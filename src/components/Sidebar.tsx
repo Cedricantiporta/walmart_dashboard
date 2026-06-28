@@ -59,18 +59,22 @@ const SunIcon = () => (
   </svg>
 );
 
-export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }: {
+export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, isMobile, mobileOpen, onMobileClose }: {
   collapsed: boolean;
   syncTime?: string;
   darkMode?: boolean;
   onThemeToggle?: () => void;
+  isMobile?: boolean;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }) {
   const pathname = usePathname();
   const { setSyncTime } = useSidebar();
 
   useEffect(() => {
     if (pathname.startsWith('/dashboard')) localStorage.setItem('wfs_last_page', pathname);
-  }, [pathname]);
+    if (isMobile && onMobileClose) onMobileClose();
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -118,7 +122,22 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle }
         .sidebar-nav-link:hover:not(.active) { background: ${darkMode ? pillHov : '#eaebec'} !important; }
       `}</style>
 
-      <aside style={{
+      <aside style={isMobile ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: 210,
+        height: '100vh',
+        zIndex: 200,
+        background: bg,
+        borderRight: `1px solid ${border}`,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
+        boxShadow: mobileOpen ? '4px 0 32px rgba(0,0,0,0.18)' : 'none',
+      } : {
         width: collapsed ? 56 : 210,
         transition: 'width 0.2s cubic-bezier(0.4,0,0.2,1)',
         height: '100vh',

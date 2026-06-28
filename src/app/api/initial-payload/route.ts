@@ -18,8 +18,10 @@ export async function GET() {
   const cached = getCached(cacheKey);
   if (cached) return NextResponse.json(cached);
 
+  const RMS_COLS = 'case_id,client_name,claim_type,reimbursement_amount,rms_posting_date,date_filed,gtin,sku_id,unit_amount,reimbursed_qty,synced_at';
+
   const [
-    allData,
+    { data: allDataRaw },
     { data: clientsRaw },
     { data: billingContactsRaw },
     { data: invoicesRaw },
@@ -28,7 +30,10 @@ export async function GET() {
     { data: excludedClientsRaw },
     { count: totalRmsCount },
   ] = await Promise.all([
-    fetchRowsFrom<RmsCase>(db, 'rms_cases', currentMonthStart),
+    db.from('rms_cases').select(RMS_COLS)
+      .gte('rms_posting_date', currentMonthStart)
+      .eq('reimbursement_status', 'approved')
+      .gt('reimbursement_amount', 0),
     db.from('clients').select('*'),
     db.from('billing_contacts').select('*'),
     db.from('invoices').select('*').order('invoice_number', { ascending: false }),
@@ -76,6 +81,7 @@ export async function GET() {
   const billedIdsFromInvoices = [...new Set(history.flatMap(inv => inv.case_ids.map(String)))];
   const billedIds = [...new Set([...billedIdsFromInvoices, ...hardcodedBilledIds])];
 
+  const allData = (allDataRaw ?? []) as RmsCase[];
   const billingSummary = getBillingSummary(allData, onboardingInfo, billedIds, vantageCutoff, [], excludedClientsSet);
 
   // Client list comes from the clients table directly — not derived from rms_cases

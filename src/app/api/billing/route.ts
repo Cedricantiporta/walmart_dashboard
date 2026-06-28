@@ -17,8 +17,10 @@ export async function GET() {
   const cached = getCached(cacheKey);
   if (cached) return NextResponse.json(cached);
 
+  const RMS_COLS = 'case_id,client_name,claim_type,reimbursement_amount,rms_posting_date,date_filed,gtin,sku_id,unit_amount,reimbursed_qty';
+
   const [
-    allData,
+    { data: allData },
     { data: clientsRaw },
     { data: invoicesRaw },
     { data: allInvoicesRaw },
@@ -26,7 +28,10 @@ export async function GET() {
     { data: config },
     { data: billingContactsRaw },
   ] = await Promise.all([
-    fetchRowsFrom<RmsCase>(db, 'rms_cases', prevMonthStart),
+    db.from('rms_cases').select(RMS_COLS)
+      .gte('rms_posting_date', prevMonthStart)
+      .eq('reimbursement_status', 'approved')
+      .gt('reimbursement_amount', 0),
     db.from('clients').select('*'),
     db.from('invoices').select('case_ids'),
     db.from('invoices').select('client_name, billed_fee, total_reimbursed'),
@@ -93,9 +98,8 @@ export async function GET() {
 
   const clientMap: Record<string, ClientBilling> = {};
 
-  allData.forEach(row => {
-    if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
-    if (!row.rms_posting_date) return; // must have a posting date
+  (allData ?? []).forEach(row => {
+    if (!row.rms_posting_date) return;
     if (row.reimbursement_amount <= 0) return;
 
     const clientName = row.client_name?.trim();
