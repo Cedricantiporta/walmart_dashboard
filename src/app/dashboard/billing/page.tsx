@@ -278,12 +278,14 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
   const q = highlight?.toLowerCase() ?? '';
   const firstMatchIndex = q ? client.cases.findIndex(c => c.caseId.toLowerCase().includes(q)) : -1;
   const firstMatchRef = useRef<HTMLDivElement | null>(null);
+  const prevFirstMatchRef = useRef<HTMLDivElement | null>(null);
   const [prevCases, setPrevCases] = useState<HistoricalCase[] | null>(() => prevCasesCache.get(client.clientName) ?? null);
   const [loadingPrev, setLoadingPrev] = useState(false);
 
   useEffect(() => {
-    if (firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [highlight, client.clientName]);
+    if (view === 'current' && firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (view === 'previous' && prevFirstMatchRef.current) prevFirstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlight, client.clientName, view, prevCases]);
 
   // On client change: reset from cache or null, then preload in background
   useEffect(() => {
@@ -368,14 +370,21 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
           <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No billing history found.</div>
         ) : (
           <>
-            {(prevCases ?? []).map((c, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '72px 1fr 70px 58px', gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 11, alignItems: 'center' }}>
-                <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
-                <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
-                <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.rms_posting_date.slice(0, 10))}</span>
-                <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
-              </div>
-            ))}
+            {(() => {
+              const prevMatchIndex = q ? (prevCases ?? []).findIndex(c => c.case_id.toLowerCase().includes(q)) : -1;
+              return (prevCases ?? []).map((c, i) => {
+                const isMatch = q ? c.case_id.toLowerCase().includes(q) : false;
+                return (
+                  <div key={i} ref={i === prevMatchIndex ? prevFirstMatchRef : undefined}
+                    style={{ display: 'grid', gridTemplateColumns: '72px 1fr 70px 58px', gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 11, alignItems: 'center', background: isMatch ? '#fef9c3' : undefined }}>
+                    <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
+                    <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
+                    <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.rms_posting_date.slice(0, 10))}</span>
+                    <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+                  </div>
+                );
+              });
+            })()}
             <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr 70px 58px', gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(prevTotalAmt)}</span>

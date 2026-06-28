@@ -146,7 +146,7 @@ function InvoiceRow({ inv, onDelete }: { inv: Invoice; onDelete: (num: string) =
     await downloadInvoicePDF({ invoice_number: inv.invoice_number, client_name: inv.client_name, billed_date: inv.billed_date?.slice(0, 10) ?? isoToday(), billed_fee: inv.billed_fee, total_reimbursed: inv.total_reimbursed, case_ids: inv.case_ids }, cases);
   }
 
-  const snapCount = inv.case_snapshot?.length || inv.case_ids?.length || 0;
+  const snapCount = inv.case_snapshot?.filter(c => !!c.rms_posting_date).length ?? inv.case_ids?.length ?? 0;
 
   const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
 

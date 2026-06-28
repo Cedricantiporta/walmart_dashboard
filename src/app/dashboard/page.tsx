@@ -320,7 +320,6 @@ function GaugeChart({ data }: { data: { category: string; amount: number }[] }) 
             style={{ cursor: 'pointer', transition: 'opacity 0.15s', outline: 'none' }}
           />
         ))}
-        <text x={GCX} y={GCY - 6} textAnchor="middle" fontSize={20} fontWeight={800} fill="#11181c">{fmtCompact(total)}</text>
       </svg>
 
       {/* Category legend — 1 per row */}
@@ -469,7 +468,7 @@ export default function DashboardPage() {
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
   const { metrics, trends, categoryData = [] } = analytics ?? {};
-  const totalFeesBilled = analytics ? computeTotalFeesBilled(history, analytics.dateRange) : 0;
+  const totalFeesBilled = fullMonthlyHistory.reduce((s, h) => s + h.fee, 0);
 
   const chartHistory = [...fullMonthlyHistory]
     .sort((a, b) => a.sort.localeCompare(b.sort))
