@@ -109,7 +109,7 @@ const IconFilter = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="n
 const IconSort = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/></svg>;
 const IconCols = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>;
 const IconInvoice = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
-const PanelIcon = () => <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="16" height="16" rx="3"/><line x1="7" y1="2" x2="7" y2="18"/></svg>;
+const PanelIcon = () => <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="16" height="16" rx="3"/><line x1="7" y1="2" x2="7" y2="18"/></svg>;
 
 const toolbarPill: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -511,7 +511,7 @@ export default function BillingPage() {
 
         {/* Top bar */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', gap: 10, padding: '4px 20px 8px', height: 52, background: '#f4f4f5' }}>
-          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
+          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#11181c', flexShrink: 0, outline: 'none' }}>
             <PanelIcon />
           </button>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>Billing</h1>
@@ -606,14 +606,14 @@ export default function BillingPage() {
                 {/* Shared header row — grey, spans RTB cols + empty sidebar placeholder */}
                 {showHdr && (
                   <div style={{ display: 'flex', flexShrink: 0 }}>
-                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '6px 10px 6px 22px', gap: 8, minWidth: 420 }}>
+                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '6px 10px 6px 22px', gap: 8, minWidth: 420, alignItems: 'center' }}>
                       <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                       {visOpt.map(c => (
                         <ColHdr key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                       ))}
                       <span style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, fontWeight: 600, color: '#71717a' }}>Actions</span>
                     </div>
-                    {selectedClient && <div style={{ width: sidebarWidth + 18, flexShrink: 0 }} />}
+                    {selectedClient && <div style={{ width: sidebarWidth + 6, flexShrink: 0 }} />}
                   </div>
                 )}
 
@@ -703,7 +703,7 @@ export default function BillingPage() {
                   )}
 
                   {/* RIGHT sidebar panel */}
-                  <div style={{ width: selectedClient ? sidebarWidth : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
+                  <div style={{ width: selectedClient ? sidebarWidth + 6 : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
                     {selectedClient && (
                       <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: '0 12px 12px 0', margin: '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 12px', flexShrink: 0, borderBottom: '1px solid #f3f4f6' }}>

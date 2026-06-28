@@ -87,7 +87,7 @@ const ArrowDown = () => (
   </svg>
 );
 const PanelIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <rect x="2" y="2" width="16" height="16" rx="3"/><line x1="7" y1="2" x2="7" y2="18"/>
   </svg>
 );
@@ -332,8 +332,8 @@ function GaugeChart({ data }: { data: { category: string; amount: number }[] }) 
             style={{ display: 'flex', alignItems: 'center', gap: 7, opacity: hov === null || hov === i ? 1 : 0.35, transition: 'opacity 0.15s', cursor: 'pointer' }}
           >
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: '#71717a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.category || 'Other'}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{fmtCompact(s.amount)}</span>
+            <span style={{ fontSize: 13, color: '#71717a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.category || 'Other'}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', flexShrink: 0 }}>{fmtCompact(s.amount)}</span>
           </div>
         ))}
       </div>
@@ -502,7 +502,7 @@ export default function DashboardPage() {
         {/* Top bar */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, padding: '4px 20px 8px', height: 52, background: '#f4f4f5' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
-            <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', flexShrink: 0, outline: 'none' }}>
+            <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#11181c', flexShrink: 0, outline: 'none' }}>
               <PanelIcon />
             </button>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
