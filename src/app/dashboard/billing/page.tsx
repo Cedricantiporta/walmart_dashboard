@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
-import { downloadInvoicePDF, generateInvoicePDFBlob } from '@/lib/invoice-pdf';
+import { downloadInvoicePDF, generateInvoicePDFBlob, generateInvoicePDFBlobRaw } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
 import { supabase } from '@/lib/supabase';
 
@@ -452,17 +452,31 @@ function BulkModal({ rtbClients, startInvoiceNum, billingSummaryInfo, onClose, o
   const totalFee = clientsWithNums.reduce((s, { client }) => s + client.totalFee, 0);
   const totalRecovered = clientsWithNums.reduce((s, { client }) => s + client.totalAmount, 0);
 
-  function handleAllCSVs() {
-    for (const { client, invoiceNum } of clientsWithNums) downloadClientCSV(client, invoiceNum);
+  async function handleAllCSVs() {
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    for (const { client, invoiceNum } of clientsWithNums) {
+      const csv = buildGasCSV(invoiceNum, [client]);
+      zip.file(`${invoiceNum}-${client.clientName.replace(/\s+/g, '-')}.csv`, csv);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `invoices-csvs-${isoToday()}.zip`; a.click();
   }
 
   async function handleAllPDFs() {
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
     for (const { client, invoiceNum } of clientsWithNums) {
       const bc = billingSummaryInfo[client.clientName] ?? null;
       const billedCases = client.cases.filter(c => !!c.postingDate);
       const pdfData = { invoice_number: invoiceNum, client_name: client.clientName, client_address: bc?.address ?? null, billed_date: isoToday(), billed_fee: client.totalFee, total_reimbursed: client.totalAmount, case_ids: [...new Set(billedCases.map(c => c.caseId))] };
-      await downloadInvoicePDF(pdfData, billedCases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount })));
+      const blob = await generateInvoicePDFBlobRaw(pdfData, billedCases.map(c => ({ case_id: c.caseId, claim_type: c.claimType, rms_posting_date: c.postingDate, reimbursement_amount: c.amount })));
+      zip.file(`${invoiceNum}-${client.clientName.replace(/\s+/g, '-')}.pdf`, blob);
     }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `invoices-pdfs-${isoToday()}.zip`; a.click();
   }
 
   async function handleMarkAllBilled() {
@@ -787,6 +801,13 @@ export default function BillingPage() {
                   </div>
 
                 </div>
+                <div style={{ flex: 1 }} />
+                {billingTab === 'rtb' && (data?.clients ?? []).some(c => c.totalFee > 0 && c.cases.length > 0) && (
+                  <button onClick={() => setShowBulk(true)} style={{ ...toolbarPill, background: '#006FEE', color: '#fff' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Bulk Invoice
+                  </button>
+                )}
               </div>
               {/* Tab switcher + search on same row */}
               {(() => {
@@ -815,23 +836,15 @@ export default function BillingPage() {
                         </button>
                       ))}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                        <input
-                          placeholder="Search client or case ID…"
-                          value={search}
-                          onChange={e => setSearch(e.target.value)}
-                          style={{ fontSize: 13, padding: '7px 32px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
-                        />
-                        {search && (
-                          <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 12, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none', flexShrink: 0 }}>×</button>
-                        )}
-                      </div>
-                      {billingTab === 'rtb' && (data?.clients ?? []).some(c => c.totalFee > 0 && c.cases.length > 0) && (
-                        <button onClick={() => setShowBulk(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, padding: '7px 14px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                          Bulk Invoice
-                        </button>
+                    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                      <input
+                        placeholder="Search client or case ID…"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{ fontSize: 13, padding: '7px 32px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
+                      />
+                      {search && (
+                        <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 12, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none', flexShrink: 0 }}>×</button>
                       )}
                     </div>
                   </div>
