@@ -35,6 +35,9 @@ type BillingData = {
   totalCases: number; currentMonthStart: string;
   billingSummaryInfo: Record<string, BillingContactInfo>;
 };
+type BilledClientRow = {
+  clientName: string; rate: number; totalAmount: number; totalFee: number; caseCount: number;
+};
 type Invoice = {
   id?: number; invoice_number: string; client_name: string;
   billed_date: string; billed_fee: number; total_reimbursed: number;
@@ -113,8 +116,8 @@ const PanelIcon = () => <svg width="13" height="13" viewBox="0 0 20 20" fill="no
 
 const toolbarPill: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 5,
-  fontSize: 13, fontWeight: 500, color: '#fff',
-  background: '#52525b', border: 'none',
+  fontSize: 13, fontWeight: 500, color: '#11181c',
+  background: '#eaebec', border: 'none',
   borderRadius: 999, padding: '6px 13px',
   cursor: 'pointer', outline: 'none', flexShrink: 0,
 };
@@ -393,8 +396,8 @@ export default function BillingPage() {
   const [sidebarWidth, setSidebarWidth] = useState(360);
   const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'|'cols'>(null);
   const [filterType, setFilterType] = useState<'all'|'prevMonth'>('all');
-  const [billingTab, setBillingTab] = useState<'all'|'rtb'|'billed'>('rtb');
-  const [billedHistory, setBilledHistory] = useState<{invoice_number: string; client_name: string; billed_date: string; billed_fee: number; total_reimbursed: number}[] | null>(null);
+  const [billingTab, setBillingTab] = useState<'rtb'|'billed'|'all'>('rtb');
+  const [billedClients, setBilledClients] = useState<BilledClientRow[] | null>(null);
   const [loadingBilled, setLoadingBilled] = useState(false);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
   const [sidebarView, setSidebarView] = useState<'current' | 'previous'>('current');
@@ -473,18 +476,28 @@ export default function BillingPage() {
   useEffect(() => { setSidebarView('current'); }, [selectedClient?.clientName]);
 
   useEffect(() => {
-    if (billingTab !== 'billed' || billedHistory !== null) return;
+    if ((billingTab !== 'billed' && billingTab !== 'all') || billedClients !== null) return;
     setLoadingBilled(true);
     const now = new Date();
     const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
     const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString().slice(0, 10);
     supabase.from('invoices')
-      .select('invoice_number, client_name, billed_date, billed_fee, total_reimbursed')
+      .select('client_name, billed_fee, total_reimbursed, case_ids')
       .gte('billed_date', prevStart)
       .lte('billed_date', prevEnd + 'T23:59:59')
-      .order('client_name')
-      .then(({ data: d }) => { setBilledHistory(d ?? []); setLoadingBilled(false); });
-  }, [billingTab, billedHistory]);
+      .then(({ data: d }) => {
+        const map: Record<string, BilledClientRow> = {};
+        for (const inv of d ?? []) {
+          const rate = Number(inv.total_reimbursed) > 0 ? Number(inv.billed_fee) / Number(inv.total_reimbursed) : 0;
+          if (!map[inv.client_name]) map[inv.client_name] = { clientName: inv.client_name, rate, totalAmount: 0, totalFee: 0, caseCount: 0 };
+          map[inv.client_name].totalAmount += Number(inv.total_reimbursed);
+          map[inv.client_name].totalFee += Number(inv.billed_fee);
+          map[inv.client_name].caseCount += (inv.case_ids ?? []).length;
+        }
+        setBilledClients(Object.values(map).sort((a, b) => b.totalFee - a.totalFee));
+        setLoadingBilled(false);
+      });
+  }, [billingTab, billedClients]);
 
   const currentMonthLabel = data?.currentMonthStart
     ? new Date(data.currentMonthStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -564,14 +577,14 @@ export default function BillingPage() {
               {(() => {
                 const all = data?.clients ?? [];
                 const counts: Record<string, number> = {
-                  all: all.length,
                   rtb: all.filter(c => c.currentMonthFee > 0).length,
-                  billed: billedHistory?.length ?? 0,
+                  billed: billedClients?.length ?? 0,
+                  all: all.length,
                 };
                 const TABS: { key: typeof billingTab; label: string }[] = [
                   { key: 'rtb', label: 'Ready to Bill' },
-                  { key: 'all', label: 'All' },
                   { key: 'billed', label: 'Billed' },
+                  { key: 'all', label: 'All' },
                 ];
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -595,15 +608,19 @@ export default function BillingPage() {
             </div>
           )}
 
-          {/* Two-panel: RTB table + case detail */}
+          {/* Two-panel: RTB/Billed/All table + case detail */}
           {(() => {
-            const showHdr = !loading && filtered.length > 0;
+            const billedSet = new Set((billedClients ?? []).map(b => b.clientName));
+            const showHdr = !loading && (
+              filtered.length > 0 ||
+              (billingTab === 'billed' && (billedClients?.length ?? 0) > 0)
+            );
             const visOpt = OPTIONAL_COLS.filter(c => !hiddenCols.has(c.key));
             const G = `minmax(0,1fr) ${visOpt.map(c => selectedClient ? c.compactWidth : c.width).join(' ')} 120px`;
             return (
               <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#eaebec', flexDirection: 'column' }}>
 
-                {/* Shared header row — grey, spans RTB cols + empty sidebar placeholder */}
+                {/* Shared header row */}
                 {showHdr && (
                   <div style={{ display: 'flex', flexShrink: 0 }}>
                     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '6px 10px 6px 22px', gap: 8, minWidth: 420, alignItems: 'center' }}>
@@ -611,7 +628,7 @@ export default function BillingPage() {
                       {visOpt.map(c => (
                         <ColHdr key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
                       ))}
-                      <span style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, fontWeight: 600, color: '#71717a' }}>Actions</span>
+                      <span style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, fontWeight: 600, color: '#71717a' }}>{billingTab !== 'billed' ? 'Actions' : ''}</span>
                     </div>
                     {selectedClient && <div style={{ width: sidebarWidth + 6, flexShrink: 0 }} />}
                   </div>
@@ -631,24 +648,29 @@ export default function BillingPage() {
                         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
                         </div>
-                                      ) : !billedHistory?.length ? (
-                        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No billed invoices for last month.</div>
+                      ) : !billedClients?.length ? (
+                        <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No billed clients for last month.</div>
                       ) : (
-                        <div>
-                          {billedHistory.map((inv, idx) => (
-                            <div key={inv.invoice_number} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 90px 90px', padding: '9px 16px', gap: 8, borderBottom: idx < billedHistory.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#11181c' }}>{inv.client_name}</div>
-                                <div style={{ fontSize: 10, color: '#a1a1aa', fontFamily: 'monospace', marginTop: 1 }}>{inv.invoice_number}</div>
+                        <div style={{ minWidth: 420 }}>
+                          {billedClients.map((c, idx) => (
+                            <div key={c.clientName} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, borderBottom: idx < billedClients.length - 1 ? '1px solid #f3f4f6' : 'none', background: '#fff', alignItems: 'center' }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
+                              {!hiddenCols.has('rate') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>}
+                              {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.totalAmount)}</span>}
+                              {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>}
+                              {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.caseCount}</span>}
+                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <span style={{ fontSize: 10, fontWeight: 600, background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '2px 8px' }}>Billed</span>
                               </div>
-                              <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
-                              <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
                             </div>
                           ))}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 90px 90px', padding: '9px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', position: 'sticky', bottom: 0 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
-                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(billedHistory.reduce((s, i) => s + Number(i.total_reimbursed), 0))}</span>
-                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(billedHistory.reduce((s, i) => s + Number(i.billed_fee), 0))}</span>
+                            {!hiddenCols.has('rate') && <span />}
+                            {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtUSD(billedClients.reduce((s,c)=>s+c.totalAmount,0))}</span>}
+                            {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtUSD(billedClients.reduce((s,c)=>s+c.totalFee,0))}</span>}
+                            {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{billedClients.reduce((s,c)=>s+c.caseCount,0)}</span>}
+                            <span />
                           </div>
                         </div>
                       )
@@ -658,7 +680,9 @@ export default function BillingPage() {
                       </div>
                     ) : (
                       <div style={{ minWidth: 420 }}>
-                        {sorted.map((c, idx) => (
+                        {sorted.map((c, idx) => {
+                          const isBilled = billingTab === 'all' && billedSet.has(c.clientName);
+                          return (
                           <div key={c.clientName}
                             onClick={() => setSelectedClient(c)}
                             style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}
@@ -672,12 +696,16 @@ export default function BillingPage() {
                             {!hiddenCols.has('fee') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(c.totalFee)}</span>}
                             {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.cases.length}</span>}
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-                              <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                <IconInvoice /> Invoice
-                              </button>
+                              {isBilled
+                                ? <span style={{ fontSize: 10, fontWeight: 600, background: '#dcfce7', color: '#15803d', borderRadius: 999, padding: '2px 8px' }}>Billed</span>
+                                : <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                    <IconInvoice /> Invoice
+                                  </button>
+                              }
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                         <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
                           {!hiddenCols.has('rate') && <span />}
