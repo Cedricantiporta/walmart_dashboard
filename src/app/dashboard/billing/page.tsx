@@ -267,6 +267,7 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
 type HistoricalCase = {
   case_id: string; claim_type: string; rms_posting_date: string;
   reimbursement_amount: number; invoice_number: string; billed_date: string;
+  gtin?: string; sku_id?: string; unit_amount?: number; reimbursed_qty?: number; rate?: number;
 };
 
 function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highlight?: string; view: 'current' | 'previous' }) {
@@ -285,26 +286,35 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
   const fetchPrevious = useCallback(async () => {
     if (prevCases !== null) return;
     setLoadingPrev(true);
-    const { data } = await supabase
+    // Step 1: get all invoices for this client (for case_ids + rate)
+    const { data: invs } = await supabase
       .from('invoices')
-      .select('invoice_number, billed_date, total_reimbursed, case_snapshot')
+      .select('invoice_number, billed_date, total_reimbursed, billed_fee, case_ids')
       .eq('client_name', client.clientName)
       .order('billed_date', { ascending: false });
-    const cases: HistoricalCase[] = (data ?? []).flatMap((inv: { invoice_number: string; billed_date: string; total_reimbursed: number; case_snapshot: { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number }[] }) => {
-      const snapshot = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date);
-      if (snapshot.length > 0) {
-        return snapshot.map(c => ({ ...c, invoice_number: inv.invoice_number, billed_date: inv.billed_date }));
+    if (!invs?.length) { setPrevCases([]); setLoadingPrev(false); return; }
+    // Step 2: map each case_id to its invoice context
+    const invMap: Record<string, { invoice_number: string; billed_date: string; rate: number }> = {};
+    const allIds: string[] = [];
+    for (const inv of invs) {
+      const rate = Number(inv.total_reimbursed) > 0 ? Number(inv.billed_fee) / Number(inv.total_reimbursed) : 0;
+      for (const id of (inv.case_ids ?? [])) {
+        invMap[String(id)] = { invoice_number: inv.invoice_number, billed_date: inv.billed_date, rate };
+        allIds.push(String(id));
       }
-      // GAS-imported invoices have no case_snapshot — show invoice-level summary row
-      return [{
-        case_id: inv.invoice_number,
-        claim_type: 'Invoice',
-        rms_posting_date: (inv.billed_date ?? '').slice(0, 10),
-        reimbursement_amount: Number(inv.total_reimbursed ?? 0),
-        invoice_number: inv.invoice_number,
-        billed_date: inv.billed_date,
-      }];
-    });
+    }
+    // Step 3: fetch real rms_cases data via server route
+    const caseRows: { case_id: string; claim_type: string; rms_posting_date: string; reimbursement_amount: number; gtin?: string; sku_id?: string; unit_amount?: number; reimbursed_qty?: number }[] =
+      allIds.length > 0
+        ? await fetch('/api/cases/by-ids', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...new Set(allIds)] }) })
+            .then(r => r.ok ? r.json() : []).catch(() => [])
+        : [];
+    const cases: HistoricalCase[] = caseRows.map(c => ({
+      ...c,
+      invoice_number: invMap[c.case_id]?.invoice_number ?? '',
+      billed_date: invMap[c.case_id]?.billed_date ?? '',
+      rate: invMap[c.case_id]?.rate ?? 0,
+    })).sort((a, b) => (b.billed_date ?? '').localeCompare(a.billed_date ?? ''));
     setPrevCases(cases);
     setLoadingPrev(false);
   }, [client.clientName, prevCases]);
@@ -345,24 +355,32 @@ function CaseSidebar({ client, highlight, view }: { client: ClientBilling; highl
           <div style={{ padding: '20px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>Loading…</div>
         ) : prevCases?.length === 0 ? (
           <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No billing history found.</div>
-        ) : (
-          <>
-            {(prevCases ?? []).map((c, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 11, alignItems: 'center' }}>
-                <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
-                <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
-                <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.rms_posting_date)}</span>
-                <span style={{ fontWeight: 600, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
-                <span style={{ fontSize: 10, color: '#a1a1aa', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.invoice_number}</span>
+        ) : (() => {
+          const PCG = '68px 54px 36px 44px 32px 54px';
+          return (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: PCG, gap: 4, padding: '5px 12px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 2 }}>
+                {['Case ID','Date','Type','GTIN','Qty','Recovered'].map((h,i) => (
+                  <span key={i} style={{ fontSize: 9, fontWeight: 700, color: '#a1a1aa', textAlign: i >= 4 ? 'right' : 'left' }}>{h}</span>
+                ))}
               </div>
-            ))}
-            <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>All-time</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(prevTotalAmt)}</span>
-              <span />
-            </div>
-          </>
-        )}
+              {(prevCases ?? []).map((c, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: PCG, gap: 4, padding: '7px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 10.5, alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
+                  <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0,10)) : '—'}</span>
+                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
+                  <span style={{ color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 9 }}>{c.gtin || '—'}</span>
+                  <span style={{ color: '#6b7280', textAlign: 'right' }}>{c.reimbursed_qty ?? 1}</span>
+                  <span style={{ fontWeight: 600, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+                </div>
+              ))}
+              <div style={{ display: 'grid', gridTemplateColumns: PCG, gap: 4, padding: '8px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', position: 'sticky', bottom: 0, zIndex: 2 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/6' }}>All-time</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(prevTotalAmt)}</span>
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );
@@ -591,7 +609,7 @@ export default function BillingPage() {
                 {/* Shared header row — grey, spans RTB cols + empty sidebar placeholder */}
                 {showHdr && (
                   <div style={{ display: 'flex', flexShrink: 0 }}>
-                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 22px', gap: 8, minWidth: 420 }}>
+                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: G, padding: '6px 10px 6px 22px', gap: 8, minWidth: 420 }}>
                       <ColHdr label="Client" col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                       {visOpt.map(c => (
                         <ColHdr key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
@@ -667,7 +685,7 @@ export default function BillingPage() {
                       <div style={{ minWidth: 420 }}>
                         {sorted.map((c, idx) => (
                           <div key={c.clientName}
-                            onClick={() => setSelectedClient(prev => prev?.clientName === c.clientName ? null : c)}
+                            onClick={() => setSelectedClient(c)}
                             style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}
                           >
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -713,13 +731,17 @@ export default function BillingPage() {
                   <div style={{ width: selectedClient ? sidebarWidth : 0, overflow: 'hidden', transition: selectedClient ? 'none' : 'width 0.2s cubic-bezier(0.4,0,0.2,1)', flexShrink: 0, display: 'flex' }}>
                     {selectedClient && (
                       <div style={{ width: sidebarWidth, flexShrink: 0, background: '#fff', borderRadius: '0 12px 12px 0', margin: '6px 6px 6px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 10px', flexShrink: 0 }}>
-                          <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
-                            {(['current', 'previous'] as const).map(tab => (
-                              <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
-                                {tab === 'current' ? 'Current' : 'Previous'}
-                              </button>
-                            ))}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 12px', flexShrink: 0, borderBottom: '1px solid #f3f4f6' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, paddingRight: 8 }}>{selectedClient.clientName}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
+                              {(['current', 'previous'] as const).map(tab => (
+                                <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
+                                  {tab === 'current' ? 'Current' : 'Previous'}
+                                </button>
+                              ))}
+                            </div>
+                            <button onClick={() => setSelectedClient(null)} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
                           </div>
                         </div>
                         <CaseSidebar client={selectedClient} highlight={search || undefined} view={sidebarView} />
