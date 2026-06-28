@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { DashboardAnalytics, Invoice, BillingInsights, MonthlyHistory } from '@/types';
 import { clientGet, clientSet } from '@/lib/client-cache';
 import { useSidebar } from '@/components/DashboardShell';
+import AiChat from '@/components/AiChat';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -641,6 +642,7 @@ export default function DashboardPage() {
 
         </div>{/* end inner padding div */}
       </div>
+      <AiChat />
     </>
   );
 }
