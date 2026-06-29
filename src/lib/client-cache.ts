@@ -2,7 +2,7 @@
 // Resets only on full page reload.
 
 const _store = new Map<string, { data: unknown; ts: number }>();
-const DEFAULT_TTL = 5 * 60 * 1000; // 5 min
+const DEFAULT_TTL = 90 * 1000; // 90 sec — keeps UI snappy on tab switches while staying fresh after syncs
 
 export function clientGet<T>(key: string): T | null {
   const entry = _store.get(key);

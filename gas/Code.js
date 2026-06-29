@@ -24,25 +24,6 @@ const MAIN_DATA_STORAGE_KEY = 'all_rms_report_data_v5'; // v5: corrected source 
 
 const DEFAULT_RATES = { 'DEFAULT': 0.22 };
 
-// --- TRIGGER SETUP ---
-// Run this once to replace any time-based trigger with an onEdit trigger.
-// In GAS editor: select setupOnEditTrigger → Run.
-function setupOnEditTrigger() {
-  // Delete ALL existing syncToSupabase triggers (time-based or otherwise)
-  ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (t.getHandlerFunction() === 'syncToSupabase') {
-      ScriptApp.deleteTrigger(t);
-      Logger.log('Deleted trigger: ' + t.getHandlerFunction() + ' (' + t.getTriggerSourceId() + ')');
-    }
-  });
-  // Create onEdit trigger on the RMS data spreadsheet
-  ScriptApp.newTrigger('syncToSupabase')
-    .forSpreadsheet(SPREADSHEET_ID)
-    .onEdit()
-    .create();
-  Logger.log('Trigger created: syncToSupabase onEdit on ' + SPREADSHEET_ID);
-}
-
 // --- WEB APP FUNCTIONS ---
 function doGet(e) {
   const template = HtmlService.createTemplateFromFile('Index');
