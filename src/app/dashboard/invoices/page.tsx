@@ -185,7 +185,7 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
   const [fetchingCases, setFetchingCases] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
   const firstMatchRef = useRef<HTMLDivElement | null>(null);
 
   const snapWithDate = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date);
@@ -240,8 +240,8 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
       {/* Topbar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px 8px 12px', flexShrink: 0, borderBottom: '1px solid #f3f4f6', gap: 8 }}>
         <button
-          onClick={() => setShowPreview(p => !p)}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: `1px solid ${showPreview ? '#006FEE' : '#e5e7eb'}`, borderRadius: 999, background: showPreview ? '#eff6ff' : '#f9fafb', fontSize: 11, fontWeight: 600, color: showPreview ? '#006FEE' : '#374151', cursor: 'pointer', outline: 'none', flexShrink: 0 }}
+          onClick={() => pdfUrl && setShowPdfModal(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: pdfUrl ? '#374151' : '#a1a1aa', cursor: pdfUrl ? 'pointer' : 'not-allowed', outline: 'none', flexShrink: 0 }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           View
@@ -257,16 +257,7 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
         </div>
       </div>
 
-      {/* PDF preview panel */}
-      {showPreview && (
-        <div style={{ height: 200, flexShrink: 0, borderBottom: '1px solid #f3f4f6', background: '#e5e7eb', position: 'relative' }}>
-          {pdfUrl ? (
-            <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} title="Invoice Preview" />
-          ) : (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 12 }}>Generating preview…</div>
-          )}
-        </div>
-      )}
+      {showPdfModal && pdfUrl && <PdfPreviewModal pdfUrl={pdfUrl} onClose={() => setShowPdfModal(false)} />}
 
       {/* Case rows — scrollable */}
       <div style={{ flex: 1, overflow: 'auto' }}>
@@ -305,19 +296,33 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
 
 // ── invoice row ───────────────────────────────────────────────────────────────
 
-function InvoiceRow({ inv, onDelete, onOpen, selectMode = false, isSelected = false, onToggleSelect, onUnbillRequest }: {
+function PdfPreviewModal({ pdfUrl, onClose }: { pdfUrl: string; onClose: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 20, width: '90vw', maxWidth: 760, height: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>PDF Preview</span>
+          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 16, outline: 'none' }}>×</button>
+        </div>
+        <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`} style={{ flex: 1, width: '100%', border: 'none' }} title="Invoice Preview" />
+      </div>
+    </div>
+  );
+}
+
+function InvoiceRow({ inv, onDelete, onOpen, selectMode = false, isSelected = false, isOpen = false, onToggleSelect, onUnbillRequest }: {
   inv: Invoice; onDelete: (num: string) => void;
   onOpen: () => void;
-  selectMode?: boolean; isSelected?: boolean; onToggleSelect?: () => void;
+  selectMode?: boolean; isSelected?: boolean; isOpen?: boolean; onToggleSelect?: () => void;
   onUnbillRequest?: (num: string, doDelete: () => Promise<void>) => void;
 }) {
   const snapCount = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date).length || (inv.case_ids?.length ?? 0);
   const G = getInvoiceGrid(selectMode);
 
   return (
-    <div onClick={onOpen} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: '1px solid #f3f4f6', background: '#fff', alignItems: 'center', minWidth: 700, transition: 'background 0.1s' }}
-      onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
-      onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+    <div onClick={onOpen} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: '1px solid #f3f4f6', background: isOpen ? '#eff6ff' : '#fff', alignItems: 'center', minWidth: 700, transition: 'background 0.1s' }}
+      onMouseEnter={e => (e.currentTarget.style.background = isOpen ? '#dbeafe' : '#fafafa')}
+      onMouseLeave={e => (e.currentTarget.style.background = isOpen ? '#eff6ff' : '#fff')}
     >
       {selectMode && (
         <div onClick={e => { e.stopPropagation(); onToggleSelect?.(); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -595,6 +600,7 @@ export default function InvoicesPage() {
                             onOpen={() => setOpenInv(inv)}
                             selectMode={selectMode}
                             isSelected={selectedNums.has(inv.invoice_number)}
+                            isOpen={openInv?.invoice_number === inv.invoice_number}
                             onToggleSelect={() => setSelectedNums(prev => { const next = new Set(prev); if (next.has(inv.invoice_number)) next.delete(inv.invoice_number); else next.add(inv.invoice_number); return next; })}
                             onUnbillRequest={(num, doDelete) => {
                               const found = invoices.find(i => i.invoice_number === num);

@@ -291,7 +291,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
                 onChange={e => setUq(e.target.value)}
                 onFocus={() => uq.trim() && setShowU(uResults.length > 0)}
                 placeholder="Search anything…"
-                style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '6px 10px 6px 28px', borderRadius: 8, border: `1px solid ${border}`, background: pill, color: txt, outline: 'none', fontFamily: 'inherit' }}
+                style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '6px 10px 6px 28px', borderRadius: 999, border: `1px solid ${border}`, background: pill, color: txt, outline: 'none', fontFamily: 'inherit' }}
               />
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
