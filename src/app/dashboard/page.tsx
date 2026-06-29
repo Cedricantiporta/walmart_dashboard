@@ -647,6 +647,29 @@ export default function DashboardPage() {
 
   const clientTableG = 'minmax(0,1.5fr) 130px 110px 70px 70px 110px';
 
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientSortCol, setClientSortCol] = useState<'totalRecovered'|'totalFee'|'name'|'cases'|'invoices'>('totalRecovered');
+  const [clientSortDir, setClientSortDir] = useState<'asc'|'desc'>('desc');
+  const [clientSortOpen, setClientSortOpen] = useState(false);
+  const clientSortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!clientSortOpen) return;
+    function h(e: MouseEvent) { if (clientSortRef.current && !clientSortRef.current.contains(e.target as Node)) setClientSortOpen(false); }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [clientSortOpen]);
+
+  const clientDisplayed = useMemo(() => {
+    const q = clientSearch.toLowerCase();
+    const base = q ? clientSummary.filter(c => c.name.toLowerCase().includes(q)) : clientSummary;
+    return [...base].sort((a, b) => {
+      const av = a[clientSortCol], bv = b[clientSortCol];
+      if (typeof av === 'string') return clientSortDir === 'asc' ? av.localeCompare(bv as string) : (bv as string).localeCompare(av);
+      return clientSortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
+    });
+  }, [clientSummary, clientSearch, clientSortCol, clientSortDir]);
+
   return (
     <>
       <style>{`
@@ -777,48 +800,95 @@ export default function DashboardPage() {
         </div>
 
         {/* All Clients table */}
-        <div style={{ background: '#eaebec', borderRadius: 16, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#11181c' }}>All Clients</h3>
-            {clientSummary.length > 0 && <span style={{ fontSize: 12, color: '#71717a', background: '#dcdcdd', borderRadius: 999, padding: '2px 9px' }}>{clientSummary.length}</span>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+          {/* Header row — outside grey container */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#11181c' }}>All Clients</h3>
+              {clientSummary.length > 0 && <span style={{ fontSize: 12, color: '#71717a', background: '#eaebec', borderRadius: 999, padding: '2px 9px' }}>{clientSummary.length}</span>}
+            </div>
+            {/* Search */}
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+              <input
+                placeholder="Search client…"
+                value={clientSearch}
+                onChange={e => setClientSearch(e.target.value)}
+                style={{ fontSize: 12, padding: '6px 28px 6px 32px', border: '1px solid #e4e4e7', borderRadius: 999, width: 190, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
+              />
+              {clientSearch && <button onClick={() => setClientSearch('')} style={{ position: 'absolute', right: 7, width: 16, height: 16, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>×</button>}
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '0 10px 8px 16px', gap: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a' }}>Client</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Recovered</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Fee</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Cases</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Invoices</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Last Billed</span>
-          </div>
-          <div style={{ background: '#fff', borderRadius: 12, margin: '0 6px 6px', overflow: 'hidden' }}>
-            {loadingClients && !clientSummary.length ? (
-              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[1,2,3,4].map(i => <Skeleton key={i} h={36} />)}
-              </div>
-            ) : clientSummary.length === 0 ? (
-              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No invoice history yet.</div>
-            ) : (
-              <>
-                {clientSummary.map((cs, i) => (
-                  <div key={cs.name} style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '9px 10px 9px 16px', gap: 8, borderBottom: i < clientSummary.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cs.name}</span>
-                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(cs.totalRecovered)}</span>
-                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#374151' }}>{fmtFull(cs.totalFee)}</span>
-                    <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.cases}</span>
-                    <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.invoices}</span>
-                    <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.lastDate ? new Date(cs.lastDate.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
-                  </div>
-                ))}
-                <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c' }}>Total ({clientSummary.length})</span>
-                  <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(clientSummary.reduce((s, c) => s + c.totalRecovered, 0))}</span>
-                  <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtFull(clientSummary.reduce((s, c) => s + c.totalFee, 0))}</span>
-                  <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{clientSummary.reduce((s, c) => s + c.cases, 0)}</span>
-                  <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{clientSummary.reduce((s, c) => s + c.invoices, 0)}</span>
-                  <span />
+
+          {/* Toolbar row — Sort pill */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div ref={clientSortRef} style={{ position: 'relative' }}>
+              <button onClick={() => setClientSortOpen(o => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: '#11181c', background: '#eaebec', border: 'none', borderRadius: 999, padding: '5px 12px', cursor: 'pointer', outline: 'none' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/></svg>
+                Sort{clientSortCol !== 'totalRecovered' ? ' ·' : ''}
+              </button>
+              {clientSortOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 16, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 4 }}>
+                  {([
+                    { col: 'totalRecovered', lbl: 'Recovered' },
+                    { col: 'totalFee', lbl: 'Fee' },
+                    { col: 'name', lbl: 'Client name' },
+                    { col: 'cases', lbl: 'Cases' },
+                    { col: 'invoices', lbl: 'Invoices' },
+                  ] as const).map(({ col, lbl }) => (
+                    <button key={col} onClick={() => { if (clientSortCol === col) setClientSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setClientSortCol(col); setClientSortDir('desc'); } setClientSortOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: clientSortCol === col ? '#eaebec' : 'transparent', color: '#11181c', fontWeight: clientSortCol === col ? 600 : 400 }}>
+                      {lbl}{clientSortCol === col ? (clientSortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                    </button>
+                  ))}
                 </div>
-              </>
-            )}
+              )}
+            </div>
+          </div>
+
+          {/* Grey container — col headers + white card */}
+          <div style={{ background: '#eaebec', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 8px 16px', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a' }}>Client</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Recovered</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Fee</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Cases</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Invoices</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Last Billed</span>
+            </div>
+            <div style={{ background: '#fff', borderRadius: 12, margin: '0 6px 6px', overflow: 'hidden' }}>
+              {loadingClients && !clientSummary.length ? (
+                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[1,2,3,4].map(i => <Skeleton key={i} h={36} />)}
+                </div>
+              ) : clientDisplayed.length === 0 ? (
+                <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
+                  {clientSearch ? 'No clients match.' : 'No invoice history yet.'}
+                </div>
+              ) : (
+                <>
+                  {clientDisplayed.map((cs, i) => (
+                    <div key={cs.name} style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '9px 10px 9px 16px', gap: 8, borderBottom: i < clientDisplayed.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cs.name}</span>
+                      <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(cs.totalRecovered)}</span>
+                      <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#374151' }}>{fmtFull(cs.totalFee)}</span>
+                      <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.cases}</span>
+                      <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.invoices}</span>
+                      <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.lastDate ? new Date(cs.lastDate.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c' }}>
+                      {clientSearch ? `Filtered (${clientDisplayed.length})` : `Total (${clientSummary.length})`}
+                    </span>
+                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(clientDisplayed.reduce((s, c) => s + c.totalRecovered, 0))}</span>
+                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtFull(clientDisplayed.reduce((s, c) => s + c.totalFee, 0))}</span>
+                    <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{clientDisplayed.reduce((s, c) => s + c.cases, 0)}</span>
+                    <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{clientDisplayed.reduce((s, c) => s + c.invoices, 0)}</span>
+                    <span />
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

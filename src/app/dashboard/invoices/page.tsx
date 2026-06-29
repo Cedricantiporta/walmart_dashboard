@@ -88,7 +88,7 @@ const toolbarPill: React.CSSProperties = {
 };
 
 const getInvoiceGrid = (select: boolean) =>
-  select ? '32px 110px minmax(0,1fr) 50px 20px 120px 90px 110px 168px' : '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
+  select ? '32px 82px minmax(0,1fr) 42px 8px 94px 82px 80px 76px' : '82px minmax(0,1fr) 42px 8px 94px 82px 80px 76px';
 
 function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
   label: string; col: string; sortCol: string; sortDir: 'asc'|'desc';
