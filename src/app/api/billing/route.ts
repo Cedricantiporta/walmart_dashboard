@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createServerClient, fetchRowsFrom } from '@/lib/supabase-server';
-import { getCached, setCached } from '@/lib/server-cache';
 import { DEFAULT_RATE, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
 import { RmsCase, ClientInfo, BillingContact } from '@/types';
 
@@ -13,10 +12,6 @@ export async function GET() {
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
   const twoYearsAgo = new Date(now.getFullYear() - 2, now.getMonth(), 1).toISOString().slice(0, 10);
-
-  const cacheKey = `billing:${currentMonthStart}`;
-  const cached = getCached(cacheKey);
-  if (cached) return NextResponse.json(cached);
 
   const RMS_COLS = 'case_id,client_name,claim_type,reimbursement_amount,rms_posting_date,date_filed,gtin,sku_id,unit_amount,reimbursed_qty';
 
@@ -274,6 +269,5 @@ export async function GET() {
   const totalCases = clients.reduce((s, c) => s + c.cases.length, 0);
 
   const result = { clients, totalFee, totalAmount, totalCases, currentMonthStart, billingSummaryInfo, isGracePeriod };
-  setCached(cacheKey, result, 5 * 60 * 1000);
   return NextResponse.json(result);
 }
