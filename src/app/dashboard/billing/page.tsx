@@ -590,11 +590,10 @@ function SearchParamsInit({ onSearch }: { onSearch: (q: string) => void }) {
     const q = searchParams.get('q');
     if (q) {
       onSearch(q);
-      // Remove ?q from URL immediately so navigation back doesn't re-trigger
+      // Clear ?q from URL immediately — so navigation back and re-searches don't get stuck
       router.replace(pathname, { scroll: false });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // only on mount
+  }, [searchParams, pathname]); // reactive: fires whenever URL ?q changes
   return null;
 }
 
