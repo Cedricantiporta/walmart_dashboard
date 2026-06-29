@@ -714,14 +714,23 @@ export default function BillingPage() {
     if (!search) { setPrevMatchedClient(null); return; }
     const q = search.toLowerCase();
     const byCase = (data?.clients ?? []).find(c => c.cases.some(cs => cs.caseId.toLowerCase().includes(q)) && !c.clientName.toLowerCase().includes(q));
-    if (byCase) { setPrevMatchedClient(null); setSelectedClient(byCase); setSidebarView('current'); return; }
+    if (byCase) { setPrevMatchedClient(null); setSelectedClient(byCase); setSidebarView('current'); setBillingTab('rtb'); return; }
 
     // Previous-case search: check module-level cache first, then invoices API
     setPrevMatchedClient(null);
+
+    const goToPrevClient = (client: ClientBilling) => {
+      setPrevMatchedClient(client);
+      setSelectedClient(client);
+      setSidebarView('previous');
+      // Navigate to the tab where this client actually lives
+      setBillingTab(lastBilledSet.has(client.clientName) ? 'billed' : 'all');
+    };
+
     for (const [clientName, cases] of prevCasesCache.entries()) {
       if (cases.some(c => c.case_id.toLowerCase().includes(q))) {
         const client = (data?.clients ?? []).find(c => c.clientName === clientName);
-        if (client) { setPrevMatchedClient(client); setSelectedClient(client); setSidebarView('previous'); return; }
+        if (client) { goToPrevClient(client); return; }
       }
     }
     // Fallback: search invoices table (small dataset, client-side filter)
@@ -732,7 +741,7 @@ export default function BillingPage() {
       );
       if (!match) return;
       const client = (data?.clients ?? []).find(c => c.clientName === match.client_name);
-      if (client) { setPrevMatchedClient(client); setSelectedClient(client); setSidebarView('previous'); }
+      if (client) goToPrevClient(client);
     });
   }, [search, data]);
 
