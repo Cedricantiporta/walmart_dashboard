@@ -38,6 +38,7 @@ type BillingData = {
   clients: ClientBilling[]; totalFee: number; totalAmount: number;
   totalCases: number; currentMonthStart: string; isGracePeriod: boolean;
   billingSummaryInfo: Record<string, BillingContactInfo>;
+  lastBilledClients: string[];
 };
 type Invoice = {
   id?: number; invoice_number: string; client_name: string;
@@ -665,8 +666,9 @@ export default function BillingPage() {
   }
 
   const isGracePeriod = data?.isGracePeriod ?? false;
-  // Matches GAS: billed = previouslyBilledFee > 0 && readyToBillFee === 0
-  const billedClients = (data?.clients ?? []).filter(c => c.previouslyBilledFee > 0 && c.totalFee === 0);
+  // Billed tab = clients from the most recent billing action (last billing month)
+  const lastBilledSet = new Set(data?.lastBilledClients ?? []);
+  const billedClients = (data?.clients ?? []).filter(c => lastBilledSet.has(c.clientName));
   const pendingClients = (data?.clients ?? []).filter(c => (c.pendingFee ?? 0) > 0);
   const overdueClients = (data?.clients ?? []).filter(c => (c.overdueAmount ?? 0) > 0);
 

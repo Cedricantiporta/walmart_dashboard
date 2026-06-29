@@ -36,7 +36,7 @@ export async function GET() {
       .limit(2000),
     db.from('clients').select('*'),
     db.from('invoices').select('case_ids'),
-    db.from('invoices').select('client_name, billed_fee, total_reimbursed'),
+    db.from('invoices').select('client_name, billed_fee, total_reimbursed, billed_date'),
     db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('app_config').select('*'),
     db.from('billing_contacts').select('*'),
@@ -218,11 +218,25 @@ export async function GET() {
 
   // Build previouslyBilledFee map from all invoices (matches GAS's previouslyBilledFee)
   const prevBilledMap: Record<string, { fee: number; recovered: number }> = {};
-  (allInvoicesRaw ?? []).forEach((inv: { client_name: string; billed_fee: number; total_reimbursed: number }) => {
+  let lastBillingMonth = '';
+  (allInvoicesRaw ?? []).forEach((inv: { client_name: string; billed_fee: number; total_reimbursed: number; billed_date: string | null }) => {
     if (!prevBilledMap[inv.client_name]) prevBilledMap[inv.client_name] = { fee: 0, recovered: 0 };
     prevBilledMap[inv.client_name].fee += Number(inv.billed_fee) || 0;
     prevBilledMap[inv.client_name].recovered += Number(inv.total_reimbursed) || 0;
+    if (inv.billed_date) {
+      const ym = inv.billed_date.slice(0, 7); // YYYY-MM
+      if (ym > lastBillingMonth) lastBillingMonth = ym;
+    }
   });
+  // Clients billed in the most recent billing month
+  const lastBilledClients: string[] = [];
+  if (lastBillingMonth) {
+    (allInvoicesRaw ?? []).forEach((inv: { client_name: string; billed_date: string | null }) => {
+      if (inv.billed_date?.slice(0, 7) === lastBillingMonth && !lastBilledClients.includes(inv.client_name)) {
+        lastBilledClients.push(inv.client_name);
+      }
+    });
+  }
 
   // Sort cases within each client by postingDate desc
   const clients = Object.values(clientMap)
@@ -268,6 +282,6 @@ export async function GET() {
   const totalAmount = clients.reduce((s, c) => s + c.totalAmount, 0);
   const totalCases = clients.reduce((s, c) => s + c.cases.length, 0);
 
-  const result = { clients, totalFee, totalAmount, totalCases, currentMonthStart, billingSummaryInfo, isGracePeriod };
+  const result = { clients, totalFee, totalAmount, totalCases, currentMonthStart, billingSummaryInfo, isGracePeriod, lastBilledClients };
   return NextResponse.json(result);
 }
