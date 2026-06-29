@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       : fetchAllRows<RmsCase>(db, 'rms_cases'),
     db.from('clients').select('*'),
     db.from('app_config').select('*'),
-    db.from('invoices').select('case_ids'),
+    db.from('invoices').select('case_ids, billed_fee, total_reimbursed, billed_date'),
     db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('excluded_clients').select('client_name'),
   ]);
@@ -55,8 +55,10 @@ export async function GET(req: NextRequest) {
   );
   const excludedClients = new Set<string>((excludedRaw ?? []).map((r: { client_name: string }) => r.client_name.toLowerCase()));
 
+  type InvRow = { case_ids: string[]; billed_fee: number; total_reimbursed: number; billed_date: string };
+
   const invoiceBilledIds = [...new Set(
-    (invoicesRaw ?? []).flatMap((inv: { case_ids: string[] }) => (inv.case_ids ?? []).map(String))
+    (invoicesRaw ?? []).flatMap((inv: InvRow) => (inv.case_ids ?? []).map(String))
   )];
   const billedIds = [...new Set([...invoiceBilledIds, ...hardcodedBilledIds])];
 
@@ -64,6 +66,40 @@ export async function GET(req: NextRequest) {
     { timeRange, startDateStr, endDateStr, specificClient, extraClients },
     allData, onboardingInfo, billedIds, vantageCutoff, excludedClients
   );
+
+  // For historical months: override headline metrics with invoice data so they match Summary page.
+  // Charts/categories still come from rms_cases (posting date context).
+  if (timeRange === 'specificMonth' && startDateStr) {
+    const [sy, sm] = startDateStr.split('-').map(Number);
+    const curKey  = `${sy}-${String(sm).padStart(2, '0')}`;
+    const prevDate = new Date(sy, sm - 2, 1);
+    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const inv = { cur: { r: 0, f: 0, c: 0 }, prev: { r: 0, f: 0 } };
+    (invoicesRaw ?? []).forEach((row: InvRow) => {
+      if (!row.billed_date) return;
+      const bd = new Date(row.billed_date);
+      const pd = new Date(bd);
+      if (bd.getDate() <= 7) pd.setMonth(pd.getMonth() - 1);
+      const mk = `${pd.getFullYear()}-${String(pd.getMonth() + 1).padStart(2, '0')}`;
+      if (mk === curKey) {
+        inv.cur.r += Number(row.total_reimbursed) || 0;
+        inv.cur.f += Number(row.billed_fee) || 0;
+        inv.cur.c += (row.case_ids ?? []).length;
+      } else if (mk === prevKey) {
+        inv.prev.r += Number(row.total_reimbursed) || 0;
+        inv.prev.f += Number(row.billed_fee) || 0;
+      }
+    });
+
+    const trend = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
+    result.metrics.totalReimbursed = inv.cur.r;
+    result.metrics.totalFees       = inv.cur.f;
+    result.metrics.approvedCases   = inv.cur.c;
+    result.trends.totalReimbursed  = trend(inv.cur.r, inv.prev.r);
+    result.trends.totalFees        = trend(inv.cur.f, inv.prev.f);
+    result.trends.approvedCases    = trend(inv.cur.c, 0);
+  }
 
   // Cache thisMonth for 2 min (changes on sync), longer ranges for 5 min
   setCached(cacheKey, result, useFilter ? 2 * 60 * 1000 : 5 * 60 * 1000);
