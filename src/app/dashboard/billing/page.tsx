@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob, generateInvoicePDFBlobRaw } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
@@ -584,10 +584,17 @@ function BulkModal({ rtbClients, startInvoiceNum, billingSummaryInfo, onClose, o
 
 function SearchParamsInit({ onSearch }: { onSearch: (q: string) => void }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   useEffect(() => {
     const q = searchParams.get('q');
-    if (q) onSearch(q);
-  }, [searchParams, onSearch]);
+    if (q) {
+      onSearch(q);
+      // Remove ?q from URL immediately so navigation back doesn't re-trigger
+      router.replace(pathname, { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // only on mount
   return null;
 }
 
@@ -969,14 +976,14 @@ export default function BillingPage() {
                           </div>
                         )
                       ) : billingTab === 'billed' ? (
-                        !filtered.length ? (
-                          <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No billed clients.</div>
+                        !sorted.length ? (
+                          <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>{search ? 'No clients match.' : 'No billed clients.'}</div>
                         ) : (
                           <div style={{ minWidth: 420 }}>
-                            {filtered.map((c, idx) => (
+                            {sorted.map((c, idx) => (
                               <div key={c.clientName}
                                 onClick={() => { setSelectedClient(c); setSidebarView('previous'); }}
-                                style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < filtered.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}>
+                                style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: idx < sorted.length - 1 ? '1px solid #f3f4f6' : 'none', background: selectedClient?.clientName === c.clientName ? '#f0f7ff' : '#fff', alignItems: 'center', transition: 'background 0.1s' }}>
                                 <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
                                 {!hiddenCols.has('rate') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{fmtPct(c.rate)}</span>}
                                 {!hiddenCols.has('recovered') && <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(c.previouslyBilledReimbursed)}</span>}
