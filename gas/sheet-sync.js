@@ -3,23 +3,24 @@
 // https://docs.google.com/spreadsheets/d/1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE
 //
 // Setup (one-time):
-//   1. Extensions → Apps Script
+//   1. Extensions > Apps Script
 //   2. Paste this code (replace any existing content)
-//   3. Project Settings → Script Properties → Add:
-//        NEXTJS_API_URL  =  https://walmart-dashboard.vercel.app   (no trailing slash)
-//        SYNC_SECRET     =  (same value as SYNC_SECRET in Vercel env)
-//   4. Select setupAllTriggers → click Run → authorize when prompted
-//   5. Manually run syncRmsToSupabase() once to do an immediate full sync
+//   3. Project Settings (gear icon) > Script Properties > Add:
+//        NEXTJS_API_URL  =  https://your-app.vercel.app   (no trailing slash)
+//        SYNC_SECRET     =  (value from your Vercel env vars — SYNC_SECRET)
+//   4. Select setupAllTriggers > Run > authorize when prompted
+//   5. Run syncRmsToSupabase() once manually for immediate full sync
 // ============================================================
 
+// MUST use openById — getActiveSpreadsheet() returns null in time-based triggers
+const SHEET_ID    = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
 const RMS_SHEET   = 'All Client RMS Report';
-const THROTTLE_MS = 30000; // min ms between onEdit syncs (30 sec)
+const THROTTLE_MS = 30000; // 30 sec cooldown between onEdit syncs
 
-// ---- AUTO TRIGGERS ----
+// ---- TRIGGER HANDLERS ----
 
-// GAS calls this automatically on every edit.
-// Throttled: if an edit fires within 30s of the last sync, schedule a 1-min delayed sync instead.
-function onEdit(e) {
+// Called by installable onEdit trigger (named differently from GAS built-in 'onEdit' to avoid conflicts)
+function onRmsSheetEdit(e) {
   if (!e || !e.source) return;
   if (e.range.getSheet().getName() !== RMS_SHEET) return;
 
@@ -28,6 +29,7 @@ function onEdit(e) {
   const now   = Date.now();
 
   if (now - last < THROTTLE_MS) {
+    // Too soon — schedule a 1-min delayed sync instead of skipping entirely
     _scheduleDelayedSync();
     return;
   }
@@ -36,56 +38,60 @@ function onEdit(e) {
   syncRmsToSupabase();
 }
 
-// One-shot delayed trigger: fires 1 min after a throttled edit, then deletes itself.
+// One-shot trigger created by _scheduleDelayedSync — fires once, deletes itself
 function _delayedSync() {
-  ScriptApp.getProjectTriggers().forEach(t => {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === '_delayedSync') ScriptApp.deleteTrigger(t);
   });
   syncRmsToSupabase();
 }
 
 function _scheduleDelayedSync() {
-  const already = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === '_delayedSync');
+  var already = ScriptApp.getProjectTriggers().some(function(t) {
+    return t.getHandlerFunction() === '_delayedSync';
+  });
   if (!already) {
     ScriptApp.newTrigger('_delayedSync').timeBased().after(60000).create();
   }
 }
 
-// ---- MAIN SYNC FUNCTION ----
+// ---- MAIN SYNC ----
 
 function syncRmsToSupabase() {
-  const props  = PropertiesService.getScriptProperties();
-  const apiUrl = props.getProperty('NEXTJS_API_URL');
-  const secret = props.getProperty('SYNC_SECRET');
+  var props  = PropertiesService.getScriptProperties();
+  var apiUrl = props.getProperty('NEXTJS_API_URL');
+  var secret = props.getProperty('SYNC_SECRET');
   if (!apiUrl || !secret) {
-    Logger.log('ERROR: Set NEXTJS_API_URL and SYNC_SECRET in Project Settings → Script Properties');
+    Logger.log('ERROR: Set NEXTJS_API_URL and SYNC_SECRET in Project Settings > Script Properties');
     return;
   }
 
   try {
-    const ss    = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(RMS_SHEET);
+    // openById works in ALL trigger types (time-based, onEdit, manual)
+    // getActiveSpreadsheet() silently returns null in time-based triggers — DO NOT use it
+    var ss    = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName(RMS_SHEET);
     if (!sheet) { Logger.log('Sheet not found: ' + RMS_SHEET); return; }
 
-    const all = sheet.getDataRange().getValues();
+    var all = sheet.getDataRange().getValues();
     if (all.length < 2) { Logger.log('No data rows in ' + RMS_SHEET); return; }
 
-    const rawHeaders = all[0].map(h => String(h).trim());
-    const headers    = rawHeaders.map(h => h.toLowerCase());
+    var rawHeaders = all[0].map(function(h) { return String(h).trim(); });
+    var headers    = rawHeaders.map(function(h) { return h.toLowerCase(); });
 
     function findCol(candidates) {
-      for (const c of candidates) {
-        const i = headers.indexOf(c.toLowerCase());
-        if (i >= 0) return i;
+      for (var ci = 0; ci < candidates.length; ci++) {
+        var idx = headers.indexOf(candidates[ci].toLowerCase());
+        if (idx >= 0) return idx;
       }
-      for (const c of candidates) {
-        const i = headers.findIndex(h => h.includes(c.toLowerCase()));
-        if (i >= 0) return i;
+      for (var ci2 = 0; ci2 < candidates.length; ci2++) {
+        var idx2 = headers.findIndex(function(h) { return h.includes(candidates[ci2].toLowerCase()); });
+        if (idx2 >= 0) return idx2;
       }
       return -1;
     }
 
-    const idx = {
+    var ix = {
       caseId:     findCol(['case id', 'case_id', 'caseid']),
       client:     findCol(['client name', 'store name', 'account name', 'client']),
       dateFiled:  findCol(['date filed', 'filed date', 'date']),
@@ -99,93 +105,94 @@ function syncRmsToSupabase() {
       reimQty:    findCol(['reimbursed qty', 'reimbursed_qty', 'reimbursed quantity']),
     };
 
-    if (idx.caseId === -1 || idx.client === -1) {
-      Logger.log('ERROR: Required columns missing. Headers found: ' + JSON.stringify(rawHeaders));
+    if (ix.caseId === -1 || ix.client === -1) {
+      Logger.log('ERROR: Required columns missing. Headers: ' + JSON.stringify(rawHeaders));
       return;
     }
 
-    const now  = new Date().toISOString();
-    const rows = all.slice(1)
-      .filter(r => r[idx.client] && r[idx.caseId])
-      .map(r => ({
-        case_id:              String(r[idx.caseId]),
-        client_name:          String(r[idx.client]).trim(),
-        date_filed:           _toDateStr(r[idx.dateFiled]),
-        claim_type:           r[idx.claimType]  ? String(r[idx.claimType])  : null,
-        reimbursement_status: r[idx.status]     ? String(r[idx.status])     : null,
-        reimbursement_amount: parseFloat(String(r[idx.amount]).replace(/[^0-9.-]+/g, '')) || 0,
-        rms_posting_date:     _toDateStr(r[idx.posting]),
-        synced_at:            now,
-        gtin:                 idx.gtin      >= 0 && r[idx.gtin]      ? String(r[idx.gtin])                                                 : null,
-        sku_id:               idx.skuId     >= 0 && r[idx.skuId]     ? String(r[idx.skuId])                                                : null,
-        unit_amount:          idx.unitAmount >= 0                     ? (parseFloat(String(r[idx.unitAmount]).replace(/[^0-9.-]+/g,'')) || null) : null,
-        reimbursed_qty:       idx.reimQty   >= 0                     ? (parseInt(String(r[idx.reimQty]), 10) || null)                      : null,
-      }));
+    var now  = new Date().toISOString();
+    var rows = all.slice(1)
+      .filter(function(r) { return r[ix.client] && r[ix.caseId]; })
+      .map(function(r) {
+        return {
+          case_id:              String(r[ix.caseId]),
+          client_name:          String(r[ix.client]).trim(),
+          date_filed:           _toDateStr(r[ix.dateFiled]),
+          claim_type:           r[ix.claimType]  ? String(r[ix.claimType])  : null,
+          reimbursement_status: r[ix.status]     ? String(r[ix.status])     : null,
+          reimbursement_amount: parseFloat(String(r[ix.amount]).replace(/[^0-9.-]+/g, '')) || 0,
+          rms_posting_date:     _toDateStr(r[ix.posting]),
+          synced_at:            now,
+          gtin:       ix.gtin      >= 0 && r[ix.gtin]      ? String(r[ix.gtin])  : null,
+          sku_id:     ix.skuId     >= 0 && r[ix.skuId]     ? String(r[ix.skuId]) : null,
+          unit_amount:  ix.unitAmount >= 0 ? (parseFloat(String(r[ix.unitAmount]).replace(/[^0-9.-]+/g,'')) || null) : null,
+          reimbursed_qty: ix.reimQty >= 0 ? (parseInt(String(r[ix.reimQty]), 10) || null) : null,
+        };
+      });
 
-    const res  = UrlFetchApp.fetch(apiUrl + '/api/sync', {
-      method:          'POST',
-      contentType:     'application/json',
-      headers:         { 'Authorization': 'Bearer ' + secret },
-      payload:         JSON.stringify({ type: 'rms_cases', data: rows }),
+    var res  = UrlFetchApp.fetch(apiUrl + '/api/sync', {
+      method:             'POST',
+      contentType:        'application/json',
+      headers:            { 'Authorization': 'Bearer ' + secret },
+      payload:            JSON.stringify({ type: 'rms_cases', data: rows }),
       muteHttpExceptions: true,
     });
 
-    const code = res.getResponseCode();
+    var code = res.getResponseCode();
     if (code === 200) {
-      Logger.log('Synced ' + rows.length + ' rows → Supabase (' + now + ')');
+      Logger.log('OK: synced ' + rows.length + ' rows at ' + now);
     } else {
-      Logger.log('Sync API error ' + code + ': ' + res.getContentText().slice(0, 400));
+      Logger.log('ERROR ' + code + ': ' + res.getContentText().slice(0, 400));
     }
   } catch (e) {
-    Logger.log('syncRmsToSupabase error: ' + e.message + '\n' + e.stack);
+    Logger.log('syncRmsToSupabase EXCEPTION: ' + e.message + '\n' + e.stack);
   }
 }
 
-// ---- SETUP (run once) ----
+// ---- SETUP (run once from editor) ----
 
-// Recommended: onEdit for instant updates + every-5-min fallback for missed edits
+// Recommended: onEdit (instant) + 5-min time-based (catches anything missed)
 function setupAllTriggers() {
   _deleteAllTriggers();
-  ScriptApp.newTrigger('onEdit')
-    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+  // Installable onEdit — fires under owner auth, works with UrlFetchApp
+  ScriptApp.newTrigger('onRmsSheetEdit')
+    .forSpreadsheet(SpreadsheetApp.openById(SHEET_ID))
     .onEdit()
     .create();
+  // 5-min fallback
   ScriptApp.newTrigger('syncRmsToSupabase')
     .timeBased()
     .everyMinutes(5)
     .create();
-  Logger.log('Triggers active: onEdit (instant) + every 5 min');
+  Logger.log('Triggers set: onRmsSheetEdit (instant) + syncRmsToSupabase every 5 min');
 }
 
-// Only time-based (safer for very large sheets)
 function setup5MinTrigger() {
   _deleteAllTriggers();
   ScriptApp.newTrigger('syncRmsToSupabase')
     .timeBased()
     .everyMinutes(5)
     .create();
-  Logger.log('Trigger active: every 5 min');
+  Logger.log('Trigger set: syncRmsToSupabase every 5 min');
 }
 
-// Only onEdit
 function setupOnEditTrigger() {
   _deleteAllTriggers();
-  ScriptApp.newTrigger('onEdit')
-    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+  ScriptApp.newTrigger('onRmsSheetEdit')
+    .forSpreadsheet(SpreadsheetApp.openById(SHEET_ID))
     .onEdit()
     .create();
-  Logger.log('Trigger active: onEdit');
+  Logger.log('Trigger set: onRmsSheetEdit on edit');
 }
 
 function _deleteAllTriggers() {
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (['onEdit', 'syncRmsToSupabase', '_delayedSync'].includes(t.getHandlerFunction())) {
-      ScriptApp.deleteTrigger(t);
-    }
+  var fns = ['onEdit', 'onRmsSheetEdit', 'syncRmsToSupabase', '_delayedSync'];
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (fns.indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
 }
 
-// ---- HELPER ----
+// ---- DATE HELPER ----
 
 function _toDateStr(val) {
   if (!val) return null;
@@ -193,9 +200,9 @@ function _toDateStr(val) {
     if (isNaN(val.getTime())) return null;
     return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   }
-  const s = String(val).trim();
+  var s = String(val).trim();
   if (!s) return null;
-  const d = new Date(s);
+  var d = new Date(s);
   if (!isNaN(d.getTime())) return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd');
   return s.slice(0, 10);
 }
