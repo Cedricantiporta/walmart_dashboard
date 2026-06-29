@@ -1,12 +1,79 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import logoSrc from './WFS_Logo.png';
 import { supabase } from '@/lib/supabase';
+import { clientGet } from '@/lib/client-cache';
 import { useSidebar } from './DashboardShell';
+
+type USrc = 'Billing' | 'Invoices';
+type UResult = { source: USrc; label: string; detail: string; term: string };
+type UCacheB = { clients: Array<{ clientName: string; cases?: Array<{ caseId: string; amount: number }> }> };
+type UCacheI = Array<{ invoice_number: string; client_name: string; total_reimbursed: number; billed_fee: number; case_ids?: string[]; case_snapshot?: Array<{ case_id: string }> }>;
+
+function matchUAmt(q: string, amount: number): boolean {
+  const s = q.replace(/[$,]/g, '').trim();
+  if (!s || !/^\d/.test(s)) return false;
+  return Math.floor(Math.abs(amount)).toString().startsWith(s.split('.')[0]);
+}
+
+function getUniversalResults(q: string): UResult[] {
+  if (!q || q.trim().length < 2) return [];
+  const ql = q.toLowerCase().trim();
+  const out: UResult[] = [];
+  const seen = new Set<string>();
+  const fmtU = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+
+  const billing = clientGet<UCacheB>('billing');
+  if (billing?.clients) {
+    for (const c of billing.clients) {
+      if (c.clientName.toLowerCase().includes(ql) && !seen.has(`b:c:${c.clientName}`)) {
+        seen.add(`b:c:${c.clientName}`);
+        out.push({ source: 'Billing', label: c.clientName, detail: '', term: c.clientName });
+      }
+      for (const cs of (c.cases ?? [])) {
+        if (cs.caseId.toLowerCase().includes(ql) && !seen.has(`b:id:${cs.caseId}`)) {
+          seen.add(`b:id:${cs.caseId}`);
+          out.push({ source: 'Billing', label: cs.caseId, detail: c.clientName, term: cs.caseId });
+        }
+        if (matchUAmt(q, cs.amount) && !seen.has(`b:a:${c.clientName}`)) {
+          seen.add(`b:a:${c.clientName}`);
+          out.push({ source: 'Billing', label: fmtU(cs.amount), detail: c.clientName, term: c.clientName });
+        }
+      }
+    }
+  }
+
+  const invs = clientGet<UCacheI>('invoices');
+  if (Array.isArray(invs)) {
+    for (const inv of invs) {
+      if (inv.client_name?.toLowerCase().includes(ql) && !seen.has(`i:c:${inv.client_name}`)) {
+        seen.add(`i:c:${inv.client_name}`);
+        out.push({ source: 'Invoices', label: inv.client_name, detail: '', term: inv.client_name });
+      }
+      if (inv.invoice_number?.toLowerCase().includes(ql) && !seen.has(`i:n:${inv.invoice_number}`)) {
+        seen.add(`i:n:${inv.invoice_number}`);
+        out.push({ source: 'Invoices', label: inv.invoice_number, detail: inv.client_name, term: inv.invoice_number });
+      }
+      const ids = [...new Set([...(inv.case_ids ?? []), ...(inv.case_snapshot ?? []).map(c => c.case_id)])];
+      for (const id of ids) {
+        if (id.toLowerCase().includes(ql) && !seen.has(`i:id:${id}`)) {
+          seen.add(`i:id:${id}`);
+          out.push({ source: 'Invoices', label: id, detail: inv.client_name, term: id });
+        }
+      }
+      if ((matchUAmt(q, inv.total_reimbursed) || matchUAmt(q, inv.billed_fee)) && !seen.has(`i:a:${inv.invoice_number}`)) {
+        seen.add(`i:a:${inv.invoice_number}`);
+        out.push({ source: 'Invoices', label: fmtU(inv.total_reimbursed), detail: inv.client_name, term: inv.invoice_number });
+      }
+    }
+  }
+
+  return out.slice(0, 10);
+}
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: (
@@ -69,7 +136,38 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
   onMobileClose?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { setSyncTime } = useSidebar();
+
+  const [uq, setUq] = useState('');
+  const [uResults, setUResults] = useState<UResult[]>([]);
+  const [showU, setShowU] = useState(false);
+  const uRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!uq.trim()) { setUResults([]); setShowU(false); return; }
+    const r = getUniversalResults(uq);
+    setUResults(r);
+    setShowU(r.length > 0);
+  }, [uq]);
+
+  useEffect(() => {
+    if (!showU) return;
+    function h(e: MouseEvent) {
+      if (uRef.current && !uRef.current.contains(e.target as Node)) setShowU(false);
+    }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showU]);
+
+  function handleUClick(r: UResult) {
+    const path = r.source === 'Billing'
+      ? `/dashboard/billing?q=${encodeURIComponent(r.term)}`
+      : `/dashboard/invoices?q=${encodeURIComponent(r.term)}`;
+    setShowU(false);
+    setUq('');
+    router.push(path);
+  }
 
   useEffect(() => {
     if (pathname.startsWith('/dashboard')) localStorage.setItem('wfs_last_page', pathname);
@@ -167,6 +265,43 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
             </div>
           )}
         </div>
+
+        {/* Universal search */}
+        {!collapsed && (
+          <div ref={uRef} style={{ padding: '0 8px 6px', flexShrink: 0, position: 'relative' }}>
+            <div style={{ position: 'relative' }}>
+              <input
+                value={uq}
+                onChange={e => setUq(e.target.value)}
+                onFocus={() => uq.trim() && setShowU(uResults.length > 0)}
+                placeholder="Search anything…"
+                style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '6px 10px 6px 28px', borderRadius: 8, border: `1px solid ${border}`, background: pill, color: txt, outline: 'none', fontFamily: 'inherit' }}
+              />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
+            {showU && uResults.length > 0 && (
+              <div style={{ position: 'absolute', left: 8, right: 8, top: '100%', marginTop: 4, background: darkMode ? '#27272a' : '#fff', border: `1px solid ${border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999 }}>
+                {(['Billing', 'Invoices'] as const).map(src => {
+                  const grp = uResults.filter(r => r.source === src);
+                  if (!grp.length) return null;
+                  return (
+                    <div key={src}>
+                      <div style={{ padding: '5px 10px 2px', fontSize: 10, fontWeight: 700, color: muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{src}</div>
+                      {grp.map((r, i) => (
+                        <button key={i} onClick={() => handleUClick(r)} style={{ width: '100%', textAlign: 'left', padding: '5px 10px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: txt }}>
+                          <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
+                          {r.detail && <span style={{ fontSize: 11, color: muted, flexShrink: 0, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.detail}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Nav */}
         <nav style={{ flex: 1, padding: '4px 6px', overflowY: 'auto', overflowX: 'hidden' }}>

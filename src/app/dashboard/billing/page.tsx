@@ -48,6 +48,12 @@ type Invoice = {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+function matchAmt(q: string, amount: number): boolean {
+  const s = q.replace(/[$,]/g, '').trim();
+  if (!s || !/^\d/.test(s)) return false;
+  return Math.floor(Math.abs(amount)).toString().startsWith(s.split('.')[0]);
+}
+
 const GAS_HEADERS = 'Invoice To,Country,Walmart Posting Date,Item Description,Claim Type,GTIN,SKU ID,Case ID,Unit Amount,Rate,Quantity,Total Reimbursement,Conversion Rate,Currency,Total Reimbursed USD,Fee Amount';
 
 function fmtMDY(iso: string) {
@@ -580,7 +586,7 @@ export default function BillingPage() {
   const [data, setData] = useState<BillingData | null>(() => clientGet<BillingData>('billing') ?? null);
   const [loading, setLoading] = useState(() => !clientGet('billing'));
   const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') ?? '' : '');
   const [activeClient, setActiveClient] = useState<ClientBilling | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientBilling | null>(null);
   const [nextNum, setNextNum] = useState('NV-1001');
@@ -656,21 +662,22 @@ export default function BillingPage() {
 
   const filtered = billingTab === 'billed' ? billedClients.filter(c => {
     if (!search) return true;
-    return c.clientName.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    return c.clientName.toLowerCase().includes(q) || matchAmt(search, c.previouslyBilledReimbursed) || matchAmt(search, c.previouslyBilledFee);
   }) : billingTab === 'pending' ? pendingClients.filter(c => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return c.clientName.toLowerCase().includes(q) || (c.pendingCases ?? []).some(cs => cs.caseId.toLowerCase().includes(q));
+    return c.clientName.toLowerCase().includes(q) || (c.pendingCases ?? []).some(cs => cs.caseId.toLowerCase().includes(q) || matchAmt(search, cs.amount));
   }) : billingTab === 'overdue' ? overdueClients.filter(c => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return c.clientName.toLowerCase().includes(q) || (c.overdueCases ?? []).some(cs => cs.caseId.toLowerCase().includes(q));
+    return c.clientName.toLowerCase().includes(q) || (c.overdueCases ?? []).some(cs => cs.caseId.toLowerCase().includes(q) || matchAmt(search, cs.amount));
   }) : (data?.clients ?? []).filter(c => {
     if (billingTab === 'rtb' && c.totalFee === 0) return false;
     if (filterType === 'prevMonth' && c.prevMonthFee === 0) return false;
     if (!search) return true;
     const q = search.toLowerCase();
-    return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q));
+    return c.clientName.toLowerCase().includes(q) || c.cases.some(cs => cs.caseId.toLowerCase().includes(q) || matchAmt(search, cs.amount));
   });
 
   const [prevMatchedClient, setPrevMatchedClient] = useState<ClientBilling | null>(null);

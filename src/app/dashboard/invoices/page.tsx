@@ -19,6 +19,12 @@ type Invoice = {
   pdf_url?: string;
 };
 
+function matchAmt(q: string, amount: number): boolean {
+  const s = q.replace(/[$,]/g, '').trim();
+  if (!s || !/^\d/.test(s)) return false;
+  return Math.floor(Math.abs(amount)).toString().startsWith(s.split('.')[0]);
+}
+
 function Sk({ h = 16, w = '100%' }: { h?: number; w?: string | number }) {
   return (
     <div style={{ height: h, width: w, borderRadius: 6, background: 'linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite' }} />
@@ -345,7 +351,7 @@ export default function InvoicesPage() {
     return Array.isArray(c) ? c : [];
   });
   const [loading, setLoading] = useState(() => !clientGet('invoices'));
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') ?? '' : '');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
   const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'>(null);
@@ -422,7 +428,7 @@ export default function InvoicesPage() {
     }
     if (!search) return true;
     const q = search.toLowerCase();
-    return inv.client_name?.toLowerCase().includes(q) || inv.invoice_number?.toLowerCase().includes(q) || (inv.case_ids ?? []).some(id => id.toLowerCase().includes(q)) || (inv.case_snapshot ?? []).some(cs => cs.case_id.toLowerCase().includes(q));
+    return inv.client_name?.toLowerCase().includes(q) || inv.invoice_number?.toLowerCase().includes(q) || (inv.case_ids ?? []).some(id => id.toLowerCase().includes(q)) || (inv.case_snapshot ?? []).some(cs => cs.case_id.toLowerCase().includes(q)) || matchAmt(search, inv.total_reimbursed) || matchAmt(search, inv.billed_fee);
   });
 
   const sorted = [...filtered].sort((a, b) => {
