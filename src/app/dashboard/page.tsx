@@ -293,12 +293,17 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
       </svg>
 
       {hov !== null && (
-        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 76, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 10, padding: '10px 14px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 162 }}>
+        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 104, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 10, padding: '10px 14px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 162 }}>
           <div style={{ color: '#71717a', fontSize: 11, fontWeight: 600, marginBottom: 7 }}>{data[hov].label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#006FEE', flexShrink: 0 }} />
             <span style={{ color: '#71717a', flex: 1 }}>Recovered</span>
             <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].recovered)}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#11181c', flexShrink: 0 }} />
+            <span style={{ color: '#71717a', flex: 1 }}>Fee</span>
+            <span style={{ fontWeight: 700, color: '#11181c' }}>{fmtFull(data[hov].fee)}</span>
           </div>
         </div>
       )}
@@ -319,7 +324,7 @@ const CHART_COLORS = [
   '#FFE0A0', // very light orange
 ];
 
-function GaugeChart({ data }: { data: { category: string; amount: number }[] }) {
+function GaugeChart({ data, totalRate = 0 }: { data: { category: string; amount: number }[]; totalRate?: number }) {
   const [hov, setHov] = useState<number | null>(null);
   const [tip, setTip] = useState({ x: 0, y: 0 });
 
@@ -374,12 +379,22 @@ function GaugeChart({ data }: { data: { category: string; amount: number }[] }) 
       </div>
 
       {hov !== null && (
-        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 52, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 8, padding: '7px 11px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: slices[hov].color }} />
-            <span style={{ fontWeight: 600, color: '#11181c' }}>{slices[hov].category || 'Other'}</span>
+        <div style={{ position: 'fixed', left: tip.x + 12, top: tip.y - 84, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 8, padding: '8px 12px', fontSize: 12, zIndex: 200, pointerEvents: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 164 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: slices[hov].color, flexShrink: 0 }} />
+            <span style={{ fontWeight: 600, color: '#11181c', flex: 1 }}>{slices[hov].category || 'Other'}</span>
+            <span style={{ fontSize: 11, color: '#71717a' }}>{(slices[hov].frac * 100).toFixed(1)}%</span>
           </div>
-          <div style={{ color: '#71717a' }}>{fmtFull(slices[hov].amount)} · {(slices[hov].frac * 100).toFixed(1)}%</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: '#71717a', marginBottom: 3 }}>
+            <span>Recovered</span>
+            <span style={{ fontWeight: 600, color: '#006FEE' }}>{fmtFull(slices[hov].amount)}</span>
+          </div>
+          {totalRate > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: '#71717a' }}>
+              <span>Fee</span>
+              <span style={{ fontWeight: 600, color: '#11181c' }}>{fmtFull(slices[hov].amount * totalRate)}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -439,6 +454,21 @@ export default function DashboardPage() {
 
   const { onToggle, setSyncTime } = useSidebar();
   const timeOptions = getTimeOptions();
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showDatePicker) return;
+    function handler(e: MouseEvent) {
+      const path = e.composedPath ? e.composedPath() : [];
+      const clickedInside = datePickerRef.current && (
+        datePickerRef.current.contains(e.target as Node) ||
+        path.some(el => el === datePickerRef.current)
+      );
+      if (!clickedInside) setShowDatePicker(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showDatePicker]);
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -524,6 +554,38 @@ export default function DashboardPage() {
       })()
     : '';
 
+  const displayDateRange = (() => {
+    const now = new Date();
+    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (timeRange === 'custom' && customRange) {
+      const s = new Date(customRange.start + 'T12:00:00');
+      const e = new Date(customRange.end + 'T12:00:00');
+      return `${fmt(s)} – ${fmt(e)}`;
+    }
+    if (timeRange === 'thisMonth') {
+      const s = new Date(now.getFullYear(), now.getMonth(), 1);
+      const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return `${fmt(s)} – ${fmt(e)}`;
+    }
+    if (timeRange === 'lastMonth') {
+      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const e = new Date(now.getFullYear(), now.getMonth(), 0);
+      return `${fmt(s)} – ${fmt(e)}`;
+    }
+    if (timeRange === 'last3Months') {
+      const s = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      const e = new Date(now.getFullYear(), now.getMonth(), 0);
+      return `${fmt(s)} – ${fmt(e)}`;
+    }
+    if (/^\d{4}-\d{2}$/.test(timeRange)) {
+      const [y, m] = timeRange.split('-').map(Number);
+      const s = new Date(y, m - 1, 1);
+      const e = new Date(y, m, 0);
+      return `${fmt(s)} – ${fmt(e)}`;
+    }
+    return dateRangeLabel;
+  })();
+
   const syncLabel = lastSync
     ? new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '';
@@ -592,31 +654,32 @@ export default function DashboardPage() {
 
         {/* Dropdowns row — date range left, selectors right */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
-          <div style={{ position: 'relative' }}>
-            {dateRangeLabel ? (
-              <button
-                onClick={() => { setPickerStart(customRange?.start ?? ''); setPickerEnd(customRange?.end ?? ''); setShowDatePicker(p => !p); }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600, color: '#11181c', background: '#eaebec', borderRadius: 999, padding: '6px 14px', border: 'none', cursor: 'pointer', outline: 'none' }}
-              >
-                <CalendarIcon /> {dateRangeLabel}
-              </button>
-            ) : <span />}
+          <div ref={datePickerRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setPickerStart(customRange?.start ?? ''); setPickerEnd(customRange?.end ?? ''); setShowDatePicker(p => !p); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600, color: '#11181c', background: '#eaebec', borderRadius: 999, padding: '6px 14px', border: 'none', cursor: 'pointer', outline: 'none' }}
+            >
+              <CalendarIcon /> {displayDateRange}
+            </button>
             {showDatePicker && (
-              <div style={{ position: 'absolute', top: '110%', left: 0, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 18, boxShadow: '0 8px 32px rgba(0,0,0,0.13)', zIndex: 300, padding: '16px 18px', minWidth: 280 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#71717a', marginBottom: 10 }}>Custom date range</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: '#a1a1aa', marginBottom: 3 }}>Start</div>
-                    <input type="date" value={pickerStart} onChange={e => setPickerStart(e.target.value)} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e4e4e7', borderRadius: 10, fontSize: 13, outline: 'none', color: '#11181c' }} />
+              <div style={{ position: 'absolute', top: '110%', left: 0, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 20, boxShadow: '0 16px 48px rgba(0,0,0,0.14)', zIndex: 300, padding: '20px', minWidth: 300 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#11181c' }}>Custom Range</span>
+                  <button onClick={() => setShowDatePicker(false)} style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: 16, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ background: '#f9fafb', borderRadius: 12, padding: '10px 14px', border: '1px solid #f0f0f0' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#a1a1aa', letterSpacing: '0.08em', marginBottom: 5, textTransform: 'uppercase' as const }}>From</div>
+                    <input type="date" value={pickerStart} onChange={e => setPickerStart(e.target.value)} style={{ width: '100%', border: 'none', background: 'transparent', fontSize: 14, fontWeight: 600, color: '#11181c', outline: 'none', cursor: 'pointer' }} />
                   </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: '#a1a1aa', marginBottom: 3 }}>End</div>
-                    <input type="date" value={pickerEnd} onChange={e => setPickerEnd(e.target.value)} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e4e4e7', borderRadius: 10, fontSize: 13, outline: 'none', color: '#11181c' }} />
+                  <div style={{ background: '#f9fafb', borderRadius: 12, padding: '10px 14px', border: '1px solid #f0f0f0' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#a1a1aa', letterSpacing: '0.08em', marginBottom: 5, textTransform: 'uppercase' as const }}>To</div>
+                    <input type="date" value={pickerEnd} onChange={e => setPickerEnd(e.target.value)} style={{ width: '100%', border: 'none', background: 'transparent', fontSize: 14, fontWeight: 600, color: '#11181c', outline: 'none', cursor: 'pointer' }} />
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                  <button onClick={() => { if (pickerStart && pickerEnd) { setCustomRange({ start: pickerStart, end: pickerEnd }); setTimeRange('custom'); } setShowDatePicker(false); }} disabled={!pickerStart || !pickerEnd} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#006FEE', color: '#fff', fontSize: 12, fontWeight: 700, cursor: !pickerStart || !pickerEnd ? 'not-allowed' : 'pointer', opacity: !pickerStart || !pickerEnd ? 0.5 : 1 }}>Apply</button>
-                  <button onClick={() => { setCustomRange(null); setTimeRange('thisMonth'); setShowDatePicker(false); }} style={{ flex: 1, padding: '8px', borderRadius: 10, border: '1px solid #e4e4e7', background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>Reset</button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <button onClick={() => { setCustomRange(null); setTimeRange('thisMonth'); setShowDatePicker(false); }} style={{ flex: 1, padding: '9px', borderRadius: 999, border: '1px solid #e4e4e7', background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151', outline: 'none' }}>Reset</button>
+                  <button onClick={() => { if (pickerStart && pickerEnd) { setCustomRange({ start: pickerStart, end: pickerEnd }); setTimeRange('custom'); } setShowDatePicker(false); }} disabled={!pickerStart || !pickerEnd} style={{ flex: 1, padding: '9px', borderRadius: 999, border: 'none', background: pickerStart && pickerEnd ? '#006FEE' : '#e4e4e7', color: pickerStart && pickerEnd ? '#fff' : '#a1a1aa', fontSize: 13, fontWeight: 700, cursor: !pickerStart || !pickerEnd ? 'not-allowed' : 'pointer', outline: 'none' }}>Apply</button>
                 </div>
               </div>
             )}
@@ -677,7 +740,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <GaugeChart data={categoryData ?? []} />
+              <GaugeChart data={categoryData ?? []} totalRate={metrics && metrics.totalReimbursed > 0 ? metrics.totalFees / metrics.totalReimbursed : 0} />
             )}
           </div>
         </div>

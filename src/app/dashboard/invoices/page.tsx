@@ -87,6 +87,9 @@ const toolbarPill: React.CSSProperties = {
   cursor: 'pointer', outline: 'none', flexShrink: 0,
 };
 
+const getInvoiceGrid = (select: boolean) =>
+  select ? '32px 110px minmax(0,1fr) 50px 20px 120px 90px 110px 168px' : '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
+
 function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
   label: string; col: string; sortCol: string; sortDir: 'asc'|'desc';
   onSort: (c: string) => void; align?: 'left'|'right';
@@ -112,7 +115,7 @@ const pillAction = (danger = false): React.CSSProperties => ({
 
 // ── invoice row ───────────────────────────────────────────────────────────────
 
-function InvoiceRow({ inv, onDelete, searchQ }: { inv: Invoice; onDelete: (num: string) => void; searchQ?: string }) {
+function InvoiceRow({ inv, onDelete, searchQ, selectMode = false, isSelected = false, onToggleSelect }: { inv: Invoice; onDelete: (num: string) => void; searchQ?: string; selectMode?: boolean; isSelected?: boolean; onToggleSelect?: () => void }) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
@@ -174,11 +177,16 @@ function InvoiceRow({ inv, onDelete, searchQ }: { inv: Invoice; onDelete: (num: 
 
   const snapCount = snapWithDate.length > 0 ? snapWithDate.length : (inv.case_ids?.length ?? 0);
 
-  const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
+  const G = getInvoiceGrid(selectMode);
 
   return (
     <>
       <div onClick={handleToggle} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: '1px solid #f3f4f6', background: open ? '#fafafa' : '#fff', alignItems: 'center', minWidth: 700 }}>
+        {selectMode && (
+          <div onClick={e => { e.stopPropagation(); onToggleSelect?.(); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#006FEE' }} />
+          </div>
+        )}
         <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#006FEE', fontSize: 12 }}>{inv.invoice_number}</span>
         <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
         <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{snapCount}</span>
@@ -246,6 +254,9 @@ export default function InvoicesPage() {
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
   const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'>(null);
   const [filterType, setFilterType] = useState<'all'|'thisMonth'>('all');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedNums, setSelectedNums] = useState<Set<string>>(new Set());
+  const [unbillBusy, setUnbillBusy] = useState(false);
   const popupAreaRef = useRef<HTMLDivElement>(null);
   const { onToggle } = useSidebar();
 
@@ -261,6 +272,19 @@ export default function InvoicesPage() {
   function handleSort(col: string) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortCol(col); setSortDir('desc'); }
+  }
+
+  async function handleUnbillSelected() {
+    if (selectedNums.size === 0 || unbillBusy) return;
+    setUnbillBusy(true);
+    for (const num of [...selectedNums]) {
+      await fetch(`/api/invoices/${num}`, { method: 'DELETE' });
+    }
+    setInvoices(prev => prev.filter(i => !selectedNums.has(i.invoice_number)));
+    clientClear('invoices');
+    setSelectedNums(new Set());
+    setSelectMode(false);
+    setUnbillBusy(false);
   }
 
   useEffect(() => {
@@ -350,6 +374,26 @@ export default function InvoicesPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Select mode */}
+                  {!selectMode ? (
+                    <button onClick={() => { setSelectMode(true); setSelectedNums(new Set()); setOpenPopup(null); }} style={toolbarPill}>
+                      <IconCols /> Select
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={() => { setSelectMode(false); setSelectedNums(new Set()); }} style={toolbarPill}>
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleUnbillSelected}
+                        disabled={selectedNums.size === 0 || unbillBusy}
+                        style={{ ...toolbarPill, background: selectedNums.size > 0 ? '#f31260' : '#eaebec', color: selectedNums.size > 0 ? '#fff' : '#a1a1aa', cursor: selectedNums.size === 0 ? 'not-allowed' : 'pointer', opacity: unbillBusy ? 0.7 : 1 }}
+                      >
+                        {unbillBusy ? 'Unbilling…' : `Unbill${selectedNums.size > 0 ? ` (${selectedNums.size})` : ' All'}`}
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
                   <input
@@ -370,9 +414,15 @@ export default function InvoicesPage() {
 
             {/* Column headers — sit on grey layer */}
             {!loading && sorted.length > 0 && (() => {
-              const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
+              const G = getInvoiceGrid(selectMode);
+              const allSelected = sorted.length > 0 && sorted.every(inv => selectedNums.has(inv.invoice_number));
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, flexShrink: 0, minWidth: 700 }}>
+                  {selectMode && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <input type="checkbox" checked={allSelected} onChange={() => { if (allSelected) setSelectedNums(new Set()); else setSelectedNums(new Set(sorted.map(i => i.invoice_number))); }} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#006FEE' }} />
+                    </div>
+                  )}
                   <ColHdr label="Invoice #" col="invoice" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                   <ColHdr label="Client" col="client" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                   <ColHdr label="Cases" col="cases" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" />
@@ -396,7 +446,7 @@ export default function InvoicesPage() {
                   {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
                 </div>
               ) : (() => {
-                const G = '110px minmax(0,1fr) 50px 20px 120px 90px 110px 200px';
+                const G = getInvoiceGrid(selectMode);
                 return (
                   <div style={{ flex: 1, overflow: 'auto' }}>
                     <div style={{ minWidth: 700 }}>
@@ -406,11 +456,20 @@ export default function InvoicesPage() {
                              (inv.case_snapshot ?? []).some(c => c.case_id.toLowerCase().includes(search.toLowerCase())))
                           : false;
                         return (
-                          <InvoiceRow key={inv.invoice_number} inv={inv} onDelete={num => setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; })} searchQ={caseSearch ? search : undefined} />
+                          <InvoiceRow
+                            key={inv.invoice_number}
+                            inv={inv}
+                            onDelete={num => setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; })}
+                            searchQ={caseSearch ? search : undefined}
+                            selectMode={selectMode}
+                            isSelected={selectedNums.has(inv.invoice_number)}
+                            onToggleSelect={() => setSelectedNums(prev => { const next = new Set(prev); if (next.has(inv.invoice_number)) next.delete(inv.invoice_number); else next.add(inv.invoice_number); return next; })}
+                          />
                         );
                       })}
                       <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: '1/6' }}>
+                        {selectMode && <span />}
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: selectMode ? '2/7' : '1/6' }}>
                           {search ? `Filtered (${filtered.length})` : `Total (${invoices.length})`}
                         </span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(totalRecovered)}</span>
