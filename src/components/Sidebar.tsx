@@ -15,9 +15,13 @@ type UCacheB = { clients: Array<{ clientName: string; cases?: Array<{ caseId: st
 type UCacheI = Array<{ invoice_number: string; client_name: string; total_reimbursed: number; billed_fee: number; case_ids?: string[]; case_snapshot?: Array<{ case_id: string }> }>;
 
 function matchUAmt(q: string, amount: number): boolean {
-  const s = q.replace(/[$,]/g, '').trim();
+  const s = q.replace(/[$,\s]/g, '');
   if (!s || !/^\d/.test(s)) return false;
-  return Math.floor(Math.abs(amount)).toString().startsWith(s.split('.')[0]);
+  const qv = parseFloat(s);
+  if (isNaN(qv)) return false;
+  // Exact cents match if decimal provided; exact dollar match if whole number
+  if (s.includes('.')) return Math.abs(Math.abs(amount) - qv) < 0.005;
+  return Math.floor(Math.abs(amount)) === Math.floor(qv);
 }
 
 function getUniversalResults(q: string): UResult[] {
@@ -39,8 +43,8 @@ function getUniversalResults(q: string): UResult[] {
           seen.add(`b:id:${cs.caseId}`);
           out.push({ source: 'Billing', label: cs.caseId, detail: c.clientName, term: cs.caseId });
         }
-        if (matchUAmt(q, cs.amount) && !seen.has(`b:a:${c.clientName}`)) {
-          seen.add(`b:a:${c.clientName}`);
+        if (matchUAmt(q, cs.amount) && !seen.has(`b:a:${cs.caseId}`)) {
+          seen.add(`b:a:${cs.caseId}`);
           out.push({ source: 'Billing', label: fmtU(cs.amount), detail: c.clientName, term: c.clientName });
         }
       }
@@ -319,32 +323,47 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
                   else if (e.key === 'Enter' && uResults.length > 0) { e.preventDefault(); handleUClick(uResults[highlightedIdx]); }
                   else if (e.key === 'Escape') { setShowU(false); setUq(''); }
                 }}
-                placeholder="Search… (⇧K)"
-                style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '6px 26px 6px 28px', borderRadius: 999, border: `1px solid ${border}`, background: pill, color: txt, outline: 'none', fontFamily: 'inherit' }}
+                placeholder="Search…"
+                style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '6px 46px 6px 28px', borderRadius: 999, border: `1px solid ${border}`, background: pill, color: txt, outline: 'none', fontFamily: 'inherit' }}
               />
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              {uq && (
+              {uq ? (
                 <button onClick={() => { setUq(''); setShowU(false); uInputRef.current?.focus(); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, borderRadius: '50%', border: 'none', background: muted, color: '#fff', fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none', padding: 0, lineHeight: 1 }}>×</button>
+              ) : (
+                <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: muted, background: darkMode ? '#3f3f46' : '#e4e4e7', border: `1px solid ${border}`, borderRadius: 4, padding: '1px 5px', pointerEvents: 'none', fontWeight: 600, letterSpacing: '0.01em', lineHeight: 1.4 }}>⇧K</span>
               )}
             </div>
-            {showU && uResults.length > 0 && (
-              <div style={{ position: 'absolute', left: 8, right: 8, top: '100%', marginTop: 4, background: darkMode ? '#27272a' : '#fff', border: `1px solid ${border}`, borderRadius: 10, overflow: 'auto', maxHeight: 280, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999 }}>
-                {uResults.map((r, i) => {
-                  const isHl = i === highlightedIdx;
-                  return (
-                    <button key={i} onClick={() => handleUClick(r)} onMouseEnter={() => setHighlightedIdx(i)}
-                      style={{ width: '100%', textAlign: 'left', padding: '6px 10px', background: isHl ? (darkMode ? '#3f3f46' : '#eff6ff') : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: txt }}
-                    >
-                      <span style={{ fontSize: 10, fontWeight: 700, color: r.source === 'Billing' ? '#2563eb' : '#7c3aed', background: r.source === 'Billing' ? '#dbeafe' : '#ede9fe', borderRadius: 999, padding: '1px 6px', flexShrink: 0, whiteSpace: 'nowrap' }}>{r.source}</span>
-                      <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
-                      {r.detail && <span style={{ fontSize: 11, color: muted, flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.detail}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {showU && uResults.length > 0 && (() => {
+              const billingR = uResults.map((r, i) => ({ r, i })).filter(x => x.r.source === 'Billing');
+              const invoiceR = uResults.map((r, i) => ({ r, i })).filter(x => x.r.source === 'Invoices');
+              const renderGroup = (group: { r: UResult; i: number }[], label: string, color: string) => {
+                if (!group.length) return null;
+                return (
+                  <div key={label}>
+                    <div style={{ padding: '5px 10px 2px', fontSize: 10, fontWeight: 700, color, letterSpacing: '0.03em' }}>{label}</div>
+                    {group.map(({ r, i }) => {
+                      const isHl = i === highlightedIdx;
+                      return (
+                        <button key={i} onClick={() => handleUClick(r)} onMouseEnter={() => setHighlightedIdx(i)}
+                          style={{ width: '100%', textAlign: 'left', padding: '5px 10px', background: isHl ? (darkMode ? '#3f3f46' : '#eff6ff') : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: txt }}
+                        >
+                          <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
+                          {r.detail && <span style={{ fontSize: 11, color: muted, flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.detail}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              };
+              return (
+                <div style={{ position: 'absolute', left: 8, right: 8, top: '100%', marginTop: 4, background: darkMode ? '#27272a' : '#fff', border: `1px solid ${border}`, borderRadius: 10, overflow: 'auto', maxHeight: 280, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999 }}>
+                  {renderGroup(billingR, 'Billing', '#2563eb')}
+                  {renderGroup(invoiceR, 'Invoices', '#7c3aed')}
+                </div>
+              );
+            })()}
           </div>
         )}
 
