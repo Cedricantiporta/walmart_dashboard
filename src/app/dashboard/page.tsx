@@ -854,7 +854,7 @@ export default function DashboardPage() {
               <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Invoices</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Last Billed</span>
             </div>
-            <div style={{ background: '#fff', borderRadius: 12, margin: '0 6px 6px', overflow: 'hidden' }}>
+            <div style={{ background: '#fff', borderRadius: 12, margin: '0 6px 6px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {loadingClients && !clientSummary.length ? (
                 <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[1,2,3,4].map(i => <Skeleton key={i} h={36} />)}
@@ -865,17 +865,19 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <>
-                  {clientDisplayed.map((cs, i) => (
-                    <div key={cs.name} style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '9px 10px 9px 16px', gap: 8, borderBottom: i < clientDisplayed.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cs.name}</span>
-                      <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(cs.totalRecovered)}</span>
-                      <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#374151' }}>{fmtFull(cs.totalFee)}</span>
-                      <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.cases}</span>
-                      <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.invoices}</span>
-                      <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.lastDate ? new Date(cs.lastDate.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
-                    </div>
-                  ))}
-                  <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
+                  <div style={{ overflowY: 'auto', maxHeight: 360 }}>
+                    {clientDisplayed.map((cs, i) => (
+                      <div key={cs.name} style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '9px 10px 9px 16px', gap: 8, borderBottom: i < clientDisplayed.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cs.name}</span>
+                        <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(cs.totalRecovered)}</span>
+                        <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#374151' }}>{fmtFull(cs.totalFee)}</span>
+                        <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.cases}</span>
+                        <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.invoices}</span>
+                        <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.lastDate ? new Date(cs.lastDate.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', flexShrink: 0 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c' }}>
                       {clientSearch ? `Filtered (${clientDisplayed.length})` : `Total (${clientSummary.length})`}
                     </span>

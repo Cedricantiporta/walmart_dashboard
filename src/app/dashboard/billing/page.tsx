@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob, generateInvoicePDFBlobRaw } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
@@ -586,7 +587,8 @@ export default function BillingPage() {
   const [data, setData] = useState<BillingData | null>(() => clientGet<BillingData>('billing') ?? null);
   const [loading, setLoading] = useState(() => !clientGet('billing'));
   const [error, setError] = useState('');
-  const [search, setSearch] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') ?? '' : '');
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState('');
   const [activeClient, setActiveClient] = useState<ClientBilling | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientBilling | null>(null);
   const [nextNum, setNextNum] = useState('NV-1001');
@@ -602,6 +604,11 @@ export default function BillingPage() {
   const popupAreaRef = useRef<HTMLDivElement>(null);
 
   const { onToggle } = useSidebar();
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) setSearch(q);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!openPopup) return;

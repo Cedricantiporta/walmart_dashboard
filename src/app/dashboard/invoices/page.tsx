@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
@@ -351,7 +352,8 @@ export default function InvoicesPage() {
     return Array.isArray(c) ? c : [];
   });
   const [loading, setLoading] = useState(() => !clientGet('invoices'));
-  const [search, setSearch] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') ?? '' : '');
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
   const [openPopup, setOpenPopup] = useState<null|'filter'|'sort'>(null);
@@ -363,6 +365,11 @@ export default function InvoicesPage() {
   const [openInv, setOpenInv] = useState<Invoice | null>(null);
   const popupAreaRef = useRef<HTMLDivElement>(null);
   const { onToggle } = useSidebar();
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) setSearch(q);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!openPopup) return;

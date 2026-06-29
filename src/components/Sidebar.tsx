@@ -49,6 +49,22 @@ function getUniversalResults(q: string): UResult[] {
 
   const invs = clientGet<UCacheI>('invoices');
   if (Array.isArray(invs)) {
+    // Previous billing cases — show as Billing source, navigate to billing previous tab
+    for (const inv of invs) {
+      const ids = [...new Set([...(inv.case_ids ?? []), ...(inv.case_snapshot ?? []).map(c => c.case_id)])];
+      for (const id of ids) {
+        if (id.toLowerCase().includes(ql) && !seen.has(`b:prev:${id}`)) {
+          seen.add(`b:prev:${id}`);
+          out.push({ source: 'Billing', label: id, detail: `${inv.client_name} · prev`, term: id });
+        }
+      }
+      if (matchUAmt(q, inv.total_reimbursed) && !seen.has(`b:prev:a:${inv.client_name}`)) {
+        seen.add(`b:prev:a:${inv.client_name}`);
+        out.push({ source: 'Billing', label: fmtU(inv.total_reimbursed), detail: `${inv.client_name} · prev`, term: inv.client_name });
+      }
+    }
+
+    // Invoice entries
     for (const inv of invs) {
       if (inv.client_name?.toLowerCase().includes(ql) && !seen.has(`i:c:${inv.client_name}`)) {
         seen.add(`i:c:${inv.client_name}`);
@@ -58,8 +74,8 @@ function getUniversalResults(q: string): UResult[] {
         seen.add(`i:n:${inv.invoice_number}`);
         out.push({ source: 'Invoices', label: inv.invoice_number, detail: inv.client_name, term: inv.invoice_number });
       }
-      const ids = [...new Set([...(inv.case_ids ?? []), ...(inv.case_snapshot ?? []).map(c => c.case_id)])];
-      for (const id of ids) {
+      const ids2 = [...new Set([...(inv.case_ids ?? []), ...(inv.case_snapshot ?? []).map(c => c.case_id)])];
+      for (const id of ids2) {
         if (id.toLowerCase().includes(ql) && !seen.has(`i:id:${id}`)) {
           seen.add(`i:id:${id}`);
           out.push({ source: 'Invoices', label: id, detail: inv.client_name, term: id });
@@ -72,7 +88,7 @@ function getUniversalResults(q: string): UResult[] {
     }
   }
 
-  return out.slice(0, 10);
+  return out.slice(0, 12);
 }
 
 const NAV = [
