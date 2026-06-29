@@ -164,7 +164,7 @@ function PasswordModal({ description, onConfirm, onCancel }: { description: stri
   );
 }
 
-// ── invoice detail popup ──────────────────────────────────────────────────────
+// ── invoice sidebar (billing-style overlay) ───────────────────────────────────
 
 const DlIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -172,13 +172,12 @@ const DlIcon = () => (
   </svg>
 );
 
-function InvoiceDetailPopup({ inv, onClose, onUnbillRequest }: {
-  inv: Invoice; onClose: () => void;
-  onUnbillRequest?: (num: string, doDelete: () => Promise<void>) => void;
+function InvoiceSidebar({ inv, onClose, searchQ }: {
+  inv: Invoice; onClose: () => void; searchQ?: string;
 }) {
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
   const [fetchingCases, setFetchingCases] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const firstMatchRef = useRef<HTMLDivElement | null>(null);
 
   const snapWithDate = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date);
   const hasSnapshot = snapWithDate.length > 0;
@@ -192,7 +191,11 @@ function InvoiceDetailPopup({ inv, onClose, onUnbillRequest }: {
       fetchCasesByIds(inv.case_ids).then(rows => { setFetchedCases(rows); setFetchingCases(false); });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [inv.invoice_number]);
+
+  useEffect(() => {
+    if (firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [searchQ, fetchedCases]);
 
   async function handleCSV() {
     const raw = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? []));
@@ -206,109 +209,71 @@ function InvoiceDetailPopup({ inv, onClose, onUnbillRequest }: {
     await downloadInvoicePDF({ invoice_number: inv.invoice_number, client_name: inv.client_name, billed_date: inv.billed_date?.slice(0, 10) ?? isoToday(), billed_fee: inv.billed_fee, total_reimbursed: inv.total_reimbursed, case_ids: inv.case_ids }, cases);
   }
 
-  const CG = '1fr 110px 80px 95px';
+  const CG = '72px 1fr 70px 58px';
+  const q = searchQ?.toLowerCase() ?? '';
+  const firstMatchIdx = q ? activeCases.findIndex(c => c.case_id.toLowerCase().includes(q)) : -1;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 600, boxShadow: '0 32px 80px rgba(0,0,0,0.22)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 48px)' }}>
+    <div style={{ position: 'absolute', top: 6, right: 6, bottom: 6, width: 390, background: '#fff', borderRadius: 12, boxShadow: '-6px 0 32px rgba(0,0,0,0.13)', zIndex: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInDrawer 0.18s cubic-bezier(0.4,0,0.2,1)' }}>
 
-        {/* Topbar */}
-        <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#11181c', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', fontFamily: 'monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>{inv.invoice_number}</div>
-            <button onClick={onClose} style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, flexShrink: 0, outline: 'none', marginLeft: 4 }}>×</button>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 11, color: '#71717a' }}>Recovered</span>
-              <span style={{ fontSize: 18, fontWeight: 800, color: '#006FEE', letterSpacing: '-0.02em' }}>{fmtUSD(inv.total_reimbursed)}</span>
-            </div>
-            <div style={{ width: 1, height: 32, background: '#e5e7eb', margin: '0 6px' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 11, color: '#71717a' }}>Fee</span>
-              <span style={{ fontSize: 18, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{fmtUSD(inv.billed_fee)}</span>
-            </div>
-            <div style={{ flex: 1 }} />
-            <button onClick={handleCSV} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
-              <DlIcon /> CSV
-            </button>
-            <button onClick={handlePDF} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
-              <DlIcon /> PDF
-            </button>
-            <button
-              onClick={() => {
-                if (onUnbillRequest) {
-                  onUnbillRequest(inv.invoice_number, async () => {
-                    setDeleting(true);
-                    await fetch(`/api/invoices/${inv.invoice_number}`, { method: 'DELETE' });
-                    setDeleting(false);
-                    onClose();
-                  });
-                }
-              }}
-              disabled={deleting}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: 'none', borderRadius: 999, background: '#f31260', fontSize: 11, fontWeight: 600, color: '#fff', cursor: deleting ? 'not-allowed' : 'pointer', outline: 'none', opacity: deleting ? 0.7 : 1 }}
-            >
-              {deleting ? 'Unbilling…' : 'Unbill'}
-            </button>
-          </div>
+      {/* Topbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px 8px 12px', flexShrink: 0, borderBottom: '1px solid #f3f4f6', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: 1 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
+          <span style={{ fontSize: 10, fontWeight: 600, color: '#006FEE', fontFamily: 'monospace' }}>{inv.invoice_number} · {fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
         </div>
-
-        {/* Meta row */}
-        <div style={{ display: 'flex', gap: 16, padding: '8px 18px', borderBottom: '1px solid #f3f4f6', flexShrink: 0, fontSize: 12, color: '#71717a' }}>
-          <span>Date: <strong style={{ color: '#374151' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</strong></span>
-          <span>Cases: <strong style={{ color: '#374151' }}>{inv.case_ids?.length ?? 0}</strong></span>
-        </div>
-
-        {/* Case list */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 8, padding: '8px 18px 6px', fontSize: 10, fontWeight: 600, color: '#a1a1aa', flexShrink: 0 }}>
-            <span>Case ID</span>
-            <span style={{ textAlign: 'right' }}>Date</span>
-            <span style={{ textAlign: 'right' }}>Type</span>
-            <span style={{ textAlign: 'right' }}>Recovered</span>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {fetchingCases ? (
-              <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[1,2,3,4].map(i => <Sk key={i} h={32} />)}
-              </div>
-            ) : activeCases.length > 0 ? (
-              activeCases.map((c, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 8, padding: '8px 18px', borderTop: '1px solid #f3f4f6', fontSize: 12, alignItems: 'center' }}>
-                  <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
-                  <span style={{ color: '#71717a', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
-                  <span style={{ color: '#71717a', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.claim_type || '—'}</span>
-                  <span style={{ fontWeight: 600, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
-                </div>
-              ))
-            ) : (inv.case_ids?.length ?? 0) === 0 ? (
-              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No cases on this invoice.</div>
-            ) : (
-              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No case data found.</div>
-            )}
-          </div>
-          {/* Total */}
-          {activeCases.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 8, padding: '9px 18px', borderTop: '2px solid #f0f0f0', background: '#fafafa', flexShrink: 0, fontSize: 12 }}>
-              <span style={{ fontWeight: 700, color: '#11181c', gridColumn: '1/4' }}>Total ({activeCases.length})</span>
-              <span style={{ fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(activeCases.reduce((s, c) => s + c.reimbursement_amount, 0))}</span>
-            </div>
-          )}
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
+          <button onClick={handleCSV} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+            <DlIcon /> CSV
+          </button>
+          <button onClick={handlePDF} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+            <DlIcon /> PDF
+          </button>
+          <button onClick={onClose} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
         </div>
       </div>
+
+      {/* Case rows — scrollable */}
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        {fetchingCases ? (
+          <div style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[1,2,3,4,5].map(i => <Sk key={i} h={32} />)}
+          </div>
+        ) : activeCases.length === 0 ? (
+          <div style={{ padding: '40px 12px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>
+            {(inv.case_ids?.length ?? 0) === 0 ? 'No cases on this invoice.' : 'No case data found.'}
+          </div>
+        ) : activeCases.map((c, i) => {
+          const isMatch = q ? c.case_id.toLowerCase().includes(q) : false;
+          return (
+            <div key={i} ref={i === firstMatchIdx ? firstMatchRef : undefined}
+              style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 11, alignItems: 'center', background: isMatch ? '#fef9c3' : undefined }}>
+              <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
+              <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
+              <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
+              <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Sticky total */}
+      {activeCases.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total ({activeCases.length})</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(activeCases.reduce((s, c) => s + c.reimbursement_amount, 0))}</span>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── invoice row ───────────────────────────────────────────────────────────────
 
-function InvoiceRow({ inv, onDelete, onOpen, searchQ, selectMode = false, isSelected = false, onToggleSelect, onUnbillRequest }: {
+function InvoiceRow({ inv, onDelete, onOpen, selectMode = false, isSelected = false, onToggleSelect, onUnbillRequest }: {
   inv: Invoice; onDelete: (num: string) => void;
   onOpen: () => void;
-  searchQ?: string; selectMode?: boolean; isSelected?: boolean; onToggleSelect?: () => void;
+  selectMode?: boolean; isSelected?: boolean; onToggleSelect?: () => void;
   onUnbillRequest?: (num: string, doDelete: () => Promise<void>) => void;
 }) {
   const snapCount = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date).length || (inv.case_ids?.length ?? 0);
@@ -400,6 +365,18 @@ export default function InvoicesPage() {
     });
   }
 
+  // Auto-open sidebar when search matches a case ID
+  useEffect(() => {
+    if (!search) return;
+    const q = search.toLowerCase();
+    const match = sorted.find(inv =>
+      (inv.case_ids ?? []).some(id => String(id).toLowerCase().includes(q)) ||
+      (inv.case_snapshot ?? []).some(c => c.case_id.toLowerCase().includes(q))
+    );
+    if (match) setOpenInv(match);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   useEffect(() => {
     const cached = clientGet<Invoice[]>('invoices');
     if (cached) { setInvoices(cached); setLoading(false); return; }
@@ -437,7 +414,7 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}} button:hover{opacity:.88} input:focus{outline:none;box-shadow:0 0 0 2px rgba(0,111,238,0.2);}`}</style>
+      <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}} @keyframes slideInDrawer{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}} button:hover{opacity:.88} input:focus{outline:none;box-shadow:0 0 0 2px rgba(0,111,238,0.2);}`}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
@@ -548,40 +525,46 @@ export default function InvoicesPage() {
               );
             })()}
 
-            {/* White body card */}
-            <div style={{ flex: 1, overflow: 'hidden', background: '#fff', borderRadius: 12, margin: '0 6px 6px', display: 'flex', flexDirection: 'column' }}>
-              {loading ? (
-                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
-                </div>
-              ) : sorted.length === 0 ? (
-                <div style={{ padding: '48px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
-                  {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
-                </div>
-              ) : (() => {
-                const G = getInvoiceGrid(selectMode);
-                return (
-                  <div style={{ flex: 1, overflow: 'auto' }}>
-                    <div style={{ minWidth: 700 }}>
-                      {sorted.map(inv => (
-                        <InvoiceRow
-                          key={inv.invoice_number}
-                          inv={inv}
-                          onDelete={num => { setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; }); if (openInv?.invoice_number === num) setOpenInv(null); }}
-                          onOpen={() => setOpenInv(inv)}
-                          selectMode={selectMode}
-                          isSelected={selectedNums.has(inv.invoice_number)}
-                          onToggleSelect={() => setSelectedNums(prev => { const next = new Set(prev); if (next.has(inv.invoice_number)) next.delete(inv.invoice_number); else next.add(inv.invoice_number); return next; })}
-                          onUnbillRequest={(num, doDelete) => {
-                            const found = invoices.find(i => i.invoice_number === num);
-                            setPwdModal({
-                              description: `You are about to unbill invoice ${num} for ${found?.client_name ?? num}.`,
-                              onConfirm: async () => { setPwdModal(null); await doDelete(); setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; }); setOpenInv(null); },
-                            });
-                          }}
-                        />
-                      ))}
-                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
+            {/* Content area — relative for sidebar overlay */}
+            <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+
+              {/* White body card */}
+              <div style={{ position: 'absolute', inset: '6px', background: '#fff', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {loading ? (
+                  <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
+                  </div>
+                ) : sorted.length === 0 ? (
+                  <div style={{ padding: '48px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>
+                    {search ? 'No invoices match.' : 'No invoices yet. Generate one from the Billing tab.'}
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ flex: 1, overflow: 'auto' }}>
+                      <div style={{ minWidth: 700 }}>
+                        {sorted.map(inv => (
+                          <InvoiceRow
+                            key={inv.invoice_number}
+                            inv={inv}
+                            onDelete={num => { setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; }); if (openInv?.invoice_number === num) setOpenInv(null); }}
+                            onOpen={() => setOpenInv(inv)}
+                            selectMode={selectMode}
+                            isSelected={selectedNums.has(inv.invoice_number)}
+                            onToggleSelect={() => setSelectedNums(prev => { const next = new Set(prev); if (next.has(inv.invoice_number)) next.delete(inv.invoice_number); else next.add(inv.invoice_number); return next; })}
+                            onUnbillRequest={(num, doDelete) => {
+                              const found = invoices.find(i => i.invoice_number === num);
+                              setPwdModal({
+                                description: `You are about to unbill invoice ${num} for ${found?.client_name ?? num}.`,
+                                onConfirm: async () => { setPwdModal(null); await doDelete(); setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; }); setOpenInv(null); },
+                              });
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    {/* Sticky total */}
+                    {(() => { const G = getInvoiceGrid(selectMode); return (
+                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', flexShrink: 0, minWidth: 700 }}>
                         {selectMode && <span />}
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: selectMode ? '2/7' : '1/6' }}>
                           {search ? `Filtered (${filtered.length})` : `Total (${invoices.length})`}
@@ -590,31 +573,17 @@ export default function InvoicesPage() {
                         <span style={{ fontSize: 13, fontWeight: 800, color: '#11181c', textAlign: 'right' }}>{fmtUSD(totalFee)}</span>
                         <span />
                       </div>
-                    </div>
-                  </div>
-                );
-              })()}
+                    ); })()}
+                  </>
+                )}
+              </div>
+
+              {/* Sidebar overlay */}
+              {openInv && <InvoiceSidebar inv={openInv} onClose={() => setOpenInv(null)} searchQ={search || undefined} />}
             </div>
           </div>
         </div>
       </div>
-      {openInv && (
-        <InvoiceDetailPopup
-          inv={openInv}
-          onClose={() => setOpenInv(null)}
-          onUnbillRequest={(num, doDelete) => {
-            const found = invoices.find(i => i.invoice_number === num);
-            setPwdModal({
-              description: `You are about to unbill invoice ${num} for ${found?.client_name ?? num}.`,
-              onConfirm: async () => {
-                setPwdModal(null);
-                await doDelete();
-                setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; });
-              },
-            });
-          }}
-        />
-      )}
       {pwdModal && (
         <PasswordModal
           description={pwdModal.description}
