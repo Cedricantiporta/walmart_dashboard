@@ -271,12 +271,6 @@ type HistoricalCase = {
 const prevCasesCache = new Map<string, HistoricalCase[]>();
 
 function CaseSidebar({ client, highlight, view, isPendingTab, isOverdueTab }: { client: ClientBilling; highlight?: string; view: 'current' | 'previous'; isPendingTab?: boolean; isOverdueTab?: boolean }) {
-  const { darkMode: dm2 } = useSidebar();
-  const sdBdr  = dm2 ? '#2a2b2c' : '#f3f4f6';
-  const sdTxt  = dm2 ? '#e4e4e5' : '#374151';
-  const sdMut  = dm2 ? '#71717a' : '#6b7280';
-  const sdCard = dm2 ? '#17181a' : '#fff';
-  const sdTot  = dm2 ? '#1c1d1f' : '#f9fafb';
   const q = highlight?.toLowerCase() ?? '';
   const firstMatchIndex = q ? client.cases.findIndex(c => c.caseId.toLowerCase().includes(q)) : -1;
   const firstMatchRef = useRef<HTMLDivElement | null>(null);
@@ -356,10 +350,10 @@ function CaseSidebar({ client, highlight, view, isPendingTab, isOverdueTab }: { 
           (client.overdueCases ?? []).length === 0 ? (
             <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No overdue cases.</div>
           ) : (client.overdueCases ?? []).map((c, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: `1px solid ${sdBdr}`, background: dm2 ? '#1f1207' : '#fff7ed', fontSize: 11, alignItems: 'center' }}>
-              <span style={{ fontFamily: 'monospace', color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
-              <span style={{ color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
-              <span style={{ color: sdMut, whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: '#fff7ed', fontSize: 11, alignItems: 'center' }}>
+              <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+              <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+              <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
               <span style={{ fontWeight: 600, color: '#c2410c', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
             </div>
           ))
@@ -367,10 +361,10 @@ function CaseSidebar({ client, highlight, view, isPendingTab, isOverdueTab }: { 
           (client.pendingCases ?? []).length === 0 ? (
             <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>No pending cases.</div>
           ) : (client.pendingCases ?? []).map((c, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: `1px solid ${sdBdr}`, background: dm2 ? '#0d1320' : '#f0f7ff', fontSize: 11, alignItems: 'center' }}>
-              <span style={{ fontFamily: 'monospace', color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
-              <span style={{ color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
-              <span style={{ color: sdMut, whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: '#f0f7ff', fontSize: 11, alignItems: 'center' }}>
+              <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+              <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+              <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
               <span style={{ fontWeight: 600, color: '#1d4ed8', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
             </div>
           ))
@@ -379,10 +373,10 @@ function CaseSidebar({ client, highlight, view, isPendingTab, isOverdueTab }: { 
             const isMatch = q ? c.caseId.toLowerCase().includes(q) : false;
             return (
               <div key={i} ref={i === firstMatchIndex ? firstMatchRef : undefined}
-                style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: `1px solid ${sdBdr}`, background: isMatch ? '#fef9c3' : (!c.isCurrentMonth ? (dm2 ? '#191610' : '#fffbeb') : sdCard), fontSize: 11, alignItems: 'center' }}>
-                <span style={{ fontFamily: 'monospace', color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
-                <span style={{ color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
-                <span style={{ color: sdMut, whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
+                style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', background: isMatch ? '#fef9c3' : (!c.isCurrentMonth ? '#fffbeb' : undefined), fontSize: 11, alignItems: 'center' }}>
+                <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.caseId}</span>
+                <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claimType || 'N/A'}</span>
+                <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.postingDate)}</span>
                 <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.amount)}</span>
               </div>
             );
@@ -398,10 +392,10 @@ function CaseSidebar({ client, highlight, view, isPendingTab, isOverdueTab }: { 
               const isMatch = q ? c.case_id.toLowerCase().includes(q) : false;
               return (
                 <div key={i} ref={i === prevMatchIndex ? prevFirstMatchRef : undefined}
-                  style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: `1px solid ${sdBdr}`, fontSize: 11, alignItems: 'center', background: isMatch ? '#fef9c3' : sdCard }}>
-                  <span style={{ fontFamily: 'monospace', color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
-                  <span style={{ color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
-                  <span style={{ color: sdMut, whiteSpace: 'nowrap' }}>{fmtDate(c.rms_posting_date.slice(0, 10))}</span>
+                  style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 11, alignItems: 'center', background: isMatch ? '#fef9c3' : undefined }}>
+                  <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
+                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
+                  <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(c.rms_posting_date.slice(0, 10))}</span>
                   <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
                 </div>
               );
@@ -412,26 +406,26 @@ function CaseSidebar({ client, highlight, view, isPendingTab, isOverdueTab }: { 
 
       {/* Sticky total — always at bottom edge */}
       {showOverdueTotal && (
-        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: `2px solid ${sdBdr}`, background: sdTot, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: sdTxt, gridColumn: '1/4' }}>Overdue Total</span>
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Overdue Total</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', textAlign: 'right' }}>{fmtUSD(client.overdueAmount ?? 0)}</span>
         </div>
       )}
       {showPendingTotal && (
-        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: `2px solid ${sdBdr}`, background: sdTot, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: sdTxt, gridColumn: '1/4' }}>Pending Total</span>
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Pending Total</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textAlign: 'right' }}>{fmtUSD(client.pendingAmount ?? 0)}</span>
         </div>
       )}
       {showCurrentTotal && (
-        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: `2px solid ${sdBdr}`, background: sdTot, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: sdTxt, gridColumn: '1/4' }}>Total</span>
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(client.totalAmount)}</span>
         </div>
       )}
       {showPrevTotal && (
-        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: `2px solid ${sdBdr}`, background: sdTot, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: sdTxt, gridColumn: '1/4' }}>Total</span>
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(prevTotalAmt)}</span>
         </div>
       )}
@@ -617,18 +611,7 @@ export default function BillingPage() {
   const [showBulk, setShowBulk] = useState(false);
   const popupAreaRef = useRef<HTMLDivElement>(null);
 
-  const { onToggle, darkMode } = useSidebar();
-  const dm = darkMode;
-  const pageBg  = dm ? '#050606' : '#f4f4f5';
-  const layer1  = dm ? '#222324' : '#eaebec';
-  const cardBg  = dm ? '#17181a' : '#fff';
-  const txt     = dm ? '#e4e4e5' : '#11181c';
-  const bdr     = dm ? '#2a2b2c' : '#e4e4e7';
-  const pillBg  = dm ? '#272728' : '#eaebec';
-  const pillTxt = dm ? '#fff'    : '#11181c';
-  const searchBg= dm ? '#272728' : '#fff';
-  const totalBg = dm ? '#1c1d1f' : '#fafafa';
-  const sdwCard = dm ? 'none'    : '-6px 0 32px rgba(0,0,0,0.13)';
+  const { onToggle } = useSidebar();
 
   useEffect(() => {
     if (!openPopup) return;
@@ -787,11 +770,11 @@ export default function BillingPage() {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
         {/* Top bar */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', gap: 10, padding: '4px 20px 8px', height: 52, background: pageBg }}>
-          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: txt, flexShrink: 0, outline: 'none' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', gap: 10, padding: '4px 20px 8px', height: 52, background: '#f4f4f5' }}>
+          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#11181c', flexShrink: 0, outline: 'none' }}>
             <PanelIcon />
           </button>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: txt, letterSpacing: '-0.02em' }}>Billing</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>Billing</h1>
         </div>
 
         {error && <div style={{ padding: '10px 20px', background: '#fef2f2', borderBottom: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>{error}</div>}
@@ -807,13 +790,13 @@ export default function BillingPage() {
 
                   {/* Filter popup */}
                   <div style={{ position: 'relative' }}>
-                    <button onClick={() => setOpenPopup(p => p === 'filter' ? null : 'filter')} style={{ ...toolbarPill, background: filterType !== 'all' ? '#dbeafe' : pillBg, color: filterType !== 'all' ? '#1d4ed8' : pillTxt }}>
+                    <button onClick={() => setOpenPopup(p => p === 'filter' ? null : 'filter')} style={{ ...toolbarPill, ...(filterType !== 'all' ? { background: '#dbeafe', color: '#1d4ed8' } : {}) }}>
                       <IconFilter /> Filter{filterType !== 'all' ? ' ·' : ''}
                     </button>
                     {openPopup === 'filter' && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: cardBg, border: `1px solid ${bdr}`, borderRadius: 18, boxShadow: dm ? 'none' : '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 210, padding: 4 }}>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 18, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 210, padding: 4 }}>
                         {([{ val: 'all', lbl: 'All clients' }, { val: 'prevMonth', lbl: 'Previous month charges only' }] as const).map(({ val, lbl }) => (
-                          <button key={val} onClick={() => { setFilterType(val); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: filterType === val ? pillBg : 'transparent', color: txt, fontWeight: filterType === val ? 600 : 400, transition: 'background 0.1s' }}>{lbl}</button>
+                          <button key={val} onClick={() => { setFilterType(val); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: filterType === val ? '#eaebec' : 'transparent', color: '#11181c', fontWeight: filterType === val ? 600 : 400, transition: 'background 0.1s' }}>{lbl}</button>
                         ))}
                       </div>
                     )}
@@ -821,13 +804,13 @@ export default function BillingPage() {
 
                   {/* Sort popup */}
                   <div style={{ position: 'relative' }}>
-                    <button onClick={() => setOpenPopup(p => p === 'sort' ? null : 'sort')} style={{ ...toolbarPill, background: pillBg, color: pillTxt }}>
+                    <button onClick={() => setOpenPopup(p => p === 'sort' ? null : 'sort')} style={toolbarPill}>
                       <IconSort /> Sort
                     </button>
                     {openPopup === 'sort' && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: cardBg, border: `1px solid ${bdr}`, borderRadius: 18, boxShadow: dm ? 'none' : '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 180, padding: 4 }}>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 18, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 180, padding: 4 }}>
                         {([{ col: 'fee', lbl: 'Fee' }, { col: 'recovered', lbl: 'Recovered' }, { col: 'name', lbl: 'Client name' }, { col: 'rate', lbl: 'Rate' }, { col: 'cases', lbl: 'Cases' }] as const).map(({ col, lbl }) => (
-                          <button key={col} onClick={() => { handleSort(col); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: sortCol === col ? pillBg : 'transparent', color: txt, fontWeight: sortCol === col ? 600 : 400, transition: 'background 0.1s' }}>
+                          <button key={col} onClick={() => { handleSort(col); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: sortCol === col ? '#eaebec' : 'transparent', color: '#11181c', fontWeight: sortCol === col ? 600 : 400, transition: 'background 0.1s' }}>
                             {lbl}{sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         ))}
@@ -838,7 +821,7 @@ export default function BillingPage() {
                 </div>
                 <div style={{ flex: 1 }} />
                 {billingTab === 'rtb' && (data?.clients ?? []).some(c => c.totalFee > 0 && c.cases.length > 0) && (
-                  <button onClick={() => setShowBulk(true)} style={{ ...toolbarPill, background: '#006FEE', color: '#fff', boxShadow: 'none' }}>
+                  <button onClick={() => setShowBulk(true)} style={{ ...toolbarPill, background: '#006FEE', color: '#fff' }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     Bulk Invoice
                   </button>
@@ -863,11 +846,11 @@ export default function BillingPage() {
                 ];
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ display: 'flex', background: pillBg, borderRadius: 999, padding: 4, gap: 2 }}>
+                    <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 4, gap: 2 }}>
                       {TABS.map(({ key, label }) => (
-                        <button key={key} onClick={() => setBillingTab(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 13px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: billingTab === key ? 700 : 500, cursor: 'pointer', background: billingTab === key ? cardBg : 'transparent', color: billingTab === key ? txt : '#71717a', boxShadow: billingTab === key && !dm ? '0 1px 4px rgba(0,0,0,0.10)' : 'none', transition: 'all 0.12s', outline: 'none', whiteSpace: 'nowrap' }}>
+                        <button key={key} onClick={() => setBillingTab(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 13px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: billingTab === key ? 700 : 500, cursor: 'pointer', background: billingTab === key ? '#fff' : 'transparent', color: billingTab === key ? '#11181c' : '#71717a', boxShadow: billingTab === key ? '0 1px 4px rgba(0,0,0,0.10)' : 'none', transition: 'all 0.12s', outline: 'none', whiteSpace: 'nowrap' }}>
                           {label}
-                          {counts[key] > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: billingTab === key ? pillBg : 'transparent', borderRadius: 999, padding: '1px 5px', color: billingTab === key ? txt : '#a1a1aa' }}>{counts[key]}</span>}
+                          {counts[key] > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: billingTab === key ? '#eaebec' : 'transparent', borderRadius: 999, padding: '1px 5px', color: billingTab === key ? '#374151' : '#a1a1aa' }}>{counts[key]}</span>}
                         </button>
                       ))}
                     </div>
@@ -876,7 +859,7 @@ export default function BillingPage() {
                         placeholder="Search client or case ID…"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        style={{ fontSize: 13, padding: '7px 32px 7px 36px', border: `1px solid ${bdr}`, borderRadius: 999, width: 220, color: txt, outline: 'none', background: `${searchBg} url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E") no-repeat 10px center` }}
+                        style={{ fontSize: 13, padding: '7px 32px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 220, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
                       />
                       {search && (
                         <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 12, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none', flexShrink: 0 }}>×</button>
@@ -894,7 +877,7 @@ export default function BillingPage() {
             const visOpt = OPTIONAL_COLS.filter(c => !hiddenCols.has(c.key));
             const G = `minmax(0,1fr) ${visOpt.map(c => selectedClient ? c.compactWidth : c.width).join(' ')} 120px`;
             return (
-              <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: layer1, flexDirection: 'column' }}>
+              <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderRadius: 16, background: '#eaebec', flexDirection: 'column' }}>
 
                 {/* Shared header row */}
                 {showHdr && (
@@ -913,7 +896,7 @@ export default function BillingPage() {
                 <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
 
                   {/* Client list card — always full width, flex column for sticky total */}
-                  <div style={{ position: 'absolute', inset: '6px', display: 'flex', flexDirection: 'column', background: cardBg, borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', inset: '6px', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
 
                     {/* Scrollable rows */}
                     <div style={{ flex: 1, overflow: 'auto' }}>
@@ -1027,8 +1010,8 @@ export default function BillingPage() {
 
                     {/* Sticky total row — always at bottom edge, same row height as client rows */}
                     {!loading && filtered.length > 0 && (
-                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, borderTop: `2px solid ${bdr}`, background: totalBg, flexShrink: 0, minWidth: 420 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: txt }}>Total</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', flexShrink: 0, minWidth: 420 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#11181c' }}>Total</span>
                         {!hiddenCols.has('rate') && <span />}
                         {billingTab === 'pending' ? (
                           <>
@@ -1062,18 +1045,18 @@ export default function BillingPage() {
 
                   {/* Overlay drawer — slides in from right, does not affect client list width */}
                   {selectedClient && (
-                    <div style={{ position: 'absolute', top: 6, right: 6, bottom: 6, width: sidebarWidth, background: cardBg, borderRadius: 12, boxShadow: sdwCard, zIndex: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInDrawer 0.18s cubic-bezier(0.4,0,0.2,1)' }}>
+                    <div style={{ position: 'absolute', top: 6, right: 6, bottom: 6, width: sidebarWidth, background: '#fff', borderRadius: 12, boxShadow: '-6px 0 32px rgba(0,0,0,0.13)', zIndex: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInDrawer 0.18s cubic-bezier(0.4,0,0.2,1)' }}>
                       {/* Resize handle on left edge */}
                       <div onMouseDown={handleDragStart} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 1 }} />
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 10px', flexShrink: 0, borderBottom: `1px solid ${bdr}` }}>
-                        <div style={{ display: 'flex', background: pillBg, borderRadius: 999, padding: 2, gap: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 10px', flexShrink: 0, borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ display: 'flex', background: '#eaebec', borderRadius: 999, padding: 2, gap: 1 }}>
                           {(['current', 'previous'] as const).map(tab => (
-                            <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? cardBg : 'transparent', color: sidebarView === tab ? txt : '#71717a', boxShadow: sidebarView === tab && !dm ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
+                            <button key={tab} onClick={() => setSidebarView(tab)} style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer', background: sidebarView === tab ? '#fff' : 'transparent', color: sidebarView === tab ? '#11181c' : '#71717a', boxShadow: sidebarView === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', outline: 'none', whiteSpace: 'nowrap' }}>
                               {tab === 'current' ? 'Current' : 'Previous'}
                             </button>
                           ))}
                         </div>
-                        <button onClick={() => setSelectedClient(null)} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: pillBg, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: txt, fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
+                        <button onClick={() => setSelectedClient(null)} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
                       </div>
                       <CaseSidebar client={selectedClient} highlight={search || undefined} view={sidebarView} isPendingTab={billingTab === 'pending'} isOverdueTab={billingTab === 'overdue'} />
                     </div>

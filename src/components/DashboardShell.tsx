@@ -82,7 +82,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarCtx.Provider value={{ collapsed, onToggle, syncTime, setSyncTime, darkMode, setDarkMode, isMobile }}>
-      <div style={{ display: 'flex', minHeight: '100vh', background: darkMode ? '#050606' : '#f4f4f5' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', background: darkMode ? '#18181b' : '#f4f4f5' }}>
         {/* Mobile backdrop */}
         {isMobile && mobileOpen && (
           <div
