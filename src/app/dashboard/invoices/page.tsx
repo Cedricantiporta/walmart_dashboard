@@ -164,14 +164,21 @@ function PasswordModal({ description, onConfirm, onCancel }: { description: stri
   );
 }
 
-// ── invoice row ───────────────────────────────────────────────────────────────
+// ── invoice detail popup ──────────────────────────────────────────────────────
 
-function InvoiceRow({ inv, onDelete, searchQ, selectMode = false, isSelected = false, onToggleSelect, onUnbillRequest }: { inv: Invoice; onDelete: (num: string) => void; searchQ?: string; selectMode?: boolean; isSelected?: boolean; onToggleSelect?: () => void; onUnbillRequest?: (num: string, doDelete: () => Promise<void>) => void }) {
-  const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+const DlIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3v13"/><polyline points="7 12 12 17 17 12"/><line x1="3" y1="21" x2="21" y2="21"/>
+  </svg>
+);
+
+function InvoiceDetailPopup({ inv, onClose, onUnbillRequest }: {
+  inv: Invoice; onClose: () => void;
+  onUnbillRequest?: (num: string, doDelete: () => Promise<void>) => void;
+}) {
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
   const [fetchingCases, setFetchingCases] = useState(false);
-  const matchedCaseRef = useRef<HTMLDivElement | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const snapWithDate = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date);
   const hasSnapshot = snapWithDate.length > 0;
@@ -179,130 +186,163 @@ function InvoiceRow({ inv, onDelete, searchQ, selectMode = false, isSelected = f
     ? snapWithDate.map(c => ({ case_id: c.case_id, claim_type: c.claim_type, rms_posting_date: c.rms_posting_date, reimbursement_amount: c.reimbursement_amount, gtin: c.gtin, sku_id: c.sku_id, unit_amount: c.unit_amount, reimbursed_qty: c.reimbursed_qty }))
     : (fetchedCases ?? []).filter(c => !!c.rms_posting_date);
 
-  // Auto-open when searchQ matches a case ID in this invoice
   useEffect(() => {
-    if (!searchQ) { setOpen(false); return; }
-    const q = searchQ.toLowerCase();
-    const matchesCase = (inv.case_ids ?? []).some(id => String(id).toLowerCase().includes(q)) ||
-      (inv.case_snapshot ?? []).some(c => c.case_id.toLowerCase().includes(q));
-    if (matchesCase) {
-      setOpen(true);
-      if (!hasSnapshot && fetchedCases === null && !fetchingCases && (inv.case_ids?.length ?? 0) > 0) {
-        setFetchingCases(true);
-        fetchCasesByIds(inv.case_ids).then(rows => { setFetchedCases(rows); setFetchingCases(false); });
-      }
-    } else {
-      setOpen(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQ]);
-
-  // Scroll to first matched case row after cases load
-  useEffect(() => {
-    if (open && searchQ && matchedCaseRef.current) {
-      matchedCaseRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [open, fetchedCases, searchQ]);
-
-  function handleToggle() {
-    setOpen(o => !o);
-    if (!hasSnapshot && fetchedCases === null && !fetchingCases && inv.case_ids?.length) {
+    if (!hasSnapshot && (inv.case_ids?.length ?? 0) > 0) {
       setFetchingCases(true);
       fetchCasesByIds(inv.case_ids).then(rows => { setFetchedCases(rows); setFetchingCases(false); });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleCSV() {
+    const raw = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? []));
+    triggerCSVDownload(inv, raw.filter(c => !!c.rms_posting_date));
   }
 
-  async function deleteInvoice() {
-    if (!confirm(`Unbill invoice ${inv.invoice_number}? This will remove it from history.`)) return;
-    setDeleting(true);
-    await fetch(`/api/invoices/${inv.invoice_number}`, { method: 'DELETE' });
-    onDelete(inv.invoice_number);
-  }
-
-  async function downloadPDF() {
+  async function handlePDF() {
     if (inv.pdf_url) { window.open(inv.pdf_url, '_blank'); return; }
     const raw = activeCases.length > 0 ? activeCases : await fetchCasesByIds(inv.case_ids ?? []);
     const cases = raw.filter(c => !!c.rms_posting_date);
     await downloadInvoicePDF({ invoice_number: inv.invoice_number, client_name: inv.client_name, billed_date: inv.billed_date?.slice(0, 10) ?? isoToday(), billed_fee: inv.billed_fee, total_reimbursed: inv.total_reimbursed, case_ids: inv.case_ids }, cases);
   }
 
-  const snapCount = snapWithDate.length > 0 ? snapWithDate.length : (inv.case_ids?.length ?? 0);
+  const CG = '1fr 110px 80px 95px';
 
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 600, boxShadow: '0 32px 80px rgba(0,0,0,0.22)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 48px)' }}>
+
+        {/* Topbar */}
+        <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#11181c', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#006FEE', fontFamily: 'monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>{inv.invoice_number}</div>
+            <button onClick={onClose} style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, flexShrink: 0, outline: 'none', marginLeft: 4 }}>×</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 11, color: '#71717a' }}>Recovered</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#006FEE', letterSpacing: '-0.02em' }}>{fmtUSD(inv.total_reimbursed)}</span>
+            </div>
+            <div style={{ width: 1, height: 32, background: '#e5e7eb', margin: '0 6px' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 11, color: '#71717a' }}>Fee</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{fmtUSD(inv.billed_fee)}</span>
+            </div>
+            <div style={{ flex: 1 }} />
+            <button onClick={handleCSV} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+              <DlIcon /> CSV
+            </button>
+            <button onClick={handlePDF} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+              <DlIcon /> PDF
+            </button>
+            <button
+              onClick={() => {
+                if (onUnbillRequest) {
+                  onUnbillRequest(inv.invoice_number, async () => {
+                    setDeleting(true);
+                    await fetch(`/api/invoices/${inv.invoice_number}`, { method: 'DELETE' });
+                    setDeleting(false);
+                    onClose();
+                  });
+                }
+              }}
+              disabled={deleting}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: 'none', borderRadius: 999, background: '#f31260', fontSize: 11, fontWeight: 600, color: '#fff', cursor: deleting ? 'not-allowed' : 'pointer', outline: 'none', opacity: deleting ? 0.7 : 1 }}
+            >
+              {deleting ? 'Unbilling…' : 'Unbill'}
+            </button>
+          </div>
+        </div>
+
+        {/* Meta row */}
+        <div style={{ display: 'flex', gap: 16, padding: '8px 18px', borderBottom: '1px solid #f3f4f6', flexShrink: 0, fontSize: 12, color: '#71717a' }}>
+          <span>Date: <strong style={{ color: '#374151' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</strong></span>
+          <span>Cases: <strong style={{ color: '#374151' }}>{inv.case_ids?.length ?? 0}</strong></span>
+        </div>
+
+        {/* Case list */}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {/* Column headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 8, padding: '8px 18px 6px', fontSize: 10, fontWeight: 600, color: '#a1a1aa', flexShrink: 0 }}>
+            <span>Case ID</span>
+            <span style={{ textAlign: 'right' }}>Date</span>
+            <span style={{ textAlign: 'right' }}>Type</span>
+            <span style={{ textAlign: 'right' }}>Recovered</span>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {fetchingCases ? (
+              <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[1,2,3,4].map(i => <Sk key={i} h={32} />)}
+              </div>
+            ) : activeCases.length > 0 ? (
+              activeCases.map((c, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: CG, gap: 8, padding: '8px 18px', borderTop: '1px solid #f3f4f6', fontSize: 12, alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
+                  <span style={{ color: '#71717a', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
+                  <span style={{ color: '#71717a', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.claim_type || '—'}</span>
+                  <span style={{ fontWeight: 600, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
+                </div>
+              ))
+            ) : (inv.case_ids?.length ?? 0) === 0 ? (
+              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No cases on this invoice.</div>
+            ) : (
+              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No case data found.</div>
+            )}
+          </div>
+          {/* Total */}
+          {activeCases.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 8, padding: '9px 18px', borderTop: '2px solid #f0f0f0', background: '#fafafa', flexShrink: 0, fontSize: 12 }}>
+              <span style={{ fontWeight: 700, color: '#11181c', gridColumn: '1/4' }}>Total ({activeCases.length})</span>
+              <span style={{ fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(activeCases.reduce((s, c) => s + c.reimbursement_amount, 0))}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── invoice row ───────────────────────────────────────────────────────────────
+
+function InvoiceRow({ inv, onDelete, onOpen, searchQ, selectMode = false, isSelected = false, onToggleSelect, onUnbillRequest }: {
+  inv: Invoice; onDelete: (num: string) => void;
+  onOpen: () => void;
+  searchQ?: string; selectMode?: boolean; isSelected?: boolean; onToggleSelect?: () => void;
+  onUnbillRequest?: (num: string, doDelete: () => Promise<void>) => void;
+}) {
+  const snapCount = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date).length || (inv.case_ids?.length ?? 0);
   const G = getInvoiceGrid(selectMode);
 
   return (
-    <>
-      <div onClick={handleToggle} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: '1px solid #f3f4f6', background: open ? '#fafafa' : '#fff', alignItems: 'center', minWidth: 700 }}>
-        {selectMode && (
-          <div onClick={e => { e.stopPropagation(); onToggleSelect?.(); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#006FEE' }} />
-          </div>
-        )}
-        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#006FEE', fontSize: 12 }}>{inv.invoice_number}</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
-        <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{snapCount}</span>
-        <span />
-        <span style={{ fontSize: 12, color: '#71717a' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
-        <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
-        <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-          <button onClick={async e => { e.stopPropagation(); const raw = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, raw.filter(c => !!c.rms_posting_date)); }} style={pillAction()}>CSV</button>
-          <button onClick={async e => { e.stopPropagation(); await downloadPDF(); }} style={pillAction()}>PDF</button>
-          <button onClick={async e => {
-            e.stopPropagation();
-            if (onUnbillRequest) {
-              onUnbillRequest(inv.invoice_number, async () => {
-                setDeleting(true);
-                await fetch(`/api/invoices/${inv.invoice_number}`, { method: 'DELETE' });
-                onDelete(inv.invoice_number);
-                setDeleting(false);
-              });
-            } else {
-              await deleteInvoice();
-            }
-          }} disabled={deleting} style={pillAction(true)}>Unbill</button>
-        </div>
-      </div>
-      {open && snapCount > 0 && (
-        <div style={{ borderBottom: '1px solid #f3f4f6', background: '#fafafa', paddingLeft: 16 }}>
-          {fetchingCases ? (
-            <div style={{ padding: '12px 16px', fontSize: 12, color: '#a1a1aa' }}>Loading case data…</div>
-          ) : activeCases.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '8px 0 6px', fontSize: 10, fontWeight: 600, color: '#a1a1aa', letterSpacing: 0, minWidth: 860 }}>
-                <span>Case ID</span><span>Posting Date</span><span>Type</span><span>GTIN</span><span>SKU ID</span>
-                <span style={{ textAlign: 'right' }}>Unit Amt</span><span style={{ textAlign: 'right' }}>Rate</span><span style={{ textAlign: 'right' }}>Qty</span>
-                <span style={{ textAlign: 'right' }}>Recovered</span><span style={{ textAlign: 'right' }}>Fee</span>
-              </div>
-              {activeCases.map((c, i) => {
-                const rate = inv.total_reimbursed > 0 ? inv.billed_fee / inv.total_reimbursed : 0;
-                const unitAmt = c.unit_amount ?? c.reimbursement_amount;
-                const qty = c.reimbursed_qty ?? 1;
-                const cq = searchQ?.toLowerCase() ?? '';
-                const isMatch = cq ? c.case_id.toLowerCase().includes(cq) : false;
-                const isFirst = isMatch && activeCases.findIndex(x => x.case_id.toLowerCase().includes(cq)) === i;
-                return (
-                  <div key={i} ref={isFirst ? matchedCaseRef : undefined} style={{ display: 'grid', gridTemplateColumns: '100px 110px 90px 100px 100px 80px 55px 50px 95px 80px', gap: 6, padding: '7px 0', borderTop: '1px solid #f3f4f6', fontSize: 11, minWidth: 860, background: isMatch ? '#fef9c3' : undefined }}>
-                    <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_id}</span>
-                    <span style={{ color: '#374151' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
-                    <span style={{ color: '#374151' }}>{c.claim_type || '—'}</span>
-                    <span style={{ color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.gtin || '—'}</span>
-                    <span style={{ color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.sku_id || '—'}</span>
-                    <span style={{ fontWeight: 600, color: '#374151', textAlign: 'right' }}>{fmtUSD(unitAmt)}</span>
-                    <span style={{ color: '#71717a', textAlign: 'right' }}>{fmtPctNum(rate)}</span>
-                    <span style={{ color: '#374151', textAlign: 'right' }}>{qty}</span>
-                    <span style={{ fontWeight: 600, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
-                    <span style={{ fontWeight: 700, color: '#11181c', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount * rate)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ padding: '8px 0', fontSize: 12, color: '#a1a1aa' }}>No case data found.</div>
-          )}
+    <div onClick={onOpen} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: '1px solid #f3f4f6', background: '#fff', alignItems: 'center', minWidth: 700, transition: 'background 0.1s' }}
+      onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
+      onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+    >
+      {selectMode && (
+        <div onClick={e => { e.stopPropagation(); onToggleSelect?.(); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#006FEE' }} />
         </div>
       )}
-    </>
+      <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#006FEE', fontSize: 12 }}>{inv.invoice_number}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
+      <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{snapCount}</span>
+      <span />
+      <span style={{ fontSize: 12, color: '#71717a' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
+      <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
+      <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
+      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+        <button onClick={async e => {
+          e.stopPropagation();
+          if (onUnbillRequest) {
+            onUnbillRequest(inv.invoice_number, async () => {
+              await fetch(`/api/invoices/${inv.invoice_number}`, { method: 'DELETE' });
+              onDelete(inv.invoice_number);
+            });
+          }
+        }} style={pillAction(true)}>Unbill</button>
+      </div>
+    </div>
   );
 }
 
@@ -321,6 +361,7 @@ export default function InvoicesPage() {
   const [selectedNums, setSelectedNums] = useState<Set<string>>(new Set());
   const [unbillBusy, setUnbillBusy] = useState(false);
   const [pwdModal, setPwdModal] = useState<{ description: string; onConfirm: () => void | Promise<void> } | null>(null);
+  const [openInv, setOpenInv] = useState<Invoice | null>(null);
   const popupAreaRef = useRef<HTMLDivElement>(null);
   const { onToggle } = useSidebar();
 
@@ -522,30 +563,24 @@ export default function InvoicesPage() {
                 return (
                   <div style={{ flex: 1, overflow: 'auto' }}>
                     <div style={{ minWidth: 700 }}>
-                      {sorted.map(inv => {
-                        const caseSearch = search
-                          ? ((inv.case_ids ?? []).some(id => String(id).toLowerCase().includes(search.toLowerCase())) ||
-                             (inv.case_snapshot ?? []).some(c => c.case_id.toLowerCase().includes(search.toLowerCase())))
-                          : false;
-                        return (
-                          <InvoiceRow
-                            key={inv.invoice_number}
-                            inv={inv}
-                            onDelete={num => setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; })}
-                            searchQ={caseSearch ? search : undefined}
-                            selectMode={selectMode}
-                            isSelected={selectedNums.has(inv.invoice_number)}
-                            onToggleSelect={() => setSelectedNums(prev => { const next = new Set(prev); if (next.has(inv.invoice_number)) next.delete(inv.invoice_number); else next.add(inv.invoice_number); return next; })}
-                            onUnbillRequest={(num, doDelete) => {
-                              const found = invoices.find(i => i.invoice_number === num);
-                              setPwdModal({
-                                description: `You are about to unbill invoice ${num} for ${found?.client_name ?? num}.`,
-                                onConfirm: async () => { setPwdModal(null); await doDelete(); },
-                              });
-                            }}
-                          />
-                        );
-                      })}
+                      {sorted.map(inv => (
+                        <InvoiceRow
+                          key={inv.invoice_number}
+                          inv={inv}
+                          onDelete={num => { setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; }); if (openInv?.invoice_number === num) setOpenInv(null); }}
+                          onOpen={() => setOpenInv(inv)}
+                          selectMode={selectMode}
+                          isSelected={selectedNums.has(inv.invoice_number)}
+                          onToggleSelect={() => setSelectedNums(prev => { const next = new Set(prev); if (next.has(inv.invoice_number)) next.delete(inv.invoice_number); else next.add(inv.invoice_number); return next; })}
+                          onUnbillRequest={(num, doDelete) => {
+                            const found = invoices.find(i => i.invoice_number === num);
+                            setPwdModal({
+                              description: `You are about to unbill invoice ${num} for ${found?.client_name ?? num}.`,
+                              onConfirm: async () => { setPwdModal(null); await doDelete(); setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; }); setOpenInv(null); },
+                            });
+                          }}
+                        />
+                      ))}
                       <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', borderRadius: '0 0 12px 12px' }}>
                         {selectMode && <span />}
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: selectMode ? '2/7' : '1/6' }}>
@@ -563,6 +598,23 @@ export default function InvoicesPage() {
           </div>
         </div>
       </div>
+      {openInv && (
+        <InvoiceDetailPopup
+          inv={openInv}
+          onClose={() => setOpenInv(null)}
+          onUnbillRequest={(num, doDelete) => {
+            const found = invoices.find(i => i.invoice_number === num);
+            setPwdModal({
+              description: `You are about to unbill invoice ${num} for ${found?.client_name ?? num}.`,
+              onConfirm: async () => {
+                setPwdModal(null);
+                await doDelete();
+                setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; });
+              },
+            });
+          }}
+        />
+      )}
       {pwdModal && (
         <PasswordModal
           description={pwdModal.description}
