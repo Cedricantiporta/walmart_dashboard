@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob, generateInvoicePDFBlobRaw } from '@/lib/invoice-pdf';
@@ -581,13 +581,21 @@ function BulkModal({ rtbClients, startInvoiceNum, billingSummaryInfo, onClose, o
   );
 }
 
+function SearchParamsInit({ onSearch }: { onSearch: (q: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) onSearch(q);
+  }, [searchParams, onSearch]);
+  return null;
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
   const [data, setData] = useState<BillingData | null>(() => clientGet<BillingData>('billing') ?? null);
   const [loading, setLoading] = useState(() => !clientGet('billing'));
   const [error, setError] = useState('');
-  const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
   const [activeClient, setActiveClient] = useState<ClientBilling | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientBilling | null>(null);
@@ -604,11 +612,6 @@ export default function BillingPage() {
   const popupAreaRef = useRef<HTMLDivElement>(null);
 
   const { onToggle } = useSidebar();
-
-  useEffect(() => {
-    const q = searchParams.get('q');
-    if (q) setSearch(q);
-  }, [searchParams]);
 
   useEffect(() => {
     if (!openPopup) return;
@@ -738,6 +741,7 @@ export default function BillingPage() {
 
   return (
     <>
+      <Suspense><SearchParamsInit onSearch={setSearch} /></Suspense>
       <style>{`
         @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
         @keyframes slideInDrawer{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}

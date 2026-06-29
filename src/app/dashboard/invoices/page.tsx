@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob } from '@/lib/invoice-pdf';
@@ -346,13 +346,21 @@ function InvoiceRow({ inv, onDelete, onOpen, selectMode = false, isSelected = fa
   );
 }
 
+function SearchParamsInit({ onSearch }: { onSearch: (q: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) onSearch(q);
+  }, [searchParams, onSearch]);
+  return null;
+}
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>(() => {
     const c = clientGet<Invoice[]>('invoices');
     return Array.isArray(c) ? c : [];
   });
   const [loading, setLoading] = useState(() => !clientGet('invoices'));
-  const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
@@ -365,11 +373,6 @@ export default function InvoicesPage() {
   const [openInv, setOpenInv] = useState<Invoice | null>(null);
   const popupAreaRef = useRef<HTMLDivElement>(null);
   const { onToggle } = useSidebar();
-
-  useEffect(() => {
-    const q = searchParams.get('q');
-    if (q) setSearch(q);
-  }, [searchParams]);
 
   useEffect(() => {
     if (!openPopup) return;
@@ -455,6 +458,7 @@ export default function InvoicesPage() {
 
   return (
     <>
+      <Suspense><SearchParamsInit onSearch={setSearch} /></Suspense>
       <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}} @keyframes slideInDrawer{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}} button:hover{opacity:.88} input:focus{outline:none;box-shadow:0 0 0 2px rgba(0,111,238,0.2);}`}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
