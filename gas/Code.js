@@ -2,9 +2,9 @@
 // Clients hardcoded excluded regardless of onboarding status — only bypass if explicitly in extraClients
 const ALWAYS_EXCLUDED_CLIENTS = new Set([]);
 // Source RMS data — the live "All Client RMS Report" sheet
-const SPREADSHEET_ID = '1elkpl1-ONYSzTtAAGvhlBSJs8-JDxwpfL-_P4TPt-qA';
+const SPREADSHEET_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
 const SHEET_NAME = 'All Client RMS Report';
-// InvoiceLog (billing history) physically lives in the original spreadsheet — keep it there so no history is lost
+// InvoiceLog lives in the same spreadsheet as the RMS source
 const INVOICE_LOG_SPREADSHEET_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
 
 const ONBOARDING_SPREADSHEET_ID = '1lGsy7twdGxSpM-DoWkOBqqzOtU3pMBkZHe016uGW4gE';
@@ -16,11 +16,11 @@ const BILLING_SUMMARY_SHEET_NAME = 'Billing Summary';
 
 const BILLED_STORAGE_KEY = 'billedCaseIDs_v2';
 const VANTAGE_CUTOFF_KEY = 'VANTAGE_CUTOFF_DATE';
-const CODE_VERSION = '20260627b'; // bump on each deploy to invalidate DA/FP caches
+const CODE_VERSION = '20260629a'; // bump on each deploy to invalidate DA/FP caches
 const DEFAULT_DASHBOARD_VIEW_KEY = 'defaultDashboardView_v1';
 const DEFAULT_DASHBOARD_TIME_KEY = 'defaultDashboardTime_v1';
 
-const MAIN_DATA_STORAGE_KEY = 'all_rms_report_data_v4'; // v4: switched source sheet to 1elkpl1
+const MAIN_DATA_STORAGE_KEY = 'all_rms_report_data_v5'; // v5: corrected source sheet back to 1F4G6g6
 
 const DEFAULT_RATES = { 'DEFAULT': 0.22 };
 
