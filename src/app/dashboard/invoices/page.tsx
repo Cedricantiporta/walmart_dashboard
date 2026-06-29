@@ -257,7 +257,7 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
         </div>
       </div>
 
-      {showPdfModal && pdfUrl && <PdfPreviewModal pdfUrl={pdfUrl} onClose={() => setShowPdfModal(false)} />}
+      {showPdfModal && pdfUrl && <PdfPreviewModal pdfUrl={pdfUrl} filename={`${inv.invoice_number}-${inv.client_name.replace(/\s+/g, '-')}.pdf`} onClose={() => setShowPdfModal(false)} />}
 
       {/* Case rows — scrollable */}
       <div style={{ flex: 1, overflow: 'auto' }}>
@@ -296,12 +296,16 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
 
 // ── invoice row ───────────────────────────────────────────────────────────────
 
-function PdfPreviewModal({ pdfUrl, onClose }: { pdfUrl: string; onClose: () => void }) {
+function PdfPreviewModal({ pdfUrl, filename, onClose }: { pdfUrl: string; filename?: string; onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
       <div style={{ background: '#fff', borderRadius: 20, width: '90vw', maxWidth: 760, height: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>PDF Preview</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', flex: 1 }}>PDF Preview</span>
+          <a href={pdfUrl} download={filename ?? 'invoice.pdf'} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', textDecoration: 'none' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13"/><polyline points="7 12 12 17 17 12"/><line x1="3" y1="21" x2="21" y2="21"/></svg>
+            Download PDF
+          </a>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 16, outline: 'none' }}>×</button>
         </div>
         <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`} style={{ flex: 1, width: '100%', border: 'none' }} title="Invoice Preview" />

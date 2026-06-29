@@ -88,6 +88,12 @@ function getUniversalResults(q: string): UResult[] {
     }
   }
 
+  out.sort((a, b) => {
+    const la = a.label.toLowerCase(), lb = b.label.toLowerCase(), ql2 = q.toLowerCase().trim();
+    const sa = la === ql2 ? 0 : la.startsWith(ql2) ? 1 : 2;
+    const sb = lb === ql2 ? 0 : lb.startsWith(ql2) ? 1 : 2;
+    return sa - sb;
+  });
   return out.slice(0, 12);
 }
 
@@ -158,13 +164,16 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
   const [uq, setUq] = useState('');
   const [uResults, setUResults] = useState<UResult[]>([]);
   const [showU, setShowU] = useState(false);
+  const [highlightedIdx, setHighlightedIdx] = useState(0);
   const uRef = useRef<HTMLDivElement>(null);
+  const uInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!uq.trim()) { setUResults([]); setShowU(false); return; }
+    if (!uq.trim()) { setUResults([]); setShowU(false); setHighlightedIdx(0); return; }
     const r = getUniversalResults(uq);
     setUResults(r);
     setShowU(r.length > 0);
+    setHighlightedIdx(0);
   }, [uq]);
 
   useEffect(() => {
@@ -176,12 +185,25 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
     return () => document.removeEventListener('mousedown', h);
   }, [showU]);
 
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.shiftKey && e.key === 'K') {
+        e.preventDefault();
+        uInputRef.current?.focus();
+        if (uq.trim() && uResults.length > 0) setShowU(true);
+      }
+    }
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [uq, uResults]);
+
   function handleUClick(r: UResult) {
     const path = r.source === 'Billing'
       ? `/dashboard/billing?q=${encodeURIComponent(r.term)}`
       : `/dashboard/invoices?q=${encodeURIComponent(r.term)}`;
     setShowU(false);
     setUq('');
+    setHighlightedIdx(0);
     router.push(path);
   }
 
@@ -287,31 +309,38 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
           <div ref={uRef} style={{ padding: '0 8px 6px', flexShrink: 0, position: 'relative' }}>
             <div style={{ position: 'relative' }}>
               <input
+                ref={uInputRef}
                 value={uq}
                 onChange={e => setUq(e.target.value)}
                 onFocus={() => uq.trim() && setShowU(uResults.length > 0)}
-                placeholder="Search anything…"
-                style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '6px 10px 6px 28px', borderRadius: 999, border: `1px solid ${border}`, background: pill, color: txt, outline: 'none', fontFamily: 'inherit' }}
+                onKeyDown={e => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightedIdx(i => Math.min(i + 1, uResults.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightedIdx(i => Math.max(i - 1, 0)); }
+                  else if (e.key === 'Enter' && uResults.length > 0) { e.preventDefault(); handleUClick(uResults[highlightedIdx]); }
+                  else if (e.key === 'Escape') { setShowU(false); setUq(''); }
+                }}
+                placeholder="Search… (⇧K)"
+                style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '6px 26px 6px 28px', borderRadius: 999, border: `1px solid ${border}`, background: pill, color: txt, outline: 'none', fontFamily: 'inherit' }}
               />
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
+              {uq && (
+                <button onClick={() => { setUq(''); setShowU(false); uInputRef.current?.focus(); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, borderRadius: '50%', border: 'none', background: muted, color: '#fff', fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none', padding: 0, lineHeight: 1 }}>×</button>
+              )}
             </div>
             {showU && uResults.length > 0 && (
-              <div style={{ position: 'absolute', left: 8, right: 8, top: '100%', marginTop: 4, background: darkMode ? '#27272a' : '#fff', border: `1px solid ${border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999 }}>
-                {(['Billing', 'Invoices'] as const).map(src => {
-                  const grp = uResults.filter(r => r.source === src);
-                  if (!grp.length) return null;
+              <div style={{ position: 'absolute', left: 8, right: 8, top: '100%', marginTop: 4, background: darkMode ? '#27272a' : '#fff', border: `1px solid ${border}`, borderRadius: 10, overflow: 'auto', maxHeight: 280, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999 }}>
+                {uResults.map((r, i) => {
+                  const isHl = i === highlightedIdx;
                   return (
-                    <div key={src}>
-                      <div style={{ padding: '5px 10px 2px', fontSize: 10, fontWeight: 700, color: muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{src}</div>
-                      {grp.map((r, i) => (
-                        <button key={i} onClick={() => handleUClick(r)} style={{ width: '100%', textAlign: 'left', padding: '5px 10px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: txt }}>
-                          <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
-                          {r.detail && <span style={{ fontSize: 11, color: muted, flexShrink: 0, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.detail}</span>}
-                        </button>
-                      ))}
-                    </div>
+                    <button key={i} onClick={() => handleUClick(r)} onMouseEnter={() => setHighlightedIdx(i)}
+                      style={{ width: '100%', textAlign: 'left', padding: '6px 10px', background: isHl ? (darkMode ? '#3f3f46' : '#eff6ff') : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: txt }}
+                    >
+                      <span style={{ fontSize: 10, fontWeight: 700, color: r.source === 'Billing' ? '#2563eb' : '#7c3aed', background: r.source === 'Billing' ? '#dbeafe' : '#ede9fe', borderRadius: 999, padding: '1px 6px', flexShrink: 0, whiteSpace: 'nowrap' }}>{r.source}</span>
+                      <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
+                      {r.detail && <span style={{ fontSize: 11, color: muted, flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.detail}</span>}
+                    </button>
                   );
                 })}
               </div>
