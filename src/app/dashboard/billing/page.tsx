@@ -209,14 +209,14 @@ function InvoiceModal({ client, invoiceNumber, billingContact, onClose, onSaved 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>{fmtUSD(client.totalFee)}</div>
             <div style={{ flex: 1 }} />
-            <button onClick={() => downloadClientCSV(client, invoiceNumber)} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+            <button onClick={() => downloadClientCSV(client, invoiceNumber)} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
               <DlIcon /> CSV
             </button>
-            <button onClick={() => downloadInvoicePDF(pdfData, pdfCases)} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+            <button onClick={() => downloadInvoicePDF(pdfData, pdfCases)} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
               <DlIcon /> PDF
             </button>
             {!confirming && (
-              <button onClick={() => setConfirming(true)} style={{ padding: '5px 14px', border: 'none', borderRadius: 999, background: '#2563eb', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', outline: 'none' }}>
+              <button onClick={() => setConfirming(true)} style={{ padding: '4px 10px', border: 'none', borderRadius: 999, background: '#2563eb', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', outline: 'none' }}>
                 Mark Billed
               </button>
             )}
@@ -930,7 +930,7 @@ export default function BillingPage() {
                                     <button onClick={() => {
                                       const overdueClient = { ...c, cases: c.overdueCases, totalAmount: c.overdueAmount, totalFee: c.overdueFee, currentMonthFee: 0, prevMonthFee: c.overdueFee };
                                       setActiveClient(overdueClient);
-                                    }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#ea580c', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                    }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, padding: '4px 9px', border: 'none', borderRadius: 999, background: '#ea580c', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                       <IconInvoice /> Invoice
                                     </button>
                                   )}
@@ -979,7 +979,7 @@ export default function BillingPage() {
                               {!hiddenCols.has('cases') && <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{c.cases.length}</span>}
                               <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
                                 {c.cases.length > 0 && (
-                                  <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '5px 12px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                  <button onClick={() => setActiveClient(c)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, padding: '4px 9px', border: 'none', borderRadius: 999, background: '#006FEE', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                     <IconInvoice /> Invoice
                                   </button>
                                 )}

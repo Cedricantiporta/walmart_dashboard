@@ -104,7 +104,7 @@ function ColHdr({ label, col, sortCol, sortDir, onSort, align = 'left' }: {
 }
 
 const pillAction = (danger = false): React.CSSProperties => ({
-  fontSize: 12, fontWeight: 600, padding: '5px 12px',
+  fontSize: 11, fontWeight: 600, padding: '3px 9px',
   border: danger ? 'none' : '1px solid #e4e4e7',
   borderRadius: 999,
   background: danger ? '#f31260' : '#fff',
@@ -113,9 +113,60 @@ const pillAction = (danger = false): React.CSSProperties => ({
   whiteSpace: 'nowrap' as const,
 });
 
+// ── password modal ────────────────────────────────────────────────────────────
+
+function PasswordModal({ description, onConfirm, onCancel }: { description: string; onConfirm: () => void; onCancel: () => void }) {
+  const [val, setVal] = useState('');
+  const [err, setErr] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function tryConfirm() {
+    if (val === '7170') { onConfirm(); }
+    else { setErr(true); setVal(''); setTimeout(() => inputRef.current?.focus(), 10); }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: '#fff', borderRadius: 20, padding: '28px 28px 24px', width: 340, boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}>
+        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#fff0f3', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f31260" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <div style={{ textAlign: 'center', marginBottom: 18 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#11181c', marginBottom: 6 }}>Admin Authorization Required</div>
+          <div style={{ fontSize: 12, color: '#71717a', lineHeight: 1.6 }}>
+            <span style={{ fontWeight: 600, color: '#f31260' }}>This cannot be undone.</span>{' '}{description}
+          </div>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <input
+            ref={inputRef}
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="••••"
+            value={val}
+            onChange={e => { setVal(e.target.value.replace(/\D/g, '').slice(0, 4)); setErr(false); }}
+            onKeyDown={e => e.key === 'Enter' && val.length === 4 && tryConfirm()}
+            style={{ width: '100%', boxSizing: 'border-box', textAlign: 'center', fontSize: 26, fontWeight: 700, letterSpacing: 10, padding: '10px 16px', border: `1.5px solid ${err ? '#f31260' : '#e4e4e7'}`, borderRadius: 12, outline: 'none', color: '#11181c', background: err ? '#fff0f3' : '#fafafa', transition: 'border-color 0.15s' }}
+          />
+          {err && <div style={{ fontSize: 11, color: '#f31260', textAlign: 'center', marginTop: 5 }}>Incorrect password. Try again.</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 999, border: '1px solid #e4e4e7', background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151', outline: 'none' }}>Cancel</button>
+          <button onClick={tryConfirm} disabled={val.length !== 4} style={{ flex: 1, padding: '9px', borderRadius: 999, border: 'none', background: val.length === 4 ? '#f31260' : '#e4e4e7', color: val.length === 4 ? '#fff' : '#a1a1aa', fontSize: 13, fontWeight: 700, cursor: val.length !== 4 ? 'not-allowed' : 'pointer', outline: 'none' }}>Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── invoice row ───────────────────────────────────────────────────────────────
 
-function InvoiceRow({ inv, onDelete, searchQ, selectMode = false, isSelected = false, onToggleSelect }: { inv: Invoice; onDelete: (num: string) => void; searchQ?: string; selectMode?: boolean; isSelected?: boolean; onToggleSelect?: () => void }) {
+function InvoiceRow({ inv, onDelete, searchQ, selectMode = false, isSelected = false, onToggleSelect, onUnbillRequest }: { inv: Invoice; onDelete: (num: string) => void; searchQ?: string; selectMode?: boolean; isSelected?: boolean; onToggleSelect?: () => void; onUnbillRequest?: (num: string, doDelete: () => Promise<void>) => void }) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
@@ -197,7 +248,19 @@ function InvoiceRow({ inv, onDelete, searchQ, selectMode = false, isSelected = f
         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
           <button onClick={async e => { e.stopPropagation(); const raw = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? [])); triggerCSVDownload(inv, raw.filter(c => !!c.rms_posting_date)); }} style={pillAction()}>CSV</button>
           <button onClick={async e => { e.stopPropagation(); await downloadPDF(); }} style={pillAction()}>PDF</button>
-          <button onClick={async e => { e.stopPropagation(); await deleteInvoice(); }} disabled={deleting} style={pillAction(true)}>Unbill</button>
+          <button onClick={async e => {
+            e.stopPropagation();
+            if (onUnbillRequest) {
+              onUnbillRequest(inv.invoice_number, async () => {
+                setDeleting(true);
+                await fetch(`/api/invoices/${inv.invoice_number}`, { method: 'DELETE' });
+                onDelete(inv.invoice_number);
+                setDeleting(false);
+              });
+            } else {
+              await deleteInvoice();
+            }
+          }} disabled={deleting} style={pillAction(true)}>Unbill</button>
         </div>
       </div>
       {open && snapCount > 0 && (
@@ -257,6 +320,7 @@ export default function InvoicesPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedNums, setSelectedNums] = useState<Set<string>>(new Set());
   const [unbillBusy, setUnbillBusy] = useState(false);
+  const [pwdModal, setPwdModal] = useState<{ description: string; onConfirm: () => void | Promise<void> } | null>(null);
   const popupAreaRef = useRef<HTMLDivElement>(null);
   const { onToggle } = useSidebar();
 
@@ -274,17 +338,25 @@ export default function InvoicesPage() {
     else { setSortCol(col); setSortDir('desc'); }
   }
 
-  async function handleUnbillSelected() {
+  function handleUnbillSelected() {
     if (selectedNums.size === 0 || unbillBusy) return;
-    setUnbillBusy(true);
-    for (const num of [...selectedNums]) {
-      await fetch(`/api/invoices/${num}`, { method: 'DELETE' });
-    }
-    setInvoices(prev => prev.filter(i => !selectedNums.has(i.invoice_number)));
-    clientClear('invoices');
-    setSelectedNums(new Set());
-    setSelectMode(false);
-    setUnbillBusy(false);
+    const count = selectedNums.size;
+    const nums = new Set(selectedNums);
+    setPwdModal({
+      description: `You are about to unbill ${count} selected invoice${count > 1 ? 's' : ''}.`,
+      onConfirm: async () => {
+        setPwdModal(null);
+        setUnbillBusy(true);
+        for (const num of [...nums]) {
+          await fetch(`/api/invoices/${num}`, { method: 'DELETE' });
+        }
+        setInvoices(prev => prev.filter(i => !nums.has(i.invoice_number)));
+        clientClear('invoices');
+        setSelectedNums(new Set());
+        setSelectMode(false);
+        setUnbillBusy(false);
+      },
+    });
   }
 
   useEffect(() => {
@@ -464,6 +536,13 @@ export default function InvoicesPage() {
                             selectMode={selectMode}
                             isSelected={selectedNums.has(inv.invoice_number)}
                             onToggleSelect={() => setSelectedNums(prev => { const next = new Set(prev); if (next.has(inv.invoice_number)) next.delete(inv.invoice_number); else next.add(inv.invoice_number); return next; })}
+                            onUnbillRequest={(num, doDelete) => {
+                              const found = invoices.find(i => i.invoice_number === num);
+                              setPwdModal({
+                                description: `You are about to unbill invoice ${num} for ${found?.client_name ?? num}.`,
+                                onConfirm: async () => { setPwdModal(null); await doDelete(); },
+                              });
+                            }}
                           />
                         );
                       })}
@@ -484,6 +563,13 @@ export default function InvoicesPage() {
           </div>
         </div>
       </div>
+      {pwdModal && (
+        <PasswordModal
+          description={pwdModal.description}
+          onConfirm={pwdModal.onConfirm}
+          onCancel={() => setPwdModal(null)}
+        />
+      )}
     </>
   );
 }

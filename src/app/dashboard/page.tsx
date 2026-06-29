@@ -616,6 +616,37 @@ export default function DashboardPage() {
 
   const clientOptions = [{ value: 'all', label: 'All Clients' }, ...clientList.map(c => ({ value: c, label: c }))];
 
+  // ── All Clients table data ───────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [invoiceData, setInvoiceData] = useState<any[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cached = clientGet<any[]>('invoices');
+    if (Array.isArray(cached) && cached.length) { setInvoiceData(cached); return; }
+    setLoadingClients(true);
+    fetch('/api/invoices').then(r => r.json()).then(d => { if (Array.isArray(d)) setInvoiceData(d); setLoadingClients(false); }).catch(() => setLoadingClients(false));
+  }, []);
+
+  const clientSummary = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const map = new Map<string, { totalRecovered: number; totalFee: number; cases: number; invoices: number; lastDate: string }>();
+    for (const inv of invoiceData) {
+      const ex = map.get(inv.client_name) ?? { totalRecovered: 0, totalFee: 0, cases: 0, invoices: 0, lastDate: '' };
+      map.set(inv.client_name, {
+        totalRecovered: ex.totalRecovered + (inv.total_reimbursed || 0),
+        totalFee: ex.totalFee + (inv.billed_fee || 0),
+        cases: ex.cases + (inv.case_ids?.length ?? 0),
+        invoices: ex.invoices + 1,
+        lastDate: !ex.lastDate || (inv.billed_date ?? '') > ex.lastDate ? (inv.billed_date ?? '') : ex.lastDate,
+      });
+    }
+    return [...map.entries()].map(([name, d]) => ({ name, ...d })).sort((a, b) => b.totalRecovered - a.totalRecovered);
+  }, [invoiceData]);
+
+  const clientTableG = 'minmax(0,1.5fr) 130px 110px 70px 70px 110px';
+
   return (
     <>
       <style>{`
@@ -741,6 +772,52 @@ export default function DashboardPage() {
               </div>
             ) : (
               <GaugeChart data={categoryData ?? []} totalRate={metrics && metrics.totalReimbursed > 0 ? metrics.totalFees / metrics.totalReimbursed : 0} />
+            )}
+          </div>
+        </div>
+
+        {/* All Clients table */}
+        <div style={{ background: '#eaebec', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#11181c' }}>All Clients</h3>
+            {clientSummary.length > 0 && <span style={{ fontSize: 12, color: '#71717a', background: '#dcdcdd', borderRadius: 999, padding: '2px 9px' }}>{clientSummary.length}</span>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '0 10px 8px 16px', gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a' }}>Client</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Recovered</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Fee</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Cases</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Invoices</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Last Billed</span>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 12, margin: '0 6px 6px', overflow: 'hidden' }}>
+            {loadingClients && !clientSummary.length ? (
+              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[1,2,3,4].map(i => <Skeleton key={i} h={36} />)}
+              </div>
+            ) : clientSummary.length === 0 ? (
+              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#a1a1aa', fontSize: 13 }}>No invoice history yet.</div>
+            ) : (
+              <>
+                {clientSummary.map((cs, i) => (
+                  <div key={cs.name} style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '9px 10px 9px 16px', gap: 8, borderBottom: i < clientSummary.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cs.name}</span>
+                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(cs.totalRecovered)}</span>
+                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#374151' }}>{fmtFull(cs.totalFee)}</span>
+                    <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.cases}</span>
+                    <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.invoices}</span>
+                    <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.lastDate ? new Date(cs.lastDate.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c' }}>Total ({clientSummary.length})</span>
+                  <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(clientSummary.reduce((s, c) => s + c.totalRecovered, 0))}</span>
+                  <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#11181c' }}>{fmtFull(clientSummary.reduce((s, c) => s + c.totalFee, 0))}</span>
+                  <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{clientSummary.reduce((s, c) => s + c.cases, 0)}</span>
+                  <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{clientSummary.reduce((s, c) => s + c.invoices, 0)}</span>
+                  <span />
+                </div>
+              </>
             )}
           </div>
         </div>
