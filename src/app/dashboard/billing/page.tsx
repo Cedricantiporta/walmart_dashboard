@@ -792,7 +792,7 @@ export default function BillingPage() {
           <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#11181c', flexShrink: 0, outline: 'none' }}>
             <PanelIcon />
           </button>
-          <h1 style={{ fontSize: 22, fontWeight: 300, color: '#11181c', letterSpacing: '-0.01em' }}>Billing</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: '#11181c', letterSpacing: '-0.02em' }}>Billing</h1>
         </div>
 
         {error && <div style={{ padding: '10px 20px', background: '#fef2f2', borderBottom: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>{error}</div>}
