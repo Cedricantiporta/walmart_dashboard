@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
-import { downloadInvoicePDF } from '@/lib/invoice-pdf';
+import { downloadInvoicePDF, generateInvoicePDFBlob } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
 
 const fmtUSD = (v: number) =>
@@ -177,6 +177,8 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
 }) {
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
   const [fetchingCases, setFetchingCases] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const firstMatchRef = useRef<HTMLDivElement | null>(null);
 
   const snapWithDate = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date);
@@ -196,6 +198,18 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
   useEffect(() => {
     if (firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [searchQ, fetchedCases]);
+
+  useEffect(() => {
+    let url = '';
+    const cases = activeCases.length > 0 ? activeCases : [];
+    if (cases.length === 0 && !hasSnapshot) return;
+    generateInvoicePDFBlob(
+      { invoice_number: inv.invoice_number, client_name: inv.client_name, billed_date: inv.billed_date?.slice(0, 10) ?? isoToday(), billed_fee: inv.billed_fee, total_reimbursed: inv.total_reimbursed, case_ids: inv.case_ids },
+      cases.map(c => ({ case_id: c.case_id, claim_type: c.claim_type, rms_posting_date: c.rms_posting_date, reimbursement_amount: c.reimbursement_amount }))
+    ).then(u => { url = u; setPdfUrl(u); });
+    return () => { if (url) URL.revokeObjectURL(url); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inv.invoice_number, fetchedCases]);
 
   async function handleCSV() {
     const raw = hasSnapshot ? activeCases : (fetchedCases ?? await fetchCasesByIds(inv.case_ids ?? []));
@@ -218,10 +232,13 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
 
       {/* Topbar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px 8px 12px', flexShrink: 0, borderBottom: '1px solid #f3f4f6', gap: 8 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: 1 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
-          <span style={{ fontSize: 10, fontWeight: 600, color: '#006FEE', fontFamily: 'monospace' }}>{inv.invoice_number} · {fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
-        </div>
+        <button
+          onClick={() => setShowPreview(p => !p)}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: `1px solid ${showPreview ? '#006FEE' : '#e5e7eb'}`, borderRadius: 999, background: showPreview ? '#eff6ff' : '#f9fafb', fontSize: 11, fontWeight: 600, color: showPreview ? '#006FEE' : '#374151', cursor: 'pointer', outline: 'none', flexShrink: 0 }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          View
+        </button>
         <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
           <button onClick={handleCSV} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
             <DlIcon /> CSV
@@ -232,6 +249,17 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
           <button onClick={onClose} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
         </div>
       </div>
+
+      {/* PDF preview panel */}
+      {showPreview && (
+        <div style={{ height: 200, flexShrink: 0, borderBottom: '1px solid #f3f4f6', background: '#e5e7eb', position: 'relative' }}>
+          {pdfUrl ? (
+            <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} title="Invoice Preview" />
+          ) : (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 12 }}>Generating preview…</div>
+          )}
+        </div>
+      )}
 
       {/* Case rows — scrollable */}
       <div style={{ flex: 1, overflow: 'auto' }}>

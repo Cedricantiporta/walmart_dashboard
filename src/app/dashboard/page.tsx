@@ -259,7 +259,7 @@ function SvgBarChart({ data }: { data: { label: string; recovered: number; fee: 
   if (!data.length) return <div style={{ color: '#a1a1aa', fontSize: 13 }}>No data</div>;
 
   const maxVal = Math.max(...data.map(d => d.recovered), 1);
-  const H = 200, padTop = 36, padBot = 28;
+  const H = 155, padTop = 30, padBot = 24;
   const n = data.length;
   const gap = 18;
   const barW = n > 0 ? Math.floor((600 - (n - 1) * gap) / n) : 40;
@@ -340,11 +340,11 @@ function GaugeChart({ data, totalRate = 0 }: { data: { category: string; amount:
     return { ...d, frac, start, end: 270 + cum * 180, color: CHART_COLORS[i % CHART_COLORS.length] };
   });
 
-  const GCX = 140, GCY = 128, GOR = 118, GIR = 74;
+  const GCX = 140, GCY = 100, GOR = 92, GIR = 58;
 
   return (
     <div>
-      <svg viewBox="0 0 280 132" width="100%" style={{ display: 'block', overflow: 'visible' }}>
+      <svg viewBox="0 0 280 104" width="100%" style={{ display: 'block', overflow: 'visible' }}>
         {/* grey background arc */}
         <path d={donutPath(GCX, GCY, GOR, GIR, 270, 450)} fill="#f4f4f5" />
         {slices.map((s, i) => {
@@ -775,7 +775,7 @@ export default function DashboardPage() {
               <span style={{ fontSize: 11, color: '#a1a1aa', background: '#f4f4f5', borderRadius: 999, padding: '3px 10px' }}>Last 12 months</span>
             </div>
             {loadingHistory && !chartHistory.length ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 200 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 155 }}>
                 {[60,80,45,100,70,90,55,85,65,95,75,110].map((h, i) => <Skeleton key={i} h={h} w={26} radius={7} />)}
               </div>
             ) : (
@@ -802,25 +802,13 @@ export default function DashboardPage() {
         {/* All Clients table */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {/* Header row — outside grey container */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#11181c' }}>All Clients</h3>
-              {clientSummary.length > 0 && <span style={{ fontSize: 12, color: '#71717a', background: '#eaebec', borderRadius: 999, padding: '2px 9px' }}>{clientSummary.length}</span>}
-            </div>
-            {/* Search */}
-            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-              <input
-                placeholder="Search client…"
-                value={clientSearch}
-                onChange={e => setClientSearch(e.target.value)}
-                style={{ fontSize: 12, padding: '6px 28px 6px 32px', border: '1px solid #e4e4e7', borderRadius: 999, width: 190, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
-              />
-              {clientSearch && <button onClick={() => setClientSearch('')} style={{ position: 'absolute', right: 7, width: 16, height: 16, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>×</button>}
-            </div>
+          {/* Header row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#11181c' }}>All Clients</h3>
+            {clientSummary.length > 0 && <span style={{ fontSize: 12, color: '#71717a', background: '#eaebec', borderRadius: 999, padding: '2px 9px' }}>{clientSummary.length}</span>}
           </div>
 
-          {/* Toolbar row — Sort pill */}
+          {/* Toolbar row — Sort pill + search far right */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div ref={clientSortRef} style={{ position: 'relative' }}>
               <button onClick={() => setClientSortOpen(o => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: '#11181c', background: '#eaebec', border: 'none', borderRadius: 999, padding: '5px 12px', cursor: 'pointer', outline: 'none' }}>
@@ -842,6 +830,17 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
+            </div>
+            <div style={{ flex: 1 }} />
+            {/* Search — far right */}
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+              <input
+                placeholder="Search client…"
+                value={clientSearch}
+                onChange={e => setClientSearch(e.target.value)}
+                style={{ fontSize: 12, padding: '6px 28px 6px 32px', border: '1px solid #e4e4e7', borderRadius: 999, width: 190, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
+              />
+              {clientSearch && <button onClick={() => setClientSearch('')} style={{ position: 'absolute', right: 7, width: 16, height: 16, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>×</button>}
             </div>
           </div>
 
