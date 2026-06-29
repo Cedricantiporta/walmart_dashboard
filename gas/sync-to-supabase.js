@@ -8,7 +8,8 @@
 //   NEXTJS_API_URL   = https://your-app.vercel.app  (no trailing slash)
 //   SYNC_SECRET      = same value as SYNC_SECRET in Vercel env vars
 
-const SYNC_SOURCE_ID = '1F4G6g6nqyOgnf5VOhWNo8nJKWEJo4CcemcIygIMKEcE';
+// IMPORTANT: Must match SPREADSHEET_ID in Code.js (the live RMS source)
+const SYNC_SOURCE_ID = '1elkpl1-ONYSzTtAAGvhlBSJs8-JDxwpfL-_P4TPt-qA';
 const SYNC_RMS_SHEET = 'All Client RMS Report';
 const SYNC_ONBOARDING_SHEET = 'Onboarding Tracker';
 const SYNC_INVOICE_SHEET = 'InvoiceLog';
@@ -218,17 +219,54 @@ function _migrateInvoiceLog(apiUrl, secret) {
   Logger.log('InvoiceLog migrated: ' + rows.length + ' invoices');
 }
 
-// Install onEdit trigger — fires syncToSupabase whenever the spreadsheet is edited
-function setupSyncTrigger() {
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'syncToSupabase') ScriptApp.deleteTrigger(t);
-  });
+// ---- TRIGGER SETUP ----
+// Run ONE of these from the GAS editor to activate auto-sync.
+
+// Option A: onEdit — fires every time source sheet is edited (instant, but may miss bulk paste)
+function setupOnEditTrigger() {
+  _deleteAllSyncTriggers();
   ScriptApp.newTrigger('syncToSupabase')
     .forSpreadsheet(SYNC_SOURCE_ID)
     .onEdit()
     .create();
-  Logger.log('Trigger created: syncToSupabase on edit');
+  Logger.log('Trigger created: syncToSupabase onEdit on ' + SYNC_SOURCE_ID);
 }
+
+// Option B: every 5 minutes — reliable, catches all changes including bulk imports
+function setup5MinTrigger() {
+  _deleteAllSyncTriggers();
+  ScriptApp.newTrigger('syncToSupabase')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+  Logger.log('Trigger created: syncToSupabase every 5 minutes');
+}
+
+// Option C: both — onEdit for instant updates + 5-min fallback for missed edits
+function setupAllTriggers() {
+  _deleteAllSyncTriggers();
+  ScriptApp.newTrigger('syncToSupabase')
+    .forSpreadsheet(SYNC_SOURCE_ID)
+    .onEdit()
+    .create();
+  ScriptApp.newTrigger('syncToSupabase')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+  Logger.log('Triggers created: onEdit + every 5 min on ' + SYNC_SOURCE_ID);
+}
+
+function _deleteAllSyncTriggers() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'syncToSupabase') {
+      ScriptApp.deleteTrigger(t);
+      Logger.log('Deleted trigger: ' + t.getTriggerSourceId());
+    }
+  });
+}
+
+// Legacy alias — kept for backwards compat
+function setupSyncTrigger() { setupOnEditTrigger(); }
 
 // ---- helpers ----
 
