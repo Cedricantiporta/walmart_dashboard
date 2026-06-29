@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
@@ -357,10 +357,15 @@ function InvoiceRow({ inv, onDelete, onOpen, selectMode = false, isSelected = fa
 
 function SearchParamsInit({ onSearch }: { onSearch: (q: string) => void }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   useEffect(() => {
     const q = searchParams.get('q');
-    if (q) onSearch(q);
-  }, [searchParams, onSearch]);
+    if (q) {
+      onSearch(q);
+      router.replace(pathname, { scroll: false });
+    }
+  }, [searchParams, pathname]);
   return null;
 }
 
