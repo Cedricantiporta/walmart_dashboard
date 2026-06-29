@@ -182,6 +182,15 @@ const DlIcon = () => (
 function InvoiceSidebar({ inv, onClose, searchQ }: {
   inv: Invoice; onClose: () => void; searchQ?: string;
 }) {
+  const { darkMode: dm2 } = useSidebar();
+  const sdCard = dm2 ? '#17181a' : '#fff';
+  const sdBdr  = dm2 ? '#2a2b2c' : '#f3f4f6';
+  const sdTxt  = dm2 ? '#e4e4e5' : '#374151';
+  const sdMut  = dm2 ? '#71717a' : '#6b7280';
+  const sdTot  = dm2 ? '#1c1d1f' : '#f9fafb';
+  const sdPill = dm2 ? '#272728' : '#f9fafb';
+  const sdPillBdr = dm2 ? '#2a2b2c' : '#e5e7eb';
+  const sdPillTxt = dm2 ? '#e4e4e5' : '#374151';
   const [fetchedCases, setFetchedCases] = useState<CaseRow[] | null>(null);
   const [fetchingCases, setFetchingCases] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -235,25 +244,25 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
   const firstMatchIdx = q ? activeCases.findIndex(c => c.case_id.toLowerCase().includes(q)) : -1;
 
   return (
-    <div style={{ position: 'absolute', top: 6, right: 6, bottom: 6, width: 390, background: '#fff', borderRadius: 12, boxShadow: '-6px 0 32px rgba(0,0,0,0.13)', zIndex: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInDrawer 0.18s cubic-bezier(0.4,0,0.2,1)' }}>
+    <div style={{ position: 'absolute', top: 6, right: 6, bottom: 6, width: 390, background: sdCard, borderRadius: 12, boxShadow: dm2 ? 'none' : '-6px 0 32px rgba(0,0,0,0.13)', zIndex: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInDrawer 0.18s cubic-bezier(0.4,0,0.2,1)' }}>
 
       {/* Topbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px 8px 12px', flexShrink: 0, borderBottom: '1px solid #f3f4f6', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px 8px 12px', flexShrink: 0, borderBottom: `1px solid ${sdBdr}`, gap: 8 }}>
         <button
           onClick={() => pdfUrl && setShowPdfModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: pdfUrl ? '#374151' : '#a1a1aa', cursor: pdfUrl ? 'pointer' : 'not-allowed', outline: 'none', flexShrink: 0 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: `1px solid ${sdPillBdr}`, borderRadius: 999, background: sdPill, fontSize: 11, fontWeight: 600, color: pdfUrl ? sdPillTxt : '#a1a1aa', cursor: pdfUrl ? 'pointer' : 'not-allowed', outline: 'none', flexShrink: 0 }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           View
         </button>
         <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
-          <button onClick={handleCSV} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+          <button onClick={handleCSV} title="Download CSV" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', border: `1px solid ${sdPillBdr}`, borderRadius: 999, background: sdPill, fontSize: 11, fontWeight: 600, color: sdPillTxt, cursor: 'pointer', outline: 'none' }}>
             <DlIcon /> CSV
           </button>
-          <button onClick={handlePDF} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', border: '1px solid #e5e7eb', borderRadius: 999, background: '#f9fafb', fontSize: 11, fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none' }}>
+          <button onClick={handlePDF} title="Download PDF" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', border: `1px solid ${sdPillBdr}`, borderRadius: 999, background: sdPill, fontSize: 11, fontWeight: 600, color: sdPillTxt, cursor: 'pointer', outline: 'none' }}>
             <DlIcon /> PDF
           </button>
-          <button onClick={onClose} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
+          <button onClick={onClose} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: dm2 ? '#272728' : '#f4f4f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: sdMut, fontSize: 14, lineHeight: 1, outline: 'none', flexShrink: 0 }}>×</button>
         </div>
       </div>
 
@@ -273,10 +282,10 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
           const isMatch = q ? c.case_id.toLowerCase().includes(q) : false;
           return (
             <div key={i} ref={i === firstMatchIdx ? firstMatchRef : undefined}
-              style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 11, alignItems: 'center', background: isMatch ? '#fef9c3' : undefined }}>
-              <span style={{ fontFamily: 'monospace', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
-              <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
-              <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
+              style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderBottom: `1px solid ${sdBdr}`, fontSize: 11, alignItems: 'center', background: isMatch ? '#fef9c3' : sdCard }}>
+              <span style={{ fontFamily: 'monospace', color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.case_id}</span>
+              <span style={{ color: sdTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.claim_type || 'N/A'}</span>
+              <span style={{ color: sdMut, whiteSpace: 'nowrap' }}>{c.rms_posting_date ? fmtDate(c.rms_posting_date.slice(0, 10)) : '—'}</span>
               <span style={{ fontWeight: 600, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(c.reimbursement_amount)}</span>
             </div>
           );
@@ -285,8 +294,8 @@ function InvoiceSidebar({ inv, onClose, searchQ }: {
 
       {/* Sticky total */}
       {activeCases.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: '2px solid #e5e7eb', background: '#f9fafb', flexShrink: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', gridColumn: '1/4' }}>Total ({activeCases.length})</span>
+        <div style={{ display: 'grid', gridTemplateColumns: CG, gap: 4, padding: '9px 12px', borderTop: `2px solid ${sdBdr}`, background: sdTot, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: sdTxt, gridColumn: '1/4' }}>Total ({activeCases.length})</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{fmtUSD(activeCases.reduce((s, c) => s + c.reimbursement_amount, 0))}</span>
         </div>
       )}
@@ -320,13 +329,20 @@ function InvoiceRow({ inv, onDelete, onOpen, selectMode = false, isSelected = fa
   selectMode?: boolean; isSelected?: boolean; isOpen?: boolean; onToggleSelect?: () => void;
   onUnbillRequest?: (num: string, doDelete: () => Promise<void>) => void;
 }) {
+  const { darkMode: dm3 } = useSidebar();
+  const rowBase  = dm3 ? '#17181a' : '#fff';
+  const rowOpen  = dm3 ? '#0d1320' : '#eff6ff';
+  const rowHovN  = dm3 ? '#1e1f21' : '#fafafa';
+  const rowHovO  = dm3 ? '#111a2e' : '#dbeafe';
+  const rowTxt   = dm3 ? '#e4e4e5' : '#11181c';
+  const rowBdr   = dm3 ? '#2a2b2c' : '#f3f4f6';
   const snapCount = (inv.case_snapshot ?? []).filter(c => !!c.rms_posting_date).length || (inv.case_ids?.length ?? 0);
   const G = getInvoiceGrid(selectMode);
 
   return (
-    <div onClick={onOpen} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: '1px solid #f3f4f6', background: isOpen ? '#eff6ff' : '#fff', alignItems: 'center', minWidth: 700, transition: 'background 0.1s' }}
-      onMouseEnter={e => (e.currentTarget.style.background = isOpen ? '#dbeafe' : '#fafafa')}
-      onMouseLeave={e => (e.currentTarget.style.background = isOpen ? '#eff6ff' : '#fff')}
+    <div onClick={onOpen} style={{ display: 'grid', gridTemplateColumns: G, padding: '9px 10px 9px 16px', gap: 8, cursor: 'pointer', borderBottom: `1px solid ${rowBdr}`, background: isOpen ? rowOpen : rowBase, alignItems: 'center', minWidth: 700, transition: 'background 0.1s' }}
+      onMouseEnter={e => (e.currentTarget.style.background = isOpen ? rowHovO : rowHovN)}
+      onMouseLeave={e => (e.currentTarget.style.background = isOpen ? rowOpen : rowBase)}
     >
       {selectMode && (
         <div onClick={e => { e.stopPropagation(); onToggleSelect?.(); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -334,12 +350,12 @@ function InvoiceRow({ inv, onDelete, onOpen, selectMode = false, isSelected = fa
         </div>
       )}
       <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#006FEE', fontSize: 12 }}>{inv.invoice_number}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: rowTxt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</span>
       <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{snapCount}</span>
       <span />
       <span style={{ fontSize: 12, color: '#71717a' }}>{fmtDate(inv.billed_date?.slice(0, 10) ?? '')}</span>
       <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#006FEE' }}>{fmtUSD(inv.total_reimbursed)}</span>
-      <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#11181c' }}>{fmtUSD(inv.billed_fee)}</span>
+      <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: rowTxt }}>{fmtUSD(inv.billed_fee)}</span>
       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
         <button onClick={async e => {
           e.stopPropagation();
@@ -381,7 +397,17 @@ export default function InvoicesPage() {
   const [pwdModal, setPwdModal] = useState<{ description: string; onConfirm: () => void | Promise<void> } | null>(null);
   const [openInv, setOpenInv] = useState<Invoice | null>(null);
   const popupAreaRef = useRef<HTMLDivElement>(null);
-  const { onToggle } = useSidebar();
+  const { onToggle, darkMode } = useSidebar();
+  const dm = darkMode;
+  const pageBg  = dm ? '#050606' : '#f4f4f5';
+  const layer1  = dm ? '#222324' : '#eaebec';
+  const cardBg  = dm ? '#17181a' : '#fff';
+  const txt     = dm ? '#e4e4e5' : '#11181c';
+  const bdr     = dm ? '#2a2b2c' : '#e4e4e7';
+  const pillBg  = dm ? '#272728' : '#eaebec';
+  const pillTxt = dm ? '#fff'    : '#11181c';
+  const searchBg= dm ? '#272728' : '#fff';
+  const totalBg = dm ? '#1c1d1f' : '#fafafa';
 
   useEffect(() => {
     if (!openPopup) return;
@@ -473,11 +499,11 @@ export default function InvoicesPage() {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
         {/* Top bar */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', gap: 10, padding: '4px 20px 8px', height: 52, background: '#f4f4f5' }}>
-          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#11181c', flexShrink: 0, outline: 'none' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', gap: 10, padding: '4px 20px 8px', height: 52, background: pageBg }}>
+          <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: txt, flexShrink: 0, outline: 'none' }}>
             <PanelIcon />
           </button>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>Invoices</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: txt, letterSpacing: '-0.02em' }}>Invoices</h1>
         </div>
 
         {/* Content */}
@@ -491,13 +517,13 @@ export default function InvoicesPage() {
 
                   {/* Filter popup */}
                   <div style={{ position: 'relative' }}>
-                    <button onClick={() => setOpenPopup(p => p === 'filter' ? null : 'filter')} style={{ ...toolbarPill, ...(filterType !== 'all' ? { background: '#dbeafe', color: '#1d4ed8' } : {}) }}>
+                    <button onClick={() => setOpenPopup(p => p === 'filter' ? null : 'filter')} style={{ ...toolbarPill, background: filterType !== 'all' ? '#dbeafe' : pillBg, color: filterType !== 'all' ? '#1d4ed8' : pillTxt }}>
                       <IconFilter /> Filter{filterType !== 'all' ? ' ·' : ''}
                     </button>
                     {openPopup === 'filter' && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 18, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 190, padding: 4 }}>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: cardBg, border: `1px solid ${bdr}`, borderRadius: 18, boxShadow: dm ? 'none' : '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 190, padding: 4 }}>
                         {([{ val: 'all', lbl: 'All invoices' }, { val: 'thisMonth', lbl: 'This month' }] as const).map(({ val, lbl }) => (
-                          <button key={val} onClick={() => { setFilterType(val); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: filterType === val ? '#eaebec' : 'transparent', color: '#11181c', fontWeight: filterType === val ? 600 : 400, transition: 'background 0.1s' }}>{lbl}</button>
+                          <button key={val} onClick={() => { setFilterType(val); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: filterType === val ? pillBg : 'transparent', color: txt, fontWeight: filterType === val ? 600 : 400, transition: 'background 0.1s' }}>{lbl}</button>
                         ))}
                       </div>
                     )}
@@ -505,13 +531,13 @@ export default function InvoicesPage() {
 
                   {/* Sort popup */}
                   <div style={{ position: 'relative' }}>
-                    <button onClick={() => setOpenPopup(p => p === 'sort' ? null : 'sort')} style={toolbarPill}>
+                    <button onClick={() => setOpenPopup(p => p === 'sort' ? null : 'sort')} style={{ ...toolbarPill, background: pillBg, color: pillTxt }}>
                       <IconSort /> Sort
                     </button>
                     {openPopup === 'sort' && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 18, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 4 }}>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: cardBg, border: `1px solid ${bdr}`, borderRadius: 18, boxShadow: dm ? 'none' : '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 4 }}>
                         {([{ col: 'date', lbl: 'Date' }, { col: 'client', lbl: 'Client name' }, { col: 'fee', lbl: 'Fee' }, { col: 'recovered', lbl: 'Recovered' }, { col: 'invoice', lbl: 'Invoice #' }, { col: 'cases', lbl: 'Cases' }] as const).map(({ col, lbl }) => (
-                          <button key={col} onClick={() => { handleSort(col); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: sortCol === col ? '#eaebec' : 'transparent', color: '#11181c', fontWeight: sortCol === col ? 600 : 400, transition: 'background 0.1s' }}>
+                          <button key={col} onClick={() => { handleSort(col); setOpenPopup(null); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: sortCol === col ? pillBg : 'transparent', color: txt, fontWeight: sortCol === col ? 600 : 400, transition: 'background 0.1s' }}>
                             {lbl}{sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         ))}
@@ -521,12 +547,12 @@ export default function InvoicesPage() {
 
                   {/* Select mode */}
                   {!selectMode ? (
-                    <button onClick={() => { setSelectMode(true); setSelectedNums(new Set()); setOpenPopup(null); }} style={toolbarPill}>
+                    <button onClick={() => { setSelectMode(true); setSelectedNums(new Set()); setOpenPopup(null); }} style={{ ...toolbarPill, background: pillBg, color: pillTxt }}>
                       <IconCols /> Select
                     </button>
                   ) : (
                     <>
-                      <button onClick={() => { setSelectMode(false); setSelectedNums(new Set()); }} style={toolbarPill}>
+                      <button onClick={() => { setSelectMode(false); setSelectedNums(new Set()); }} style={{ ...toolbarPill, background: pillBg, color: pillTxt }}>
                         Cancel
                       </button>
                       <button
@@ -544,7 +570,7 @@ export default function InvoicesPage() {
                     placeholder="Search invoice, client or case ID…"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    style={{ fontSize: 13, padding: '7px 32px 7px 36px', border: '1px solid #e4e4e7', borderRadius: 999, width: 230, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
+                    style={{ fontSize: 13, padding: '7px 32px 7px 36px', border: `1px solid ${bdr}`, borderRadius: 999, width: 230, color: txt, outline: 'none', background: `${searchBg} url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E") no-repeat 10px center` }}
                   />
                   {search && (
                     <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 12, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none', flexShrink: 0 }}>×</button>
@@ -554,7 +580,7 @@ export default function InvoicesPage() {
             </div>
           )}
 
-          <div style={{ flex: 1, overflow: 'hidden', borderRadius: 16, background: '#eaebec', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'hidden', borderRadius: 16, background: layer1, display: 'flex', flexDirection: 'column' }}>
 
             {/* Column headers — sit on grey layer */}
             {!loading && sorted.length > 0 && (() => {
@@ -583,7 +609,7 @@ export default function InvoicesPage() {
             <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
 
               {/* White body card */}
-              <div style={{ position: 'absolute', inset: '6px', background: '#fff', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: '6px', background: cardBg, borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {loading ? (
                   <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {[1,2,3,4,5].map(i => <Sk key={i} h={44} />)}
@@ -619,9 +645,9 @@ export default function InvoicesPage() {
                     </div>
                     {/* Sticky total */}
                     {(() => { const G = getInvoiceGrid(selectMode); return (
-                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', flexShrink: 0, minWidth: 700 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: G, padding: '10px 10px 10px 16px', gap: 8, borderTop: `2px solid ${bdr}`, background: totalBg, flexShrink: 0, minWidth: 700 }}>
                         {selectMode && <span />}
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c', gridColumn: selectMode ? '2/7' : '1/6' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: txt, gridColumn: selectMode ? '2/7' : '1/6' }}>
                           {search ? `Filtered (${filtered.length})` : `Total (${invoices.length})`}
                         </span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#006FEE', textAlign: 'right' }}>{fmtUSD(totalRecovered)}</span>

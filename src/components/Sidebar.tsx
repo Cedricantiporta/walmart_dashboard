@@ -246,12 +246,12 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
   const initial = (user?.name?.charAt(0) ?? 'A').toUpperCase();
 
   // Theme tokens
-  const bg      = darkMode ? '#1a1a1b' : '#f4f4f5';
-  const border  = darkMode ? '#27272a' : '#e4e4e7';
-  const txt     = darkMode ? '#f4f4f5' : '#11181c';
+  const bg      = darkMode ? '#050606' : '#f4f4f5';
+  const border  = darkMode ? '#2a2b2c' : '#e4e4e7';
+  const txt     = darkMode ? '#e4e4e5' : '#11181c';
   const muted   = darkMode ? '#71717a' : '#71717a';
-  const pill    = darkMode ? '#27272a' : '#eaebec';
-  const pillHov = darkMode ? '#3f3f46' : '#dcdcdd';
+  const pill    = darkMode ? '#272728' : '#eaebec';
+  const pillHov = darkMode ? '#2f3030' : '#dcdcdd';
 
   return (
     <>
@@ -332,7 +332,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
               {uq ? (
                 <button onClick={() => { setUq(''); setShowU(false); uInputRef.current?.focus(); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, borderRadius: '50%', border: 'none', background: muted, color: '#fff', fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none', padding: 0, lineHeight: 1 }}>×</button>
               ) : (
-                <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: muted, background: darkMode ? '#3f3f46' : '#e4e4e7', border: `1px solid ${border}`, borderRadius: 4, padding: '1px 5px', pointerEvents: 'none', fontWeight: 600, letterSpacing: '0.01em', lineHeight: 1.4 }}>⇧K</span>
+                <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: muted, background: darkMode ? '#272728' : '#e4e4e7', border: `1px solid ${border}`, borderRadius: 4, padding: '1px 5px', pointerEvents: 'none', fontWeight: 600, letterSpacing: '0.01em', lineHeight: 1.4 }}>⇧K</span>
               )}
             </div>
             {showU && uResults.length > 0 && (() => {
@@ -347,7 +347,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
                       const isHl = i === highlightedIdx;
                       return (
                         <button key={i} onClick={() => handleUClick(r)} onMouseEnter={() => setHighlightedIdx(i)}
-                          style={{ width: '100%', textAlign: 'left', padding: '5px 10px', background: isHl ? (darkMode ? '#3f3f46' : '#eff6ff') : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: txt }}
+                          style={{ width: '100%', textAlign: 'left', padding: '5px 10px', background: isHl ? (darkMode ? '#272728' : '#eff6ff') : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: txt }}
                         >
                           <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
                           {r.detail && <span style={{ fontSize: 11, color: muted, flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.detail}</span>}
@@ -358,7 +358,7 @@ export default function Sidebar({ collapsed, syncTime, darkMode, onThemeToggle, 
                 );
               };
               return (
-                <div style={{ position: 'absolute', left: 8, right: 8, top: '100%', marginTop: 4, background: darkMode ? '#27272a' : '#fff', border: `1px solid ${border}`, borderRadius: 10, overflow: 'auto', maxHeight: 280, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999 }}>
+                <div style={{ position: 'absolute', left: 8, right: 8, top: '100%', marginTop: 4, background: darkMode ? '#17181a' : '#fff', border: `1px solid ${border}`, borderRadius: 10, overflow: 'auto', maxHeight: 280, boxShadow: darkMode ? 'none' : '0 4px 20px rgba(0,0,0,0.15)', zIndex: 999 }}>
                   {renderGroup(billingR, 'Billing', '#2563eb')}
                   {renderGroup(invoiceR, 'Invoices', '#7c3aed')}
                 </div>

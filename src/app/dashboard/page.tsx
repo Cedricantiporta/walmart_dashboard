@@ -123,6 +123,13 @@ function PillDropdown({
   const [hovered, setHovered] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find(o => o.value === value);
+  const { darkMode: dm4 } = useSidebar();
+  const pdPillBg = dm4 ? '#272728' : '#eaebec';
+  const pdPillTxt= dm4 ? '#fff'    : '#11181c';
+  const pdCardBg = dm4 ? '#17181a' : '#fff';
+  const pdBdr    = dm4 ? '#2a2b2c' : '#e4e4e7';
+  const pdHov    = dm4 ? '#272728' : '#e4e4e7';
+  const pdSel    = dm4 ? '#2f3030' : '#eaebec';
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -139,20 +146,20 @@ function PillDropdown({
         style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '7px 12px', borderRadius: 999,
-          border: 'none', background: '#eaebec',
-          color: '#11181c', fontSize: 13, fontWeight: 500,
+          border: 'none', background: pdPillBg,
+          color: pdPillTxt, fontSize: 13, fontWeight: 500,
           cursor: 'pointer', outline: 'none', whiteSpace: 'nowrap',
         }}
       >
-        {icon && <span style={{ color: '#11181c', display: 'flex' }}>{icon}</span>}
+        {icon && <span style={{ color: pdPillTxt, display: 'flex' }}>{icon}</span>}
         {selected?.label}
-        <span style={{ color: '#11181c', display: 'flex' }}><ChevronDownIcon /></span>
+        <span style={{ color: pdPillTxt, display: 'flex' }}><ChevronDownIcon /></span>
       </button>
       {open && (
         <div style={{
           position: 'absolute', top: '100%', right: 0, marginTop: 6,
-          background: '#fff', border: '1px solid #e4e4e7', borderRadius: 18,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100,
+          background: pdCardBg, border: `1px solid ${pdBdr}`, borderRadius: 18,
+          boxShadow: dm4 ? 'none' : '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100,
           minWidth: 190, maxHeight: 240, overflowY: 'auto',
         }}>
           <div style={{ padding: 4 }}>
@@ -166,8 +173,8 @@ function PillDropdown({
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '7px 12px', fontSize: 12, border: 'none', cursor: 'pointer',
                 borderRadius: 999,
-                color: '#11181c',
-                background: hovered === opt.value ? '#e4e4e7' : (opt.value === value ? '#eaebec' : 'transparent'),
+                color: pdPillTxt,
+                background: hovered === opt.value ? pdHov : (opt.value === value ? pdSel : 'transparent'),
                 fontWeight: opt.value === value ? 600 : 400,
                 transition: 'background 0.1s',
               }}
@@ -211,6 +218,7 @@ function MetricCard({
 }: {
   label: string; value: number; sub?: string; trend?: number; format?: 'currency' | 'number';
 }) {
+  const { darkMode: dm5 } = useSidebar();
   const animated = useCountUp(value);
   const trendUp = trend !== undefined && trend >= 0;
 
@@ -231,7 +239,7 @@ function MetricCard({
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', minWidth: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', animation: 'cardIn 0.4s ease-out both' }}>
+    <div style={{ background: dm5 ? '#17181a' : '#fff', borderRadius: 14, padding: '14px 16px', minWidth: 0, boxShadow: dm5 ? 'none' : '0 2px 6px rgba(0,0,0,0.06)', animation: 'cardIn 0.4s ease-out both' }}>
       {/* Label + trend pill on same row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 500, color: '#71717a' }}>{label}</div>
@@ -242,7 +250,7 @@ function MetricCard({
           </div>
         )}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em', marginTop: 4 }}>
+      <div style={{ fontSize: 26, fontWeight: 700, color: dm5 ? '#e4e4e5' : '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em', marginTop: 4 }}>
         {mainDisplay}
       </div>
       {sub && <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 6 }}>{sub}</div>}
@@ -452,7 +460,18 @@ export default function DashboardPage() {
   });
   const [error, setError] = useState('');
 
-  const { onToggle, setSyncTime } = useSidebar();
+  const { onToggle, setSyncTime, darkMode } = useSidebar();
+  const dm = darkMode;
+  const pageBg  = dm ? '#050606' : '#f4f4f5';
+  const layer1  = dm ? '#222324' : '#eaebec';
+  const cardBg  = dm ? '#17181a' : '#fff';
+  const txt     = dm ? '#e4e4e5' : '#11181c';
+  const bdr     = dm ? '#2a2b2c' : '#e4e4e7';
+  const pillBg  = dm ? '#272728' : '#eaebec';
+  const pillTxt = dm ? '#fff'    : '#11181c';
+  const searchBg= dm ? '#272728' : '#fff';
+  const totalBg = dm ? '#1c1d1f' : '#fafafa';
+  const cardSdw = dm ? 'none' : '0 2px 6px rgba(0,0,0,0.06)';
   const timeOptions = getTimeOptions();
   const datePickerRef = useRef<HTMLDivElement>(null);
 
@@ -683,12 +702,12 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
         {/* Top bar */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, padding: '4px 20px 8px', height: 52, background: '#f4f4f5' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, padding: '4px 20px 8px', height: 52, background: pageBg }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
-            <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#11181c', flexShrink: 0, outline: 'none' }}>
+            <button onClick={onToggle} title="Toggle sidebar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: txt, flexShrink: 0, outline: 'none' }}>
               <PanelIcon />
             </button>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#11181c', letterSpacing: '-0.02em' }}>{greeting}</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: txt, letterSpacing: '-0.02em' }}>{greeting}</h1>
           </div>
         </div>
 
@@ -748,7 +767,7 @@ export default function DashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
           {!metrics ? (
             [1,2,3,4].map(i => (
-              <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
+              <div key={i} style={{ background: cardBg, borderRadius: 14, padding: '14px 16px', boxShadow: cardSdw }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                   <Skeleton h={10} w={90} />
                   <Skeleton h={18} w={52} radius={999} />
@@ -769,9 +788,9 @@ export default function DashboardPage() {
         {/* Charts row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 12, marginBottom: 16 }}>
           {/* Monthly bar chart */}
-          <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: cardBg, borderRadius: 14, padding: '18px 20px', boxShadow: cardSdw }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c' }}>Monthly Recovery</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: txt }}>Monthly Recovery</h3>
               <span style={{ fontSize: 11, color: '#a1a1aa', background: '#f4f4f5', borderRadius: 999, padding: '3px 10px' }}>Last 12 months</span>
             </div>
             {loadingHistory && !chartHistory.length ? (
@@ -784,8 +803,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Donut chart */}
-          <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#11181c', marginBottom: 16 }}>By Category</h3>
+          <div style={{ background: cardBg, borderRadius: 14, padding: '18px 20px', boxShadow: cardSdw }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: txt, marginBottom: 16 }}>By Category</h3>
             {loadingAnalytics && !categoryData?.length ? (
               <div>
                 <Skeleton h={110} w="100%" radius={10} />
@@ -804,19 +823,19 @@ export default function DashboardPage() {
 
           {/* Header row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#11181c' }}>All Clients</h3>
-            {clientSummary.length > 0 && <span style={{ fontSize: 12, color: '#71717a', background: '#eaebec', borderRadius: 999, padding: '2px 9px' }}>{clientSummary.length}</span>}
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: txt }}>All Clients</h3>
+            {clientSummary.length > 0 && <span style={{ fontSize: 12, color: '#71717a', background: pillBg, borderRadius: 999, padding: '2px 9px' }}>{clientSummary.length}</span>}
           </div>
 
           {/* Toolbar row — Sort pill + search far right */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div ref={clientSortRef} style={{ position: 'relative' }}>
-              <button onClick={() => setClientSortOpen(o => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: '#11181c', background: '#eaebec', border: 'none', borderRadius: 999, padding: '5px 12px', cursor: 'pointer', outline: 'none' }}>
+              <button onClick={() => setClientSortOpen(o => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: pillTxt, background: pillBg, border: 'none', borderRadius: 999, padding: '5px 12px', cursor: 'pointer', outline: 'none' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/></svg>
                 Sort{clientSortCol !== 'totalRecovered' ? ' ·' : ''}
               </button>
               {clientSortOpen && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 16, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 4 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: cardBg, border: `1px solid ${bdr}`, borderRadius: 16, boxShadow: dm ? 'none' : '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 4 }}>
                   {([
                     { col: 'totalRecovered', lbl: 'Recovered' },
                     { col: 'totalFee', lbl: 'Fee' },
@@ -824,7 +843,7 @@ export default function DashboardPage() {
                     { col: 'cases', lbl: 'Cases' },
                     { col: 'invoices', lbl: 'Invoices' },
                   ] as const).map(({ col, lbl }) => (
-                    <button key={col} onClick={() => { if (clientSortCol === col) setClientSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setClientSortCol(col); setClientSortDir('desc'); } setClientSortOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: clientSortCol === col ? '#eaebec' : 'transparent', color: '#11181c', fontWeight: clientSortCol === col ? 600 : 400 }}>
+                    <button key={col} onClick={() => { if (clientSortCol === col) setClientSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setClientSortCol(col); setClientSortDir('desc'); } setClientSortOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, border: 'none', borderRadius: 999, cursor: 'pointer', background: clientSortCol === col ? pillBg : 'transparent', color: txt, fontWeight: clientSortCol === col ? 600 : 400 }}>
                       {lbl}{clientSortCol === col ? (clientSortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                     </button>
                   ))}
@@ -838,14 +857,14 @@ export default function DashboardPage() {
                 placeholder="Search client…"
                 value={clientSearch}
                 onChange={e => setClientSearch(e.target.value)}
-                style={{ fontSize: 12, padding: '6px 28px 6px 32px', border: '1px solid #e4e4e7', borderRadius: 999, width: 190, color: '#11181c', outline: 'none', background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E\") no-repeat 10px center" }}
+                style={{ fontSize: 12, padding: '6px 28px 6px 32px', border: `1px solid ${bdr}`, borderRadius: 999, width: 190, color: txt, outline: 'none', background: `${searchBg} url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E") no-repeat 10px center` }}
               />
               {clientSearch && <button onClick={() => setClientSearch('')} style={{ position: 'absolute', right: 7, width: 16, height: 16, borderRadius: '50%', border: 'none', background: '#a1a1aa', color: '#fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}>×</button>}
             </div>
           </div>
 
           {/* Grey container — col headers + white card */}
-          <div style={{ background: '#eaebec', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ background: layer1, borderRadius: 16, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 8px 16px', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a' }}>Client</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Recovered</span>
@@ -854,7 +873,7 @@ export default function DashboardPage() {
               <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Invoices</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: '#71717a', textAlign: 'right' }}>Last Billed</span>
             </div>
-            <div style={{ background: '#fff', borderRadius: 12, margin: '0 6px 6px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ background: cardBg, borderRadius: 12, margin: '0 6px 6px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {loadingClients && !clientSummary.length ? (
                 <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[1,2,3,4].map(i => <Skeleton key={i} h={36} />)}
@@ -867,8 +886,8 @@ export default function DashboardPage() {
                 <>
                   <div style={{ overflowY: 'auto', maxHeight: 360 }}>
                     {clientDisplayed.map((cs, i) => (
-                      <div key={cs.name} style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '9px 10px 9px 16px', gap: 8, borderBottom: i < clientDisplayed.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#11181c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cs.name}</span>
+                      <div key={cs.name} style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '9px 10px 9px 16px', gap: 8, borderBottom: i < clientDisplayed.length - 1 ? `1px solid ${bdr}` : 'none', alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cs.name}</span>
                         <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(cs.totalRecovered)}</span>
                         <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#374151' }}>{fmtFull(cs.totalFee)}</span>
                         <span style={{ textAlign: 'right', fontSize: 12, color: '#71717a' }}>{cs.cases}</span>
@@ -877,8 +896,8 @@ export default function DashboardPage() {
                       </div>
                     ))}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 10px 16px', gap: 8, borderTop: '2px solid #f0f0f0', background: '#fafafa', flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#11181c' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: clientTableG, padding: '10px 10px 10px 16px', gap: 8, borderTop: `2px solid ${bdr}`, background: totalBg, flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: txt }}>
                       {clientSearch ? `Filtered (${clientDisplayed.length})` : `Total (${clientSummary.length})`}
                     </span>
                     <span style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#006FEE' }}>{fmtFull(clientDisplayed.reduce((s, c) => s + c.totalRecovered, 0))}</span>
