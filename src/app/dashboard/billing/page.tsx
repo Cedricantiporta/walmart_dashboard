@@ -27,6 +27,7 @@ type ClientBilling = {
   clientName: string; rate: number; totalAmount: number; totalFee: number;
   currentMonthFee: number; prevMonthFee: number; cases: BillingCase[];
   previouslyBilledFee: number; previouslyBilledReimbursed: number;
+  mostRecentBilledDate?: string | null;
   pendingCases: BillingCase[]; pendingAmount: number; pendingFee: number;
   overdueCases: BillingCase[]; overdueAmount: number; overdueFee: number;
 };
@@ -665,8 +666,16 @@ export default function BillingPage() {
   }
 
   const isGracePeriod = data?.isGracePeriod ?? false;
+  // Compute 2-month lookback: only show clients billed in the last ~60 days
+  const billedCutoff = data?.currentMonthStart
+    ? (() => { const d = new Date(data.currentMonthStart + 'T12:00:00'); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); })()
+    : null;
   // Matches GAS: billed = previouslyBilledFee > 0 && readyToBillFee === 0
-  const billedClients = (data?.clients ?? []).filter(c => c.previouslyBilledFee > 0 && c.totalFee === 0);
+  // Restricted to clients billed within last 2 months to avoid showing all-time history
+  const billedClients = (data?.clients ?? []).filter(c =>
+    c.previouslyBilledFee > 0 && c.totalFee === 0 &&
+    (!billedCutoff || (c.mostRecentBilledDate != null && c.mostRecentBilledDate >= billedCutoff))
+  );
   const pendingClients = (data?.clients ?? []).filter(c => (c.pendingFee ?? 0) > 0);
   const overdueClients = (data?.clients ?? []).filter(c => (c.overdueAmount ?? 0) > 0);
 

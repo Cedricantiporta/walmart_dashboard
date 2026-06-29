@@ -41,7 +41,7 @@ export async function GET() {
       .limit(2000),
     db.from('clients').select('*'),
     db.from('invoices').select('case_ids'),
-    db.from('invoices').select('client_name, billed_fee, total_reimbursed'),
+    db.from('invoices').select('client_name, billed_fee, total_reimbursed, billed_date'),
     db.from('hardcoded_billed_cases').select('case_id, rms_posting_date'),
     db.from('app_config').select('*'),
     db.from('billing_contacts').select('*'),
@@ -97,6 +97,7 @@ export async function GET() {
     prevMonthFee: number;
     previouslyBilledFee: number;
     previouslyBilledReimbursed: number;
+    mostRecentBilledDate: string | null;
     cases: BillingCase[];
     pendingCases: BillingCase[];
     pendingAmount: number;
@@ -142,7 +143,7 @@ export async function GET() {
     }
 
     if (!clientMap[clientName]) {
-      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, cases: [], pendingCases: [], pendingAmount: 0, pendingFee: 0, overdueCases: [], overdueAmount: 0, overdueFee: 0 };
+      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, mostRecentBilledDate: null, cases: [], pendingCases: [], pendingAmount: 0, pendingFee: 0, overdueCases: [], overdueAmount: 0, overdueFee: 0 };
     }
 
     const amount = row.reimbursement_amount;
@@ -205,7 +206,7 @@ export async function GET() {
     }
 
     if (!clientMap[clientName]) {
-      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, cases: [], pendingCases: [], pendingAmount: 0, pendingFee: 0, overdueCases: [], overdueAmount: 0, overdueFee: 0 };
+      clientMap[clientName] = { clientName, rate, totalAmount: 0, totalFee: 0, currentMonthFee: 0, prevMonthFee: 0, previouslyBilledFee: 0, previouslyBilledReimbursed: 0, mostRecentBilledDate: null, cases: [], pendingCases: [], pendingAmount: 0, pendingFee: 0, overdueCases: [], overdueAmount: 0, overdueFee: 0 };
     }
 
     const amount = row.reimbursement_amount;
@@ -222,11 +223,17 @@ export async function GET() {
   });
 
   // Build previouslyBilledFee map from all invoices (matches GAS's previouslyBilledFee)
-  const prevBilledMap: Record<string, { fee: number; recovered: number }> = {};
-  (allInvoicesRaw ?? []).forEach((inv: { client_name: string; billed_fee: number; total_reimbursed: number }) => {
-    if (!prevBilledMap[inv.client_name]) prevBilledMap[inv.client_name] = { fee: 0, recovered: 0 };
+  const prevBilledMap: Record<string, { fee: number; recovered: number; mostRecentBilledDate: string | null }> = {};
+  (allInvoicesRaw ?? []).forEach((inv: { client_name: string; billed_fee: number; total_reimbursed: number; billed_date: string | null }) => {
+    if (!prevBilledMap[inv.client_name]) prevBilledMap[inv.client_name] = { fee: 0, recovered: 0, mostRecentBilledDate: null };
     prevBilledMap[inv.client_name].fee += Number(inv.billed_fee) || 0;
     prevBilledMap[inv.client_name].recovered += Number(inv.total_reimbursed) || 0;
+    if (inv.billed_date) {
+      const bd = inv.billed_date.slice(0, 10);
+      if (!prevBilledMap[inv.client_name].mostRecentBilledDate || bd > prevBilledMap[inv.client_name].mostRecentBilledDate!) {
+        prevBilledMap[inv.client_name].mostRecentBilledDate = bd;
+      }
+    }
   });
 
   // Sort cases within each client by postingDate desc
@@ -241,6 +248,7 @@ export async function GET() {
     const pb = prevBilledMap[c.clientName];
     c.previouslyBilledFee = pb?.fee ?? 0;
     c.previouslyBilledReimbursed = pb?.recovered ?? 0;
+    c.mostRecentBilledDate = pb?.mostRecentBilledDate ?? null;
   });
 
   // Add billed-only clients (have invoices but no current RTB cases) — matches GAS's billingSummaryData
@@ -259,6 +267,7 @@ export async function GET() {
       prevMonthFee: 0,
       previouslyBilledFee: pb.fee,
       previouslyBilledReimbursed: pb.recovered,
+      mostRecentBilledDate: pb.mostRecentBilledDate,
       cases: [],
       pendingCases: [],
       pendingAmount: 0,
