@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, fetchRowsFrom } from '@/lib/supabase-server';
+import { createServerClient } from '@/lib/supabase-server';
 import { getCached, setCached } from '@/lib/server-cache';
 import { getBillingSummary, getBillingInsights } from '@/lib/billing';
 import { calculateDashboardAnalytics } from '@/lib/analytics';

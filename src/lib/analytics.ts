@@ -47,11 +47,13 @@ export function calculateDashboardAnalytics(
   const vCutoff = new Date(vantageCutoff + 'T00:00:00');
   const isHistoricalMonth = timeRange === 'specificMonth' && !!startDateStr;
 
-  const now = new Date();
+  // "Now" anchored to Asia/Singapore (the GAS project timezone) so the current-month
+  // boundary matches what the user sees — not the UTC clock Vercel runs on.
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  type ProcessedRow = { date: Date; amount: number; fee: number; id: string; type: string; isVantageFree: boolean; isBilled: boolean };
+  type ProcessedRow = { date: Date; amount: number; fee: number; id: string; type: string; isVantageFree: boolean };
 
   const processedRows: ProcessedRow[] = allData.flatMap(row => {
     const rawName = row.client_name;
@@ -91,25 +93,28 @@ export function calculateDashboardAnalytics(
     if (!approvalStr) return [];
 
     const caseId = String(row.case_id);
-    // effectiveDate = rms_posting_date month. That IS the billing period this row belongs to.
-    // No shifting — a May posting date stays in May, a June posting date stays in June.
-    const effectiveDate = new Date(approvalStr);
+    let effectiveDate = new Date(approvalStr);
 
     if (clientName.toLowerCase() === 'vantage inc' && !isExtra && effectiveDate < vCutoff) return [];
 
     const isVantageFreePeriod = clientName.toLowerCase() === 'vantage inc' && effectiveDate < vCutoff;
 
+    // Backlog redirect (GAS parity): an UNBILLED case posted in a prior month moves to the
+    // current month so "Current Month" reflects all outstanding (not-yet-invoiced) recovery.
+    // BILLED cases keep their real posting month — that is where their history lives. So
+    // invoicing a month's cases moves that recovery out of "current" and into that month's bar.
+    // Skipped for historical-month views (raw posting dates) and vantage free-period cases.
+    if (!isHistoricalMonth && !billedCaseIdSet.has(caseId) && !isVantageFreePeriod) {
+      if (effectiveDate.getMonth() !== currentMonth || effectiveDate.getFullYear() !== currentYear) {
+        effectiveDate = new Date(currentYear, currentMonth, 15);
+      }
+    }
+
     const amount = row.reimbursement_amount ?? 0;
     const rate = info?.rate ?? DEFAULT_RATE;
     const fee = isVantageFreePeriod ? 0 : amount * rate;
 
-    // Billed = already invoiced (composite case_id:date or plain case_id), matches Summary/Billing RTB logic
-    const postingStr = row.rms_posting_date;
-    const isBilled = postingStr
-      ? (billedCaseIdSet.has(`${caseId}:${postingStr}`) || billedCaseIdSet.has(caseId))
-      : billedCaseIdSet.has(caseId);
-
-    return [{ date: effectiveDate, amount, fee, id: caseId, type: row.claim_type ?? 'Other', isVantageFree: isVantageFreePeriod, isBilled }];
+    return [{ date: effectiveDate, amount, fee, id: caseId, type: row.claim_type ?? 'Other', isVantageFree: isVantageFreePeriod }];
   });
 
   // Monthly history
@@ -139,8 +144,8 @@ export function calculateDashboardAnalytics(
     monthlyHistory[i].growth = prev === 0 ? (cur > 0 ? 100 : 0) : ((cur - prev) / prev) * 100;
   }
 
-  // Date ranges
-  const nowDay = new Date();
+  // Date ranges — reuse the Asia/Singapore-anchored "now" so month boundaries match the user
+  const nowDay = new Date(now);
   nowDay.setHours(0, 0, 0, 0);
   let curStart: Date, curEnd: Date, prevStart: Date, prevEnd: Date;
 
@@ -179,11 +184,9 @@ export function calculateDashboardAnalytics(
   }
 
   const filterByDate = (items: ProcessedRow[], s: Date, e: Date) => items.filter(i => i.date >= s && i.date <= e);
-  // For the live current month, exclude billed cases so cards + donut match the
-  // Summary/Billing RTB view (recovered = outstanding, not yet invoiced).
-  // Lifetime/historical views keep billed cases so "All Time" totals stay complete.
-  const currentItems = filterByDate(processedRows, curStart, curEnd)
-    .filter(i => timeRange !== 'thisMonth' || !i.isBilled);
+  // No billed filter here — the backlog redirect above already keeps billed cases in their
+  // real month and pulls unbilled cases into the current month (GAS parity).
+  const currentItems = filterByDate(processedRows, curStart, curEnd);
   const previousItems = filterByDate(processedRows, prevStart, prevEnd);
 
   const calcMetrics = (items: ProcessedRow[]) => {

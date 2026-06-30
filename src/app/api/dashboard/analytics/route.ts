@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, fetchAllRows, fetchRowsFrom } from '@/lib/supabase-server';
+import { createServerClient, fetchAllRows } from '@/lib/supabase-server';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
 import { getCached, setCached } from '@/lib/server-cache';
 import { DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
@@ -24,10 +24,8 @@ export async function GET(req: NextRequest) {
 
   const db = createServerClient();
 
-  const now = new Date();
-  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const useFilter = timeRange === 'thisMonth';
-
+  // Fetch ALL rows: the backlog-redirect in calculateDashboardAnalytics needs every unbilled
+  // case (any month) to roll forward into the current month — GAS parity, matches Summary.
   const [
     allData,
     { data: clientsRaw },
@@ -36,9 +34,7 @@ export async function GET(req: NextRequest) {
     { data: hardcodedRaw },
     { data: excludedRaw },
   ] = await Promise.all([
-    useFilter
-      ? fetchRowsFrom<RmsCase>(db, 'rms_cases', currentMonthStart)
-      : fetchAllRows<RmsCase>(db, 'rms_cases'),
+    fetchAllRows<RmsCase>(db, 'rms_cases'),
     db.from('clients').select('*'),
     db.from('app_config').select('*'),
     db.from('invoices').select('case_ids, billed_fee, total_reimbursed, billed_date'),
@@ -69,40 +65,6 @@ export async function GET(req: NextRequest) {
     { timeRange, startDateStr, endDateStr, specificClient, extraClients },
     allData, onboardingInfo, billedIds, vantageCutoff, excludedClients
   );
-
-  // For historical months: override headline metrics with invoice data so they match Summary page.
-  // Charts/categories still come from rms_cases (posting date context).
-  if (timeRange === 'specificMonth' && startDateStr) {
-    const [sy, sm] = startDateStr.split('-').map(Number);
-    const curKey  = `${sy}-${String(sm).padStart(2, '0')}`;
-    const prevDate = new Date(sy, sm - 2, 1);
-    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
-
-    const inv = { cur: { r: 0, f: 0, c: 0 }, prev: { r: 0, f: 0 } };
-    (invoicesRaw ?? []).forEach((row: InvRow) => {
-      if (!row.billed_date) return;
-      const bd = new Date(row.billed_date);
-      const pd = new Date(bd);
-      if (bd.getDate() <= 7) pd.setMonth(pd.getMonth() - 1);
-      const mk = `${pd.getFullYear()}-${String(pd.getMonth() + 1).padStart(2, '0')}`;
-      if (mk === curKey) {
-        inv.cur.r += Number(row.total_reimbursed) || 0;
-        inv.cur.f += Number(row.billed_fee) || 0;
-        inv.cur.c += (row.case_ids ?? []).length;
-      } else if (mk === prevKey) {
-        inv.prev.r += Number(row.total_reimbursed) || 0;
-        inv.prev.f += Number(row.billed_fee) || 0;
-      }
-    });
-
-    const trend = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
-    result.metrics.totalReimbursed = inv.cur.r;
-    result.metrics.totalFees       = inv.cur.f;
-    result.metrics.approvedCases   = inv.cur.c;
-    result.trends.totalReimbursed  = trend(inv.cur.r, inv.prev.r);
-    result.trends.totalFees        = trend(inv.cur.f, inv.prev.f);
-    result.trends.approvedCases    = trend(inv.cur.c, 0);
-  }
 
   setCached(cacheKey, result, 90 * 1000);
 
