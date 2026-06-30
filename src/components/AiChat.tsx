@@ -109,24 +109,23 @@ export default function AiChat() {
         .ai-fab:hover { transform: scale(1.08) !important; box-shadow: 0 6px 30px rgba(120,40,200,0.4) !important; }
         .ai-send:hover:not(:disabled) { opacity: 0.82; }
         .ai-send:disabled { opacity: 0.35; cursor: not-allowed; }
-        @keyframes aichatSpin { to { transform: rotate(360deg); } }
-        @keyframes aichatOrbPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+        /* Spin fast at load, decelerate, stop (3.5 turns over ~5.5s) */
+        @keyframes aichatSpinStop { from { transform: rotate(0deg); } to { transform: rotate(1260deg); } }
         .ai-orb { position: relative; overflow: hidden; }
         .ai-orb-grad {
-          position: absolute; inset: -45%;
-          background: conic-gradient(from 0deg, #006FEE, #7828C8, #F5A524, #17c964, #00c2ff, #006FEE);
-          animation: aichatSpin 3.6s linear infinite;
-          filter: blur(5px);
+          position: absolute; inset: -40%;
+          background: conic-gradient(from 0deg, #006FEE, #7828C8, #F5A524, #7828C8, #006FEE);
+          filter: blur(6px);
+          animation: aichatSpinStop 5.5s cubic-bezier(0.13, 0.85, 0.15, 1) forwards;
         }
-        .ai-orb-blob {
-          position: absolute; inset: 12%; border-radius: 50%;
-          background: conic-gradient(from 180deg, #00c2ff, #7828C8, #F5A524, #00c2ff);
-          filter: blur(4px); opacity: 0.85;
-          animation: aichatSpin 2.4s linear infinite reverse, aichatOrbPulse 3s ease-in-out infinite;
-        }
+        /* Liquid-glass: bright specular highlight + glossy rim */
         .ai-orb-gloss {
-          position: absolute; inset: 0; border-radius: 50%;
-          background: radial-gradient(circle at 32% 26%, rgba(255,255,255,0.6), rgba(255,255,255,0) 52%);
+          position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+          background: radial-gradient(circle at 33% 27%, rgba(255,255,255,0.7), rgba(255,255,255,0.15) 34%, rgba(255,255,255,0) 56%);
+        }
+        .ai-orb-rim {
+          position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+          box-shadow: inset 0 1.5px 3px rgba(255,255,255,0.55), inset 0 -4px 9px rgba(0,0,0,0.28);
         }
         @media (max-width: 480px) {
           .ai-panel { right: 12px !important; left: 12px !important; width: auto !important; bottom: 80px !important; }
@@ -152,8 +151,8 @@ export default function AiChat() {
         {!open && (
           <>
             <span className="ai-orb-grad" />
-            <span className="ai-orb-blob" />
             <span className="ai-orb-gloss" />
+            <span className="ai-orb-rim" />
           </>
         )}
         {open && <span style={{ position: 'relative', zIndex: 1, display: 'flex' }}><CloseIcon /></span>}
