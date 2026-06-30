@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
+import { clientGet, clientSet, clientClearAll } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob, generateInvoicePDFBlobRaw } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
 import { supabase } from '@/lib/supabase';
@@ -657,7 +657,7 @@ export default function BillingPage() {
     const parts = nextNum.split('-');
     const n = parseInt(parts[1] ?? '1000');
     setNextNum(`${parts[0]}-${n + 1}`);
-    clientClear('billing'); clientClear('invoices');
+    clientClearAll(); // billing affects summary, analytics, initial-payload — clear everything
     if (data) setData({ ...data, clients: data.clients.filter(c => c.clientName !== inv.client_name) });
     setActiveClient(null); setSelectedClient(null);
   }
@@ -666,7 +666,7 @@ export default function BillingPage() {
     const parts = nextNum.split('-');
     const n = parseInt(parts[1] ?? '1000');
     setNextNum(`${parts[0]}-${n + count}`);
-    clientClear('billing'); clientClear('invoices');
+    clientClearAll(); // billing affects summary, analytics, initial-payload — clear everything
     setShowBulk(false); setLoading(true);
     fetch('/api/billing').then(r => r.json()).then(d => { clientSet('billing', d); setData(d); setLoading(false); }).catch(() => setLoading(false));
   }

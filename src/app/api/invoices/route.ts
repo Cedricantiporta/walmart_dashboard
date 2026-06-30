@@ -30,5 +30,8 @@ export async function POST(req: NextRequest) {
   }).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Billing a case changes RTB, summary, analytics — nuke all server cache
+  clearCache();
   return NextResponse.json({ success: true, invoice: data });
 }

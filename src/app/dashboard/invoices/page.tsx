@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { clientGet, clientSet, clientClear } from '@/lib/client-cache';
+import { clientGet, clientSet, clientClearAll } from '@/lib/client-cache';
 import { downloadInvoicePDF, generateInvoicePDFBlob } from '@/lib/invoice-pdf';
 import { useSidebar } from '@/components/DashboardShell';
 
@@ -415,7 +415,7 @@ export default function InvoicesPage() {
           await fetch(`/api/invoices/${num}`, { method: 'DELETE' });
         }
         setInvoices(prev => prev.filter(i => !nums.has(i.invoice_number)));
-        clientClear('invoices');
+        clientClearAll(); // un-billing affects summary, analytics, billing, initial
         setSelectedNums(new Set());
         setSelectMode(false);
         setUnbillBusy(false);
@@ -605,7 +605,7 @@ export default function InvoicesPage() {
                           <InvoiceRow
                             key={inv.invoice_number}
                             inv={inv}
-                            onDelete={num => { setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; }); if (openInv?.invoice_number === num) setOpenInv(null); }}
+                            onDelete={num => { setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClearAll(); return next; }); if (openInv?.invoice_number === num) setOpenInv(null); }}
                             onOpen={() => setOpenInv(inv)}
                             selectMode={selectMode}
                             isSelected={selectedNums.has(inv.invoice_number)}
@@ -615,7 +615,7 @@ export default function InvoicesPage() {
                               const found = invoices.find(i => i.invoice_number === num);
                               setPwdModal({
                                 description: `You are about to unbill invoice ${num} for ${found?.client_name ?? num}.`,
-                                onConfirm: async () => { setPwdModal(null); await doDelete(); setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClear('invoices'); return next; }); setOpenInv(null); },
+                                onConfirm: async () => { setPwdModal(null); await doDelete(); setInvoices(prev => { const next = prev.filter(i => i.invoice_number !== num); clientClearAll(); return next; }); setOpenInv(null); },
                               });
                             }}
                           />

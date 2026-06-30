@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
   const { error } = await db.from('invoices').upsert(rows, { onConflict: 'invoice_number' });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  clearCache('invoices:all');
-  clearCache('billing:');
+  // Importing invoices marks cases billed → affects RTB, summary, analytics, initial
+  clearCache();
 
   return NextResponse.json({ upserted: rows.length });
 }

@@ -18,3 +18,9 @@ export function clientSet(key: string, data: unknown): void {
 export function clientClear(key: string): void {
   _store.delete(key);
 }
+
+// Clear every cached key. Used after a billing action so all derived views
+// (summary bar chart, analytics cards/pie, initial-payload) refetch fresh.
+export function clientClearAll(): void {
+  _store.clear();
+}
