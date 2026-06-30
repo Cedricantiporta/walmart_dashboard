@@ -51,7 +51,7 @@ export function calculateDashboardAnalytics(
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  type ProcessedRow = { date: Date; amount: number; fee: number; id: string; type: string; isVantageFree: boolean };
+  type ProcessedRow = { date: Date; amount: number; fee: number; id: string; type: string; isVantageFree: boolean; isBilled: boolean };
 
   const processedRows: ProcessedRow[] = allData.flatMap(row => {
     const rawName = row.client_name;
@@ -103,7 +103,13 @@ export function calculateDashboardAnalytics(
     const rate = info?.rate ?? DEFAULT_RATE;
     const fee = isVantageFreePeriod ? 0 : amount * rate;
 
-    return [{ date: effectiveDate, amount, fee, id: caseId, type: row.claim_type ?? 'Other', isVantageFree: isVantageFreePeriod }];
+    // Billed = already invoiced (composite case_id:date or plain case_id), matches Summary/Billing RTB logic
+    const postingStr = row.rms_posting_date;
+    const isBilled = postingStr
+      ? (billedCaseIdSet.has(`${caseId}:${postingStr}`) || billedCaseIdSet.has(caseId))
+      : billedCaseIdSet.has(caseId);
+
+    return [{ date: effectiveDate, amount, fee, id: caseId, type: row.claim_type ?? 'Other', isVantageFree: isVantageFreePeriod, isBilled }];
   });
 
   // Monthly history
@@ -173,7 +179,11 @@ export function calculateDashboardAnalytics(
   }
 
   const filterByDate = (items: ProcessedRow[], s: Date, e: Date) => items.filter(i => i.date >= s && i.date <= e);
-  const currentItems = filterByDate(processedRows, curStart, curEnd);
+  // For the live current month, exclude billed cases so cards + donut match the
+  // Summary/Billing RTB view (recovered = outstanding, not yet invoiced).
+  // Lifetime/historical views keep billed cases so "All Time" totals stay complete.
+  const currentItems = filterByDate(processedRows, curStart, curEnd)
+    .filter(i => timeRange !== 'thisMonth' || !i.isBilled);
   const previousItems = filterByDate(processedRows, prevStart, prevEnd);
 
   const calcMetrics = (items: ProcessedRow[]) => {
