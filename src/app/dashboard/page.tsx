@@ -207,12 +207,20 @@ function useCountUp(target: number, duration = 1100): number {
 // ── metric card ───────────────────────────────────────────────────────────────
 
 function MetricCard({
-  label, value, sub, trend, format = 'currency',
+  label, value, sub, trend, format = 'currency', info,
 }: {
-  label: string; value: number; sub?: string; trend?: number; format?: 'currency' | 'number';
+  label: string; value: number; sub?: string; trend?: number; format?: 'currency' | 'number'; info?: string;
 }) {
   const animated = useCountUp(value);
   const trendUp = trend !== undefined && trend >= 0;
+  const [showInfo, setShowInfo] = useState(false);
+  const infoRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showInfo) return;
+    function h(e: MouseEvent) { if (infoRef.current && !infoRef.current.contains(e.target as Node)) setShowInfo(false); }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showInfo]);
 
   let mainDisplay: React.ReactNode;
   if (format === 'currency') {
@@ -235,12 +243,27 @@ function MetricCard({
       {/* Label + trend pill on same row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 500, color: '#71717a' }}>{label}</div>
-        {trend !== undefined && (
+        {trend !== undefined ? (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: trendUp ? '#17c964' : '#f31260', background: trendUp ? '#f0fdf4' : '#fff0f3', borderRadius: 999, padding: '2px 7px', flexShrink: 0 }}>
             {trendUp ? <ArrowUp /> : <ArrowDown />}
             {Math.abs(trend).toFixed(1)}%
           </div>
-        )}
+        ) : info ? (
+          <div ref={infoRef} style={{ position: 'relative', flexShrink: 0, display: 'flex' }}>
+            <button
+              onClick={() => setShowInfo(s => !s)}
+              aria-label="More info"
+              style={{ width: 16, height: 16, borderRadius: '50%', border: 'none', background: showInfo ? '#006FEE' : '#e4e4e7', color: showInfo ? '#fff' : '#71717a', fontSize: 10, fontWeight: 700, fontStyle: 'italic', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, outline: 'none', padding: 0 }}
+            >
+              i
+            </button>
+            {showInfo && (
+              <div style={{ position: 'absolute', top: '120%', right: 0, width: 200, background: '#11181c', color: '#fff', fontSize: 11, fontWeight: 400, lineHeight: 1.5, borderRadius: 8, padding: '8px 11px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', zIndex: 200 }}>
+                {info}
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
       <div style={{ fontSize: 26, fontWeight: 700, color: '#11181c', lineHeight: 1.15, letterSpacing: '-0.02em', marginTop: 4 }}>
         {mainDisplay}
@@ -761,7 +784,7 @@ export default function DashboardPage() {
               <MetricCard label="Reimbursed" value={metrics.totalReimbursed} trend={displayTrends?.totalReimbursed} />
               <MetricCard label="Fees" value={metrics.totalFees} trend={displayTrends?.totalFees} />
               <MetricCard label="Cases" value={metrics.approvedCases} trend={displayTrends?.approvedCases} format="number" />
-              <MetricCard label="Pending" value={pendingAmount} />
+              <MetricCard label="Pending" value={pendingAmount} info="Pending cases will go to Ready to Bill after 7 days." />
             </>
           )}
         </div>
