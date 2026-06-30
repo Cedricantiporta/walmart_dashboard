@@ -70,6 +70,7 @@ export default function AiChat() {
     const text = input.trim();
     if (!text || loading) return;
     setInput('');
+    if (inputRef.current) inputRef.current.style.height = '19px';
     setError('');
     const newMessages: Message[] = [...messages, { role: 'user', content: text }];
     setMessages(newMessages);
@@ -166,9 +167,9 @@ export default function AiChat() {
       {open && (
         <div className="ai-panel" style={{
           position: 'fixed', bottom: 92, right: 24, zIndex: 999,
-          width: 'min(370px, calc(100vw - 32px))',
-          height: 'min(520px, calc(100vh - 120px))',
-          borderRadius: 20,
+          width: 'min(336px, calc(100vw - 32px))',
+          height: 'min(452px, calc(100vh - 120px))',
+          borderRadius: 18,
           background: '#fff',
           boxShadow: '0 8px 40px rgba(0,0,0,0.13)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -176,8 +177,8 @@ export default function AiChat() {
         }}>
 
           {/* Header — white */}
-          <div style={{ background: '#fff', padding: '14px 18px 12px', flexShrink: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#11181c' }}>WFS AI</div>
+          <div style={{ background: '#fff', padding: '11px 16px 8px', flexShrink: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#11181c' }}>WFS AI</div>
           </div>
 
           {/* Messages */}
@@ -231,13 +232,18 @@ export default function AiChat() {
               <textarea
                 ref={inputRef}
                 value={input}
-                onChange={e => setInput(e.target.value)}
+                onChange={e => {
+                  setInput(e.target.value);
+                  const el = e.target;
+                  el.style.height = 'auto';
+                  el.style.height = `${Math.min(el.scrollHeight, 88)}px`;
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about your data…"
                 rows={1}
                 style={{
                   flex: 1, border: 'none', background: 'transparent', resize: 'none', outline: 'none',
-                  fontSize: 12.5, color: '#18181b', lineHeight: 1.5, maxHeight: 90, overflowY: 'auto',
+                  fontSize: 12.5, color: '#18181b', lineHeight: 1.5, height: 19, maxHeight: 88, overflowY: 'auto',
                   fontFamily: 'inherit', padding: '3px 0',
                 }}
               />
