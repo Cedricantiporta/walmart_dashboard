@@ -109,15 +109,16 @@ export default function AiChat() {
         .ai-fab:hover { transform: scale(1.08) !important; box-shadow: 0 6px 30px rgba(120,40,200,0.4) !important; }
         .ai-send:hover:not(:disabled) { opacity: 0.82; }
         .ai-send:disabled { opacity: 0.35; cursor: not-allowed; }
-        /* Spin fast at load, decelerate, stop (3.5 turns over ~5.5s) */
-        @keyframes aichatSpinStop { from { transform: rotate(0deg); } to { transform: rotate(1260deg); } }
+        /* Liquid motion — soft color blobs drift slowly in different directions, never stops */
+        @keyframes aichatDrift1 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(22%,16%); } 66% { transform: translate(-12%,22%); } }
+        @keyframes aichatDrift2 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(-20%,14%); } 66% { transform: translate(14%,-18%); } }
+        @keyframes aichatDrift3 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(16%,-20%); } }
         .ai-orb { position: relative; overflow: hidden; }
-        .ai-orb-grad {
-          position: absolute; inset: -40%;
-          background: conic-gradient(from 0deg, #006FEE, #7828C8, #F5A524, #7828C8, #006FEE);
-          filter: blur(6px);
-          animation: aichatSpinStop 5.5s cubic-bezier(0.13, 0.85, 0.15, 1) forwards;
-        }
+        .ai-orb-base { position: absolute; inset: 0; background: linear-gradient(140deg, #006FEE 0%, #7828C8 52%, #F5A524 100%); }
+        .ai-orb-blob { position: absolute; width: 82%; height: 82%; border-radius: 50%; filter: blur(9px); }
+        .ai-orb-b1 { top: -12%; left: -14%; background: radial-gradient(circle, #2b8bff 0%, rgba(43,139,255,0) 68%); animation: aichatDrift1 9s ease-in-out infinite; }
+        .ai-orb-b2 { top: 6%; right: -16%; background: radial-gradient(circle, #9b3fe6 0%, rgba(155,63,230,0) 68%); animation: aichatDrift2 12s ease-in-out infinite; }
+        .ai-orb-b3 { bottom: -16%; left: 4%; background: radial-gradient(circle, #ffb43d 0%, rgba(255,180,61,0) 68%); animation: aichatDrift3 15s ease-in-out infinite; }
         /* Liquid-glass: bright specular highlight + glossy rim */
         .ai-orb-gloss {
           position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
@@ -150,7 +151,10 @@ export default function AiChat() {
       >
         {!open && (
           <>
-            <span className="ai-orb-grad" />
+            <span className="ai-orb-base" />
+            <span className="ai-orb-blob ai-orb-b1" />
+            <span className="ai-orb-blob ai-orb-b2" />
+            <span className="ai-orb-blob ai-orb-b3" />
             <span className="ai-orb-gloss" />
             <span className="ai-orb-rim" />
           </>
