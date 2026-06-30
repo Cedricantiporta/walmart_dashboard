@@ -132,7 +132,12 @@ export async function GET() {
     const effectiveDateStr = row.rms_posting_date || row.date_filed;
     if (!effectiveDateStr) return;
     if (row.reimbursement_amount <= 0) return;
-    if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
+
+    // Determine pending FIRST so the status filter only applies to RTB (prev-month) cases.
+    // Pending = current-month during grace period; these may be freshly filed (not yet Approved).
+    const isCurrentMonth = effectiveDateStr >= currentMonthStart;
+    const isPending = isGracePeriod && isCurrentMonth;
+    if (!isPending && row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
 
     const clientName = row.client_name?.trim();
     if (!clientName) return;
@@ -169,8 +174,6 @@ export async function GET() {
 
     const amount = row.reimbursement_amount;
     const fee = amount * rate;
-    const isCurrentMonth = effectiveDateStr >= currentMonthStart;
-    const isPending = isGracePeriod && isCurrentMonth;
 
     const caseObj: BillingCase = {
       caseId,
