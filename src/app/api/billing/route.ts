@@ -8,7 +8,9 @@ export const revalidate = 0;
 export async function GET() {
   const db = createServerClient();
 
-  const now = new Date();
+  // Anchor to Asia/Singapore (GAS project tz) so the month boundary + grace window match the
+  // user's calendar, not Vercel's UTC clock — critical on the 1st–3rd when billing happens.
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
   const twoYearsAgo = new Date(now.getFullYear() - 2, now.getMonth(), 1).toISOString().slice(0, 10);
@@ -137,7 +139,9 @@ export async function GET() {
     // Pending = current-month during grace period; these may be freshly filed (not yet Approved).
     const isCurrentMonth = effectiveDateStr >= currentMonthStart;
     const isPending = isGracePeriod && isCurrentMonth;
-    if (!isPending && row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
+    // RTB (non-pending) requires an actual RMS Posting Date = reimbursed (matches workflow + analytics).
+    // Pending keeps the date_filed fallback so freshly-filed current-month cases still surface.
+    if (!isPending && (!row.rms_posting_date || row.reimbursement_status?.trim().toLowerCase() !== 'approved')) return;
 
     const clientName = row.client_name?.trim();
     if (!clientName) return;

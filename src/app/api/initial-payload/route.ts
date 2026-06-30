@@ -11,7 +11,9 @@ export const revalidate = 0;
 export async function GET() {
   const db = createServerClient();
 
-  const now = new Date();
+  // Anchor to Asia/Singapore (GAS project tz) so the grace window + current-month boundary
+  // match the user's calendar, consistent with the analytics and billing routes.
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 
   const cacheKey = `initial:${currentMonthStart}`;

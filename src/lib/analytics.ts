@@ -91,8 +91,9 @@ export function calculateDashboardAnalytics(
     // Skip $0 (or negative) approved cases — no real recovery. Matches the billing/RTB route,
     // and stops zero-dollar cases showing as phantom "N cases, $0" in the current month.
     if ((row.reimbursement_amount ?? 0) <= 0) return [];
-    // Use rms_posting_date when available; fall back to date_filed for approved-but-not-yet-posted cases.
-    const approvalStr = row.rms_posting_date || row.date_filed;
+    // RMS Posting Date IS the reimbursement signal (GAS parity + billing workflow). No date_filed
+    // fallback: an Approved case without a posting date is not yet reimbursed, so it isn't recovery.
+    const approvalStr = row.rms_posting_date;
     if (!approvalStr) return [];
 
     const caseId = String(row.case_id);
