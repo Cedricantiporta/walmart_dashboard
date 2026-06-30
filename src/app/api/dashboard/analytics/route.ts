@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
   const specificClient = searchParams.get('client') ?? 'all';
   const extraClients   = searchParams.get('extraClients')?.split(',').filter(Boolean) ?? [];
 
-  const cacheKey = `analytics:${timeRange}:${specificClient}:${startDateStr ?? ''}:${extraClients.join(',')}`;
+  // Include current month in key so warm lambda doesn't serve last month's thisMonth cache
+  const _cm = new Date(); _cm.setDate(1); _cm.setHours(0,0,0,0);
+  const monthTag = timeRange === 'thisMonth' ? `:${_cm.toISOString().slice(0,7)}` : '';
+  const cacheKey = `analytics:${timeRange}${monthTag}:${specificClient}:${startDateStr ?? ''}:${extraClients.join(',')}`;
   const cached = getCached(cacheKey);
   if (cached) return NextResponse.json(cached);
 
