@@ -17,21 +17,9 @@ export async function GET() {
 
   const nextMonthStartEarly = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
 
-  const [
-    { data: allData },
-    { data: nullPostingRaw },
-    { data: overdueRaw },
-    { data: clientsRaw },
-    { data: invoicesRaw },
-    { data: allInvoicesRaw },
-    { data: hardcodedRaw },
-    { data: config },
-    { data: billingContactsRaw },
-  ] = await Promise.all([
-    db.from('rms_cases').select(RMS_COLS)
-      .gte('rms_posting_date', prevMonthStart)
-      .gt('reimbursement_amount', 0),
-    // Analytics uses rms_posting_date || date_filed — fetch null-posting cases with date_filed in billing period
+  // Fire non-paginated queries immediately so they run in parallel with the pagination loop below
+  const otherQueriesPromise = Promise.all([
+    // null-posting cases: analytics uses rms_posting_date || date_filed fallback
     db.from('rms_cases').select(RMS_COLS)
       .is('rms_posting_date', null)
       .gte('date_filed', prevMonthStart)
@@ -50,6 +38,33 @@ export async function GET() {
     db.from('app_config').select('*'),
     db.from('billing_contacts').select('*'),
   ]);
+
+  // Paginate main billing data — Supabase caps single queries at 1000 rows; analytics uses fetchAllRows which paginates
+  const allData: RmsCase[] = [];
+  {
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data } = await db.from('rms_cases').select(RMS_COLS)
+        .gte('rms_posting_date', prevMonthStart)
+        .gt('reimbursement_amount', 0)
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (!data || data.length === 0) break;
+      allData.push(...(data as RmsCase[]));
+      if (data.length < PAGE) break;
+    }
+  }
+
+  const [
+    { data: nullPostingRaw },
+    { data: overdueRaw },
+    { data: clientsRaw },
+    { data: invoicesRaw },
+    { data: allInvoicesRaw },
+    { data: hardcodedRaw },
+    { data: config },
+    { data: billingContactsRaw },
+  ] = await otherQueriesPromise;
 
   const settings: Record<string, string> = {};
   (config ?? []).forEach((row: { key: string; value: string }) => { settings[row.key] = row.value; });
@@ -76,7 +91,6 @@ export async function GET() {
   );
 
   const nextMonthStart = nextMonthStartEarly;
-
   type BillingCase = {
     caseId: string;
     claimType: string;
