@@ -7,12 +7,10 @@ interface Message {
   content: string;
 }
 
-const GRADIENT = 'linear-gradient(135deg, #006FEE 0%, #7828C8 55%, #F5A524 100%)';
-
 const SendIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13"/>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="19" x2="12" y2="5"/>
+    <polyline points="5 12 12 5 19 12"/>
   </svg>
 );
 
@@ -108,34 +106,66 @@ export default function AiChat() {
           to   { opacity:1; transform:translateY(0)    scale(1);    }
         }
         .ai-fab { transition: transform 0.15s, box-shadow 0.15s; }
-        .ai-fab:hover { transform: scale(1.08) !important; box-shadow: 0 6px 28px rgba(120,40,200,0.35) !important; }
+        .ai-fab:hover { transform: scale(1.08) !important; box-shadow: 0 6px 30px rgba(120,40,200,0.4) !important; }
         .ai-send:hover:not(:disabled) { opacity: 0.82; }
         .ai-send:disabled { opacity: 0.35; cursor: not-allowed; }
+        @keyframes aichatSpin { to { transform: rotate(360deg); } }
+        @keyframes aichatOrbPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+        .ai-orb { position: relative; overflow: hidden; }
+        .ai-orb-grad {
+          position: absolute; inset: -45%;
+          background: conic-gradient(from 0deg, #006FEE, #7828C8, #F5A524, #17c964, #00c2ff, #006FEE);
+          animation: aichatSpin 3.6s linear infinite;
+          filter: blur(5px);
+        }
+        .ai-orb-blob {
+          position: absolute; inset: 12%; border-radius: 50%;
+          background: conic-gradient(from 180deg, #00c2ff, #7828C8, #F5A524, #00c2ff);
+          filter: blur(4px); opacity: 0.85;
+          animation: aichatSpin 2.4s linear infinite reverse, aichatOrbPulse 3s ease-in-out infinite;
+        }
+        .ai-orb-gloss {
+          position: absolute; inset: 0; border-radius: 50%;
+          background: radial-gradient(circle at 32% 26%, rgba(255,255,255,0.6), rgba(255,255,255,0) 52%);
+        }
+        @media (max-width: 480px) {
+          .ai-panel { right: 12px !important; left: 12px !important; width: auto !important; bottom: 80px !important; }
+          .ai-fab { right: 16px !important; bottom: 20px !important; }
+        }
       `}</style>
 
-      {/* Floating button — gradient only, no icon */}
+      {/* Floating orb — animated rotating gradient */}
       <button
-        className="ai-fab"
+        className="ai-fab ai-orb"
         onClick={() => setOpen(o => !o)}
         title="WFS AI"
         style={{
           position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
-          width: 48, height: 48, borderRadius: '50%', border: 'none',
-          background: open ? '#18181b' : GRADIENT,
+          width: 52, height: 52, borderRadius: '50%', border: 'none',
+          background: open ? '#18181b' : '#0a0f1c',
           color: '#fff', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 18px rgba(120,40,200,0.28)',
+          boxShadow: '0 4px 20px rgba(120,40,200,0.3)',
           outline: 'none',
         }}
       >
-        {open && <CloseIcon />}
+        {!open && (
+          <>
+            <span className="ai-orb-grad" />
+            <span className="ai-orb-blob" />
+            <span className="ai-orb-gloss" />
+          </>
+        )}
+        {open && <span style={{ position: 'relative', zIndex: 1, display: 'flex' }}><CloseIcon /></span>}
       </button>
 
       {/* Panel */}
       {open && (
-        <div style={{
-          position: 'fixed', bottom: 88, right: 28, zIndex: 999,
-          width: 360, height: 500, borderRadius: 20,
+        <div className="ai-panel" style={{
+          position: 'fixed', bottom: 92, right: 24, zIndex: 999,
+          width: 'min(370px, calc(100vw - 32px))',
+          height: 'min(520px, calc(100vh - 120px))',
+          borderRadius: 20,
           background: '#fff',
           boxShadow: '0 8px 40px rgba(0,0,0,0.13)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -151,9 +181,7 @@ export default function AiChat() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {messages.length === 0 && !loading && (
               <div style={{ textAlign: 'center', color: '#a1a1aa', fontSize: 12, marginTop: 40, lineHeight: 1.7 }}>
-                Ask about recovery, billing, or a case.<br />
-                Try a Case ID like <code style={{ background: 'rgba(0,0,0,0.06)', borderRadius: 4, padding: '1px 5px', fontFamily: 'monospace' }}>12291731</code><br />
-                or &ldquo;Reimbursed + Pending total?&rdquo;
+                Ask me anything about your<br />recovery, billing, clients, or cases.
               </div>
             )}
 
