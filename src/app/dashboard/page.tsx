@@ -918,7 +918,7 @@ export default function DashboardPage() {
 
         </div>{/* end inner padding div */}
       </div>
-      {/* <AiChat /> */}
+      <AiChat />
     </>
   );
 }

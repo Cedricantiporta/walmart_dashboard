@@ -151,7 +151,9 @@ export default function AiChat() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {messages.length === 0 && !loading && (
               <div style={{ textAlign: 'center', color: '#a1a1aa', fontSize: 12, marginTop: 40, lineHeight: 1.7 }}>
-                Ask me anything about your<br />recovery data, clients, or billing.
+                Ask about recovery, billing, or a case.<br />
+                Try a Case ID like <code style={{ background: 'rgba(0,0,0,0.06)', borderRadius: 4, padding: '1px 5px', fontFamily: 'monospace' }}>12291731</code><br />
+                or &ldquo;Reimbursed + Pending total?&rdquo;
               </div>
             )}
 
