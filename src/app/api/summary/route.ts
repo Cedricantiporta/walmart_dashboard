@@ -132,6 +132,67 @@ export async function GET() {
     if (monthGroups[mk]) monthGroups[mk].declinedCases++;
   });
 
+  // During grace period (first 7 days of month), prev month isn't invoiced yet.
+  // Compute it live from rms_cases so the bar chart reflects RTB data.
+  const isGracePeriod = now.getDate() <= 7;
+  const prevMonthKey = `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}`; // e.g. 2026-06
+  if (isGracePeriod && !monthGroups[prevMonthKey]) {
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+    const caseIdsWithDateEntries = new Set(
+      hardcodedBilledIds.filter(id => id.includes(':')).map(id => id.split(':')[0])
+    );
+
+    // Paginate: billing period can exceed 1000 rows (Supabase cap)
+    const prevCases: { reimbursement_status: string | null; reimbursement_amount: number; rms_posting_date: string | null; client_name: string; case_id: string; date_filed: string | null }[] = [];
+    {
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data } = await db.from('rms_cases')
+          .select('reimbursement_status, reimbursement_amount, rms_posting_date, client_name, case_id, date_filed')
+          .gte('rms_posting_date', prevMonthStart)
+          .lt('rms_posting_date', currentMonthStart)
+          .order('id', { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (!data || data.length === 0) break;
+        prevCases.push(...(data as typeof prevCases));
+        if (data.length < PAGE) break;
+      }
+    }
+    // Also null-posting cases with date_filed in prev month
+    const { data: nullPostingPrev } = await db.from('rms_cases')
+      .select('reimbursement_status, reimbursement_amount, rms_posting_date, client_name, case_id, date_filed')
+      .is('rms_posting_date', null)
+      .gte('date_filed', prevMonthStart)
+      .lt('date_filed', currentMonthStart);
+    const allPrevCases = [...prevCases, ...(nullPostingPrev ?? [])];
+
+    let prevRecovered = 0, prevFee = 0, prevApproved = 0;
+    allPrevCases.forEach(row => {
+      const effectiveDateStr = row.rms_posting_date || row.date_filed;
+      if (!effectiveDateStr) return;
+      if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
+      if ((row.reimbursement_amount ?? 0) <= 0) return;
+      const clientName = row.client_name?.trim();
+      if (!clientName) return;
+      if (clientName.toLowerCase() === 'vantage inc' && new Date(effectiveDateStr) < vCutoff) return;
+      const info = onboardingInfo[clientName] ?? onboardingInfo[Object.keys(onboardingInfo).find(k => k.toLowerCase() === clientName.toLowerCase()) ?? ''];
+      if (!info || info.status !== 'Client') return;
+      const caseId = String(row.case_id);
+      const dateKey = `${caseId}:${row.rms_posting_date}`;
+      if (billedSet.has(dateKey) || (billedSet.has(caseId) && !caseIdsWithDateEntries.has(caseId))) return;
+      const rate = info.rate ?? DEFAULT_RATE;
+      prevRecovered += row.reimbursement_amount;
+      prevFee += row.reimbursement_amount * rate;
+      prevApproved++;
+    });
+
+    monthGroups[prevMonthKey] = {
+      recovered: prevRecovered, fee: prevFee,
+      approvedCases: prevApproved, declinedCases: 0,
+      label: new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    };
+  }
+
   const pastMonths = Object.entries(monthGroups)
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([mk, g]) => ({
