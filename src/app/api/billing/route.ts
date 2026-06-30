@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, fetchRowsFrom } from '@/lib/supabase-server';
+import { createServerClient } from '@/lib/supabase-server';
 import { DEFAULT_RATE, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
 import { RmsCase, ClientInfo, BillingContact } from '@/types';
 
@@ -13,10 +13,13 @@ export async function GET() {
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
   const twoYearsAgo = new Date(now.getFullYear() - 2, now.getMonth(), 1).toISOString().slice(0, 10);
 
-  const RMS_COLS = 'case_id,client_name,claim_type,reimbursement_amount,rms_posting_date,date_filed,gtin,sku_id,unit_amount,reimbursed_qty';
+  const RMS_COLS = 'case_id,client_name,claim_type,reimbursement_amount,rms_posting_date,date_filed,gtin,sku_id,unit_amount,reimbursed_qty,reimbursement_status';
+
+  const nextMonthStartEarly = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
 
   const [
     { data: allData },
+    { data: nullPostingRaw },
     { data: overdueRaw },
     { data: clientsRaw },
     { data: invoicesRaw },
@@ -27,6 +30,12 @@ export async function GET() {
   ] = await Promise.all([
     db.from('rms_cases').select(RMS_COLS)
       .gte('rms_posting_date', prevMonthStart)
+      .gt('reimbursement_amount', 0),
+    // Analytics uses rms_posting_date || date_filed — fetch null-posting cases with date_filed in billing period
+    db.from('rms_cases').select(RMS_COLS)
+      .is('rms_posting_date', null)
+      .gte('date_filed', prevMonthStart)
+      .lt('date_filed', nextMonthStartEarly)
       .gt('reimbursement_amount', 0),
     db.from('rms_cases').select(RMS_COLS)
       .gte('rms_posting_date', twoYearsAgo)
@@ -66,7 +75,7 @@ export async function GET() {
     hardcodedBilledIds.filter(id => id.includes(':')).map(id => id.split(':')[0])
   );
 
-  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
+  const nextMonthStart = nextMonthStartEarly;
 
   type BillingCase = {
     caseId: string;
@@ -103,26 +112,30 @@ export async function GET() {
 
   const clientMap: Record<string, ClientBilling> = {};
 
-  (allData ?? []).forEach(row => {
-    if (!row.rms_posting_date) return;
+  // Mirror analytics logic: use rms_posting_date || date_filed as effective date,
+  // include null-posting cases with date_filed in billing period, Approved-only.
+  [...(allData ?? []), ...(nullPostingRaw ?? [])].forEach(row => {
+    const effectiveDateStr = row.rms_posting_date || row.date_filed;
+    if (!effectiveDateStr) return;
     if (row.reimbursement_amount <= 0) return;
+    if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
 
     const clientName = row.client_name?.trim();
     if (!clientName) return;
 
     // Vantage pre-cutoff exclusion
-    const postingDate = new Date(row.rms_posting_date);
-    if (clientName.toLowerCase() === 'vantage inc' && postingDate < vCutoff) return;
+    const effectiveDate = new Date(effectiveDateStr);
+    if (clientName.toLowerCase() === 'vantage inc' && effectiveDate < vCutoff) return;
 
-    // Check if billed
+    // Check if billed (composite key uses rms_posting_date; null-posting rows use plain case_id path)
     const caseId = String(row.case_id);
     const dateKey = `${caseId}:${row.rms_posting_date}`;
     const isBilledByDate = billedSet.has(dateKey);
     const isBilledByCase = billedSet.has(caseId) && !caseIdsWithDateEntries.has(caseId);
-    if (isBilledByDate || isBilledByCase) return; // already invoiced
+    if (isBilledByDate || isBilledByCase) return;
 
     // Skip future cases
-    if (row.rms_posting_date >= nextMonthStart) return;
+    if (effectiveDateStr >= nextMonthStart) return;
 
     const info = onboardingInfo[clientName] ??
       onboardingInfo[Object.keys(onboardingInfo).find(k => k.toLowerCase() === clientName.toLowerCase()) ?? ''];
@@ -142,13 +155,13 @@ export async function GET() {
 
     const amount = row.reimbursement_amount;
     const fee = amount * rate;
-    const isCurrentMonth = row.rms_posting_date >= currentMonthStart;
+    const isCurrentMonth = effectiveDateStr >= currentMonthStart;
     const isPending = isGracePeriod && isCurrentMonth;
 
     const caseObj: BillingCase = {
       caseId,
       claimType: row.claim_type ?? 'Other',
-      postingDate: row.rms_posting_date,
+      postingDate: effectiveDateStr,
       amount,
       fee,
       isCurrentMonth,
