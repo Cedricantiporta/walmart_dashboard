@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
-import { getCached, setCached } from '@/lib/server-cache';
+
 import { DEFAULT_RATE, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
 import { RmsCase, ClientInfo } from '@/types';
 
@@ -12,9 +12,6 @@ export async function GET() {
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 
-  const cacheKey = `summary:${currentMonthKey}`;
-  const cached = getCached(cacheKey);
-  if (cached) return NextResponse.json(cached);
 
   const db = createServerClient();
 
@@ -215,7 +212,5 @@ export async function GET() {
     history[i].growth = prev === 0 ? (cur > 0 ? 100 : 0) : ((cur - prev) / prev) * 100;
   }
 
-  // Cache for 3 minutes — current month changes, but not that fast
-  setCached(cacheKey, history, 90 * 1000);
   return NextResponse.json(history);
 }
