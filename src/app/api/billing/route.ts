@@ -21,12 +21,6 @@ export async function GET() {
 
   // Fire non-paginated queries immediately so they run in parallel with the pagination loop below
   const otherQueriesPromise = Promise.all([
-    // null-posting cases: analytics uses rms_posting_date || date_filed fallback
-    db.from('rms_cases').select(RMS_COLS)
-      .is('rms_posting_date', null)
-      .gte('date_filed', prevMonthStart)
-      .lt('date_filed', nextMonthStartEarly)
-      .gt('reimbursement_amount', 0),
     db.from('rms_cases').select(RMS_COLS)
       .gte('rms_posting_date', twoYearsAgo)
       .lt('rms_posting_date', prevMonthStart)
@@ -58,7 +52,6 @@ export async function GET() {
   }
 
   const [
-    { data: nullPostingRaw },
     { data: overdueRaw },
     { data: clientsRaw },
     { data: invoicesRaw },
@@ -128,20 +121,18 @@ export async function GET() {
 
   const clientMap: Record<string, ClientBilling> = {};
 
-  // Mirror analytics logic: use rms_posting_date || date_filed as effective date,
-  // include null-posting cases with date_filed in billing period, Approved-only.
-  [...(allData ?? []), ...(nullPostingRaw ?? [])].forEach(row => {
-    const effectiveDateStr = row.rms_posting_date || row.date_filed;
-    if (!effectiveDateStr) return;
+  // Reimbursed only: an RMS Posting Date is required everywhere — RTB and Pending alike.
+  // A case without a posting date is not yet reimbursed, so it appears in neither bucket.
+  allData.forEach(row => {
+    if (!row.rms_posting_date) return;
     if (row.reimbursement_amount <= 0) return;
+    if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
 
-    // Determine pending FIRST so the status filter only applies to RTB (prev-month) cases.
-    // Pending = current-month during grace period; these may be freshly filed (not yet Approved).
+    const effectiveDateStr = row.rms_posting_date;
+    // Pending = a reimbursed CURRENT-month case during the grace window (1st–7th). Held back so
+    // it can't be billed with the prior month. RTB = prior-month reimbursed cases.
     const isCurrentMonth = effectiveDateStr >= currentMonthStart;
     const isPending = isGracePeriod && isCurrentMonth;
-    // RTB (non-pending) requires an actual RMS Posting Date = reimbursed (matches workflow + analytics).
-    // Pending keeps the date_filed fallback so freshly-filed current-month cases still surface.
-    if (!isPending && (!row.rms_posting_date || row.reimbursement_status?.trim().toLowerCase() !== 'approved')) return;
 
     const clientName = row.client_name?.trim();
     if (!clientName) return;

@@ -107,7 +107,31 @@ export async function GET() {
   const { data: lastSync } = await db.from('rms_cases').select('synced_at').order('synced_at', { ascending: false }).limit(1).single();
 
   const isGracePeriod = now.getDate() <= 7;
-  const pendingAmount = isGracePeriod ? allData.reduce((s, r) => s + (r.reimbursement_amount ?? 0), 0) : 0;
+  // Pending = reimbursed CURRENT-month cases held back during the grace window (1st–7th), so the
+  // card matches the Billing tab exactly: posting date required (reimbursed), Approved, amount > 0,
+  // unbilled, billable client, past pilot/contract start, not Vantage free-period.
+  const pendingBilledSet = new Set(billedIds.map(String));
+  const pendingVCutoff = new Date(vantageCutoff + 'T00:00:00');
+  let pendingAmount = 0;
+  if (isGracePeriod) {
+    allData.forEach(r => {
+      if (!r.rms_posting_date) return;
+      if ((r.reimbursement_amount ?? 0) <= 0) return;
+      if (r.reimbursement_status?.trim().toLowerCase() !== 'approved') return;
+      if (r.rms_posting_date < currentMonthStart) return; // current month only
+      const name = r.client_name?.trim();
+      if (!name) return;
+      if (excludedClientsSet.has(name.toLowerCase())) return;
+      const info = onboardingInfo[name] ?? onboardingInfo[Object.keys(onboardingInfo).find(k => k.toLowerCase() === name.toLowerCase()) ?? ''];
+      if (!info || (info.status !== 'Client' && name !== 'Premium Convenience')) return;
+      if (name.toLowerCase() === 'vantage inc' && new Date(r.rms_posting_date) < pendingVCutoff) return;
+      const startStr = info?.pilot_end_date ?? info?.start_date;
+      if (startStr && r.date_filed && new Date(r.date_filed) < new Date(startStr)) return;
+      const caseId = String(r.case_id);
+      if (pendingBilledSet.has(`${caseId}:${r.rms_posting_date}`) || pendingBilledSet.has(caseId)) return;
+      pendingAmount += r.reimbursement_amount ?? 0;
+    });
+  }
 
   const payload = {
     billingSummary,
