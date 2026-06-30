@@ -101,8 +101,7 @@ export async function GET(req: NextRequest) {
     result.trends.approvedCases    = trend(inv.cur.c, 0);
   }
 
-  // Cache thisMonth for 2 min (changes on sync), longer ranges for 5 min
-  setCached(cacheKey, result, useFilter ? 2 * 60 * 1000 : 5 * 60 * 1000);
+  setCached(cacheKey, result, 90 * 1000);
 
   return NextResponse.json(result);
 }

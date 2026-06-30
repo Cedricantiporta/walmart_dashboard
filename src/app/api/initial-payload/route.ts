@@ -132,6 +132,6 @@ export async function GET() {
     isGracePeriod,
   };
 
-  setCached(cacheKey, payload, 2 * 60 * 1000);
+  setCached(cacheKey, payload, 90 * 1000);
   return NextResponse.json(payload);
 }

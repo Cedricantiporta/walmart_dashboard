@@ -216,6 +216,6 @@ export async function GET() {
   }
 
   // Cache for 3 minutes — current month changes, but not that fast
-  setCached(cacheKey, history, 3 * 60 * 1000);
+  setCached(cacheKey, history, 90 * 1000);
   return NextResponse.json(history);
 }
