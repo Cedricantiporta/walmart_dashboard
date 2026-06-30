@@ -88,6 +88,9 @@ export function calculateDashboardAnalytics(
     }
 
     if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return [];
+    // Skip $0 (or negative) approved cases — no real recovery. Matches the billing/RTB route,
+    // and stops zero-dollar cases showing as phantom "N cases, $0" in the current month.
+    if ((row.reimbursement_amount ?? 0) <= 0) return [];
     // Use rms_posting_date when available; fall back to date_filed for approved-but-not-yet-posted cases.
     const approvalStr = row.rms_posting_date || row.date_filed;
     if (!approvalStr) return [];
