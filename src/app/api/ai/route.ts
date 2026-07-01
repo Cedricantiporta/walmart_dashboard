@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, fetchAllRows } from '@/lib/supabase-server';
+import { getCached, setCached } from '@/lib/server-cache';
 import { calculateDashboardAnalytics } from '@/lib/analytics';
 import { DEFAULT_RATE, DEFAULT_VANTAGE_CUTOFF } from '@/lib/constants';
 import { RmsCase, ClientInfo } from '@/types';
@@ -42,13 +43,20 @@ function parseDateRange(msg: string, defaultYear: number): { startISO: string; e
   return null;
 }
 
-async function buildContext(db: ReturnType<typeof createServerClient>, message: string) {
-  // Asia/Singapore (GAS project tz) so "now"/grace match the dashboard
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
-  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
-  const isGracePeriod = now.getDate() <= 7;
+type RawData = {
+  allData: RmsCase[];
+  clientsRaw: ClientInfo[] | null;
+  invoicesRaw: InvRow[] | null;
+  hardcodedRaw: { case_id: string; rms_posting_date: string | null }[] | null;
+  excludedRaw: { client_name: string }[] | null;
+  configRaw: { key: string; value: string }[] | null;
+};
 
+// The DB round-trips are the slow part; cache them 60s. In-memory compute stays fresh per message.
+// clearCache() (called on every sync + invoice mutation) drops this so new data shows immediately.
+async function getRawData(db: ReturnType<typeof createServerClient>): Promise<RawData> {
+  const cached = getCached<RawData>('ai-rawdata');
+  if (cached) return cached;
   const [
     allData,
     { data: clientsRaw },
@@ -64,6 +72,45 @@ async function buildContext(db: ReturnType<typeof createServerClient>, message: 
     db.from('excluded_clients').select('client_name'),
     db.from('app_config').select('key, value'),
   ]);
+  const raw: RawData = {
+    allData,
+    clientsRaw: (clientsRaw ?? null) as ClientInfo[] | null,
+    invoicesRaw: (invoicesRaw ?? null) as InvRow[] | null,
+    hardcodedRaw: (hardcodedRaw ?? null) as RawData['hardcodedRaw'],
+    excludedRaw: (excludedRaw ?? null) as RawData['excludedRaw'],
+    configRaw: (configRaw ?? null) as RawData['configRaw'],
+  };
+  setCached('ai-rawdata', raw, 60 * 1000);
+  return raw;
+}
+
+// Detect a client name mentioned in the message (matches core name or a distinctive first word)
+const GENERIC_WORDS = new Set(['the', 'llc', 'inc', 'co', 'corp', 'ltd', 'company', 'group']);
+function detectClient(message: string, clientNames: string[]): string | null {
+  const t = ` ${message.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ')} `;
+  let best: string | null = null, bestScore = 0;
+  for (const name of clientNames) {
+    const clean = name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
+    const core = clean.replace(/\b(llc|inc|co|corp|ltd|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
+    const first = core.split(' ')[0] || '';
+    const cands: string[] = [];
+    if (core.length >= 4) cands.push(core);
+    if (first.length >= 4 && !GENERIC_WORDS.has(first)) cands.push(first);
+    for (const c of cands) {
+      if (c.length > bestScore && t.includes(` ${c} `)) { best = name; bestScore = c.length; }
+    }
+  }
+  return best;
+}
+
+async function buildContext(db: ReturnType<typeof createServerClient>, message: string) {
+  // Asia/Singapore (GAS project tz) so "now"/grace match the dashboard
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
+  const isGracePeriod = now.getDate() <= 7;
+
+  const { allData, clientsRaw, invoicesRaw, hardcodedRaw, excludedRaw, configRaw } = await getRawData(db);
 
   const settings: Record<string, string> = {};
   (configRaw ?? []).forEach((r: { key: string; value: string }) => { settings[r.key] = r.value; });
@@ -196,7 +243,26 @@ async function buildContext(db: ReturnType<typeof createServerClient>, message: 
       const e = eligible(row); if (!e) continue;
       if (e.posting >= range.startISO && e.posting <= range.endISO) { rr += e.amount; rf += e.fee; rc += 1; }
     }
-    rangeSection = `RECOVERED FOR ${range.label} (by RMS posting date): recovered ${money(rr)}, fee ${money(rf)}, ${rc} cases.`;
+    rangeSection = `RECOVERED — ALL CLIENTS — FOR ${range.label} (by RMS posting date): recovered ${money(rr)}, fee ${money(rf)}, ${rc} cases.`;
+  }
+
+  // Client-scoped focus (when a client name is mentioned in the message)
+  const detectedClient = detectClient(message, (clientsRaw ?? []).map((c: ClientInfo) => c.client_name).filter(Boolean));
+  const clientLc = detectedClient?.toLowerCase();
+  let clientSection = '';
+  if (detectedClient) {
+    let lr = 0, lf = 0, lc = 0, cr = 0, cf = 0, cc = 0;
+    for (const row of allData) {
+      if (row.client_name?.trim().toLowerCase() !== clientLc) continue;
+      const e = eligible(row); if (!e) continue;
+      lr += e.amount; lf += e.fee; lc += 1;
+      if (range && e.posting >= range.startISO && e.posting <= range.endISO) { cr += e.amount; cf += e.fee; cc += 1; }
+    }
+    const cInv = invoices.filter(i => i.client_name?.toLowerCase() === clientLc);
+    const billedFee = cInv.reduce((s, i) => s + (Number(i.billed_fee) || 0), 0);
+    const billedRec = cInv.reduce((s, i) => s + (Number(i.total_reimbursed) || 0), 0);
+    clientSection = `CLIENT FOCUS — ${detectedClient}: lifetime recovered ${money(lr)} (${lc} cases), potential fee ${money(lf)}; billed to date ${cInv.length} invoices (fee ${money(billedFee)}, recovered ${money(billedRec)}).`;
+    if (range) clientSection += `\n${detectedClient} recovered for ${range.label}: ${money(cr)}, fee ${money(cf)}, ${cc} cases.`;
   }
 
   const rtbLines = Object.entries(rtb).sort((a, b) => b[1].fee - a[1].fee)
@@ -223,7 +289,7 @@ OVERVIEW — CURRENT MONTH (${curMonthLabel}):
 - Pending total (held during grace): ${money(pendingTotal.recovered)} recovered / ${money(pendingTotal.fee)} fee / ${pendingTotal.cases} cases
 - Reimbursed + Pending combined: ${money(analytics.metrics.totalReimbursed + pendingTotal.recovered)}
 
-${rangeSection ? rangeSection + '\n\n' : ''}RECOVERED BY MONTH (by RMS posting date; all approved, billed + unbilled — sum these for any month range):
+${clientSection ? clientSection + '\n\n' : ''}${rangeSection ? rangeSection + '\n\n' : ''}RECOVERED BY MONTH (by RMS posting date; all approved, billed + unbilled — sum these for any month range):
 ${monthly || 'none'}
 
 READY TO BILL — by client (unbilled, reimbursed${isGracePeriod ? ', prior month during grace' : ''}):
