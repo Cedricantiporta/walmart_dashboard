@@ -13,6 +13,35 @@ const fmtDate = (d: string | null) => d ? new Date(d + 'T12:00:00').toLocaleDate
 
 type InvRow = { invoice_number: string; client_name: string; billed_date: string | null; billed_fee: number; total_reimbursed: number; case_ids: string[] };
 
+const MONTHS: Record<string, number> = {
+  jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4,
+  jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8,
+  oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11,
+};
+const lastDay = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
+const isoDate = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+// Parse a date range from natural language: "May 1 to July 22", "Jan to May", "2026-05-01 to 2026-07-22"
+function parseDateRange(msg: string, defaultYear: number): { startISO: string; endISO: string; label: string } | null {
+  const text = msg.toLowerCase();
+  const isoPair = text.match(/(\d{4}-\d{2}-\d{2})\D+(\d{4}-\d{2}-\d{2})/);
+  if (isoPair) return { startISO: isoPair[1], endISO: isoPair[2], label: `${isoPair[1]} to ${isoPair[2]}` };
+  const mn = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  const re = new RegExp(mn + '\\s*(\\d{1,2})?(?:st|nd|rd|th)?(?:,?\\s*(\\d{4}))?\\s*(?:to|through|thru|until|[-–—])\\s*' + mn + '\\s*(\\d{1,2})?(?:st|nd|rd|th)?(?:,?\\s*(\\d{4}))?', 'i');
+  const m = text.match(re);
+  if (m) {
+    const m1 = MONTHS[m[1]], m2 = MONTHS[m[4]];
+    if (m1 != null && m2 != null) {
+      const y1 = m[3] ? parseInt(m[3]) : defaultYear;
+      const y2 = m[6] ? parseInt(m[6]) : defaultYear;
+      const d1 = m[2] ? parseInt(m[2]) : 1;
+      const d2 = m[5] ? parseInt(m[5]) : lastDay(y2, m2);
+      return { startISO: isoDate(y1, m1, d1), endISO: isoDate(y2, m2, d2), label: `${isoDate(y1, m1, d1)} to ${isoDate(y2, m2, d2)}` };
+    }
+  }
+  return null;
+}
+
 async function buildContext(db: ReturnType<typeof createServerClient>, message: string) {
   // Asia/Singapore (GAS project tz) so "now"/grace match the dashboard
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
@@ -120,9 +149,55 @@ async function buildContext(db: ReturnType<typeof createServerClient>, message: 
     return `Case ${id}: ${lines.join(' ; ')} | ${billedNote}${totalNote}`;
   });
 
-  // Build text context
-  const monthly = analytics.monthlyHistory.slice(0, 12)
-    .map(m => `${m.label}: recovered ${money(m.recovered)}, fee ${money(m.fee)}, ${m.approvedCount} cases`).join('\n');
+  // Detect requested invoice numbers (e.g. NV-1042) and resolve full detail
+  const requestedInvNums = [...new Set((message.match(/\b(?:NV|INV)-\d+[a-z]?\b/gi) ?? []).map(s => s.toUpperCase()))].slice(0, 8);
+  const invLookups = requestedInvNums.map(num => {
+    const inv = invoices.find(i => i.invoice_number.toUpperCase() === num);
+    if (!inv) return `Invoice ${num} — NOT FOUND.`;
+    const ids = (inv.case_ids ?? []).map(String);
+    const idList = ids.slice(0, 40).join(', ') + (ids.length > 40 ? ` … (+${ids.length - 40} more)` : '');
+    return `Invoice ${inv.invoice_number}: ${inv.client_name} · billed ${fmtDate(inv.billed_date)} · recovered ${money(inv.total_reimbursed)} · fee ${money(inv.billed_fee)} · ${ids.length} cases | case IDs: ${idList || 'none'}`;
+  });
+
+  // Eligibility filter = a real recovered case (same rules as billing/analytics)
+  const eligible = (row: RmsCase) => {
+    if (!row.rms_posting_date) return null;
+    if ((row.reimbursement_amount ?? 0) <= 0) return null;
+    if (row.reimbursement_status?.trim().toLowerCase() !== 'approved') return null;
+    const nm = row.client_name?.trim(); if (!nm) return null;
+    if (excludedClients.has(nm.toLowerCase())) return null;
+    if (nm.toLowerCase() === 'vantage inc' && new Date(row.rms_posting_date) < vCutoff) return null;
+    const info = findInfo(nm);
+    if (!info || (info.status !== 'Client' && nm !== 'Premium Convenience')) return null;
+    const startStr = info?.pilot_end_date ?? info?.start_date;
+    if (startStr && row.date_filed && new Date(row.date_filed) < new Date(startStr)) return null;
+    const rate = info?.rate ?? DEFAULT_RATE;
+    return { amount: row.reimbursement_amount, fee: row.reimbursement_amount * rate, posting: row.rms_posting_date };
+  };
+
+  // Recovered by ACTUAL posting month (all approved passing filters — billed + unbilled).
+  // Accurate for range/trend analysis (unlike the redirected Overview bars).
+  const rawMonthlyMap: Record<string, { recovered: number; fee: number; cases: number }> = {};
+  for (const row of allData) {
+    const e = eligible(row); if (!e) continue;
+    const mk = e.posting.slice(0, 7);
+    if (!rawMonthlyMap[mk]) rawMonthlyMap[mk] = { recovered: 0, fee: 0, cases: 0 };
+    rawMonthlyMap[mk].recovered += e.amount; rawMonthlyMap[mk].fee += e.fee; rawMonthlyMap[mk].cases += 1;
+  }
+  const monthly = Object.entries(rawMonthlyMap).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 15)
+    .map(([mk, v]) => `${mk}: recovered ${money(v.recovered)}, fee ${money(v.fee)}, ${v.cases} cases`).join('\n');
+
+  // Exact total for a date range mentioned in the message (e.g. "May 1 to July 22")
+  const range = parseDateRange(message, now.getFullYear());
+  let rangeSection = '';
+  if (range) {
+    let rr = 0, rf = 0, rc = 0;
+    for (const row of allData) {
+      const e = eligible(row); if (!e) continue;
+      if (e.posting >= range.startISO && e.posting <= range.endISO) { rr += e.amount; rf += e.fee; rc += 1; }
+    }
+    rangeSection = `RECOVERED FOR ${range.label} (by RMS posting date): recovered ${money(rr)}, fee ${money(rf)}, ${rc} cases.`;
+  }
 
   const rtbLines = Object.entries(rtb).sort((a, b) => b[1].fee - a[1].fee)
     .map(([n, a]) => `${n}: fee ${money(a.fee)} (recovered ${money(a.recovered)}, ${a.cases} cases)`).join('\n');
@@ -148,7 +223,7 @@ OVERVIEW — CURRENT MONTH (${curMonthLabel}):
 - Pending total (held during grace): ${money(pendingTotal.recovered)} recovered / ${money(pendingTotal.fee)} fee / ${pendingTotal.cases} cases
 - Reimbursed + Pending combined: ${money(analytics.metrics.totalReimbursed + pendingTotal.recovered)}
 
-MONTHLY RECOVERY (recovered by posting month; billed cases sit in their month):
+${rangeSection ? rangeSection + '\n\n' : ''}RECOVERED BY MONTH (by RMS posting date; all approved, billed + unbilled — sum these for any month range):
 ${monthly || 'none'}
 
 READY TO BILL — by client (unbilled, reimbursed${isGracePeriod ? ', prior month during grace' : ''}):
@@ -165,7 +240,7 @@ ${recentInvoices || 'none'}
 
 ACTIVE CLIENTS (${(clientsRaw ?? []).filter((c: ClientInfo) => c.status === 'Client').length}): ${activeClients || 'none'}
 
-${caseLookups.length ? `REQUESTED CASE LOOKUPS (from the user's message):\n${caseLookups.join('\n')}` : ''}`;
+${caseLookups.length ? `REQUESTED CASE LOOKUPS (from the user's message):\n${caseLookups.join('\n')}\n` : ''}${invLookups.length ? `REQUESTED INVOICE LOOKUPS:\n${invLookups.join('\n')}` : ''}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -182,11 +257,12 @@ export async function POST(req: NextRequest) {
     const systemInstruction = `You are the assistant for a Walmart Fulfillment Services claims-recovery dashboard. Answer ONLY from the live data below — never invent numbers.
 
 You can:
-- Look up any case by its Case ID (details are pre-resolved under REQUESTED CASE LOOKUPS when the user mentions an ID). Report claim type, posting date, amount, status, and whether it's billed/which invoice.
-- Report totals for Ready to Bill, Pending, Invoices, Monthly Recovery, and the Overview cards — overall or per client.
-- Combine figures when asked (e.g. "Reimbursed + Pending"); the combined value is precomputed where common, otherwise add the labeled numbers yourself.
+- Look up any case by Case ID or any invoice by number (pre-resolved under REQUESTED CASE/INVOICE LOOKUPS when mentioned). For a case: claim type, posting date, amount, status, billed/which invoice. For an invoice: client, date, fee, recovered, cases.
+- Total recovered/fee/cases for any date range the user gives — precomputed under "RECOVERED FOR …" when a range is mentioned; otherwise sum the RECOVERED BY MONTH table for month ranges.
+- Report Ready to Bill, Pending, Invoices, and Overview figures — overall or per client — and combine them when asked (e.g. "Reimbursed + Pending").
+- Offer light analysis and suggestions (trends, biggest clients, months up/down, what's worth billing) grounded strictly in the data below.
 
-Rules: A case is only "reimbursed" when it has an RMS Posting Date. Be concise — lead with the answer, use short lines, format money as $X.XX. If the data below doesn't contain the answer, say so plainly rather than guessing.
+Rules: A case is only "reimbursed" when it has an RMS Posting Date. Be concise — lead with the answer, short lines, money as $X.XX. If the data doesn't cover it, say so rather than guessing.
 
 LIVE DATA:
 ${context}`;

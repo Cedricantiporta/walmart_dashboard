@@ -7,11 +7,11 @@ interface Message {
   content: string;
 }
 
-const SUGGESTIONS = [
-  { icon: '🧾', label: 'Summarize recent invoices', prompt: 'Summarize my recent invoices.' },
-  { icon: '💳', label: 'Total ready to bill', prompt: 'What is the total ready to bill, and which clients?' },
-  { icon: '📊', label: 'Reimbursed + Pending', prompt: 'What is the current Reimbursed plus Pending total?' },
-  { icon: '📅', label: 'Explain the billing cycle', prompt: 'Explain how the monthly billing cycle and grace period work.' },
+const SUGGESTIONS: { icon: string; label: string; fill?: string; prompt?: string }[] = [
+  { icon: '🔎', label: 'Ask about a case ID', fill: 'Tell me about case ' },
+  { icon: '🧾', label: 'Ask about an invoice', fill: 'Tell me about invoice ' },
+  { icon: '📊', label: 'Recovered Jan–May', prompt: 'What was the total recovered from January to May 2026?' },
+  { icon: '🏢', label: 'Ask about a client', fill: 'Tell me about client ' },
 ];
 
 const SendIcon = () => (
@@ -123,24 +123,23 @@ export default function AiChat() {
         .ai-ta { scrollbar-width: none; -ms-overflow-style: none; }
         .ai-chip { transition: background 0.12s, border-color 0.12s, transform 0.12s; }
         .ai-chip:hover { background: #f4f4f5 !important; border-color: #d4d4d8 !important; transform: translateY(-1px); }
-        /* Liquid motion — soft color blobs drift slowly in different directions, never stops */
-        @keyframes aichatDrift1 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(22%,16%); } 66% { transform: translate(-12%,22%); } }
-        @keyframes aichatDrift2 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(-20%,14%); } 66% { transform: translate(14%,-18%); } }
-        @keyframes aichatDrift3 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(16%,-20%); } }
+        /* Liquid motion — off-center color layers rotate at different speeds & directions (looks random) */
+        @keyframes aichatRot { to { transform: rotate(360deg); } }
+        @keyframes aichatRotRev { to { transform: rotate(-360deg); } }
         .ai-orb { position: relative; overflow: hidden; }
         .ai-orb-base { position: absolute; inset: 0; background: linear-gradient(140deg, #006FEE 0%, #7828C8 52%, #F5A524 100%); }
-        .ai-orb-blob { position: absolute; width: 82%; height: 82%; border-radius: 50%; filter: blur(9px); }
-        .ai-orb-b1 { top: -12%; left: -14%; background: radial-gradient(circle, #2b8bff 0%, rgba(43,139,255,0) 68%); animation: aichatDrift1 9s ease-in-out infinite; }
-        .ai-orb-b2 { top: 6%; right: -16%; background: radial-gradient(circle, #9b3fe6 0%, rgba(155,63,230,0) 68%); animation: aichatDrift2 12s ease-in-out infinite; }
-        .ai-orb-b3 { bottom: -16%; left: 4%; background: radial-gradient(circle, #ffb43d 0%, rgba(255,180,61,0) 68%); animation: aichatDrift3 15s ease-in-out infinite; }
-        /* Liquid-glass: bright specular highlight + glossy rim */
+        .ai-orb-blob { position: absolute; inset: -14%; filter: blur(7px); }
+        .ai-orb-b1 { background: radial-gradient(circle at 32% 34%, #3b93ff 0%, rgba(59,147,255,0) 52%); animation: aichatRot 13s linear infinite; }
+        .ai-orb-b2 { background: radial-gradient(circle at 70% 42%, #9b3fe6 0%, rgba(155,63,230,0) 52%); animation: aichatRotRev 17s linear infinite; }
+        .ai-orb-b3 { background: radial-gradient(circle at 48% 72%, #ffb43d 0%, rgba(255,180,61,0) 54%); animation: aichatRot 21s linear infinite; }
+        /* Subtle glass — much less shiny */
         .ai-orb-gloss {
           position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
-          background: radial-gradient(circle at 33% 27%, rgba(255,255,255,0.7), rgba(255,255,255,0.15) 34%, rgba(255,255,255,0) 56%);
+          background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.26), rgba(255,255,255,0) 44%);
         }
         .ai-orb-rim {
           position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
-          box-shadow: inset 0 1.5px 3px rgba(255,255,255,0.55), inset 0 -4px 9px rgba(0,0,0,0.28);
+          box-shadow: inset 0 -3px 7px rgba(0,0,0,0.2);
         }
         @media (max-width: 480px) {
           .ai-panel { right: 12px !important; left: 12px !important; width: auto !important; bottom: 80px !important; }
@@ -205,7 +204,15 @@ export default function AiChat() {
                     <button
                       key={s.label}
                       className="ai-chip"
-                      onClick={() => send(s.prompt)}
+                      onClick={() => {
+                        if (s.fill) {
+                          setInput(s.fill);
+                          setMultiline(false);
+                          setTimeout(() => { const el = inputRef.current; if (el) { el.focus(); el.setSelectionRange(s.fill!.length, s.fill!.length); } }, 0);
+                        } else if (s.prompt) {
+                          send(s.prompt);
+                        }
+                      }}
                       style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 7, padding: '10px 11px', border: '1px solid #ececec', borderRadius: 12, background: '#fff', cursor: 'pointer', outline: 'none' }}
                     >
                       <span style={{ fontSize: 15, lineHeight: 1 }}>{s.icon}</span>
