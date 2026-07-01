@@ -189,8 +189,23 @@ export default function AiChat() {
         }}>
 
           {/* Header — white */}
-          <div style={{ background: '#fff', padding: '13px 16px 8px', flexShrink: 0 }}>
+          <div style={{ background: '#fff', padding: '13px 16px 8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontWeight: 800, fontSize: 19, color: '#11181c', letterSpacing: '-0.01em' }}>WFS AI</div>
+            {messages.length > 0 && (
+              <button
+                onClick={() => {
+                  setMessages([]); setInput(''); setError(''); setMultiline(false);
+                  if (inputRef.current) inputRef.current.style.height = '19px';
+                }}
+                title="Clear chat"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: 'none', background: '#f4f4f5', color: '#71717a', fontSize: 11, fontWeight: 600, borderRadius: 999, padding: '5px 10px', cursor: 'pointer', outline: 'none' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                Clear
+              </button>
+            )}
           </div>
 
           {/* Messages */}
