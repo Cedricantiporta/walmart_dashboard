@@ -7,6 +7,13 @@ interface Message {
   content: string;
 }
 
+const SUGGESTIONS = [
+  { icon: '🧾', label: 'Summarize recent invoices', prompt: 'Summarize my recent invoices.' },
+  { icon: '💳', label: 'Total ready to bill', prompt: 'What is the total ready to bill, and which clients?' },
+  { icon: '📊', label: 'Reimbursed + Pending', prompt: 'What is the current Reimbursed plus Pending total?' },
+  { icon: '📅', label: 'Explain the billing cycle', prompt: 'Explain how the monthly billing cycle and grace period work.' },
+];
+
 const SendIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="19" x2="12" y2="5"/>
@@ -53,6 +60,7 @@ export default function AiChat() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [multiline, setMultiline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -66,10 +74,11 @@ export default function AiChat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
     setInput('');
+    setMultiline(false);
     if (inputRef.current) inputRef.current.style.height = '19px';
     setError('');
     const newMessages: Message[] = [...messages, { role: 'user', content: text }];
@@ -110,6 +119,10 @@ export default function AiChat() {
         .ai-fab:hover { transform: scale(1.08) !important; box-shadow: 0 6px 30px rgba(120,40,200,0.4) !important; }
         .ai-send:hover:not(:disabled) { opacity: 0.82; }
         .ai-send:disabled { opacity: 0.35; cursor: not-allowed; }
+        .ai-ta::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        .ai-ta { scrollbar-width: none; -ms-overflow-style: none; }
+        .ai-chip { transition: background 0.12s, border-color 0.12s, transform 0.12s; }
+        .ai-chip:hover { background: #f4f4f5 !important; border-color: #d4d4d8 !important; transform: translateY(-1px); }
         /* Liquid motion — soft color blobs drift slowly in different directions, never stops */
         @keyframes aichatDrift1 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(22%,16%); } 66% { transform: translate(-12%,22%); } }
         @keyframes aichatDrift2 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(-20%,14%); } 66% { transform: translate(14%,-18%); } }
@@ -177,15 +190,29 @@ export default function AiChat() {
         }}>
 
           {/* Header — white */}
-          <div style={{ background: '#fff', padding: '11px 16px 8px', flexShrink: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: '#11181c' }}>WFS AI</div>
+          <div style={{ background: '#fff', padding: '13px 16px 8px', flexShrink: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 19, color: '#11181c', letterSpacing: '-0.01em' }}>WFS AI</div>
           </div>
 
           {/* Messages */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {messages.length === 0 && !loading && (
-              <div style={{ textAlign: 'center', color: '#a1a1aa', fontSize: 12, marginTop: 40, lineHeight: 1.7 }}>
-                Ask me anything about your<br />recovery, billing, clients, or cases.
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24, padding: '0 4px' }}>
+                <div style={{ fontSize: 19, fontWeight: 800, color: '#11181c' }}>Hi there! 👋</div>
+                <div style={{ fontSize: 13, color: '#a1a1aa', marginTop: 3, marginBottom: 18 }}>How can I help you today?</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
+                  {SUGGESTIONS.map(s => (
+                    <button
+                      key={s.label}
+                      className="ai-chip"
+                      onClick={() => send(s.prompt)}
+                      style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 7, padding: '10px 11px', border: '1px solid #ececec', borderRadius: 12, background: '#fff', cursor: 'pointer', outline: 'none' }}
+                    >
+                      <span style={{ fontSize: 15, lineHeight: 1 }}>{s.icon}</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 500, color: '#3f3f46', lineHeight: 1.3 }}>{s.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -227,16 +254,18 @@ export default function AiChat() {
           </div>
 
           {/* Input */}
-          <div style={{ padding: '8px 12px 14px', flexShrink: 0 }}>
-            <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', background: '#f0f0f0', borderRadius: 999, padding: '5px 5px 5px 14px' }}>
+          <div style={{ padding: '6px 12px 18px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', background: '#f0f0f0', borderRadius: multiline ? 18 : 999, padding: '5px 5px 5px 14px', transition: 'border-radius 0.12s' }}>
               <textarea
                 ref={inputRef}
+                className="ai-ta"
                 value={input}
                 onChange={e => {
                   setInput(e.target.value);
                   const el = e.target;
                   el.style.height = 'auto';
                   el.style.height = `${Math.min(el.scrollHeight, 88)}px`;
+                  setMultiline(el.scrollHeight > 32);
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about your data…"
@@ -249,7 +278,7 @@ export default function AiChat() {
               />
               <button
                 className="ai-send"
-                onClick={send}
+                onClick={() => send()}
                 disabled={!input.trim() || loading}
                 style={{
                   width: 30, height: 30, borderRadius: '50%', border: 'none',
@@ -261,7 +290,6 @@ export default function AiChat() {
                 <SendIcon />
               </button>
             </div>
-            <div style={{ fontSize: 9.5, color: '#c4c4c8', textAlign: 'center', marginTop: 5 }}>Enter to send · Shift+Enter for newline</div>
           </div>
         </div>
       )}
